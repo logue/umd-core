@@ -40,6 +40,7 @@
 
 use wasm_bindgen::prelude::*;
 
+pub mod parser;
 pub mod sanitizer;
 
 /// Parse LukiWiki markup and convert to HTML
@@ -59,16 +60,16 @@ pub mod sanitizer;
 ///
 /// let input = "# Heading\n\n**Bold** and *italic*";
 /// let html = parse(input);
-/// // TODO: Implement actual parsing - currently just returns sanitized content
-/// assert!(html.contains("Heading"));
+/// assert!(html.contains("<h1>"));
+/// assert!(html.contains("<strong>"));
 /// ```
 pub fn parse(input: &str) -> String {
     // Step 1: Sanitize input
     let sanitized = sanitizer::sanitize(input);
 
-    // TODO: Implement actual parsing
-    // For now, just return a placeholder
-    format!("<p>{}</p>", sanitized)
+    // Step 2: Parse with comrak-based parser
+    let options = parser::ParserOptions::default();
+    parser::parse_to_html(&sanitized, &options)
 }
 
 /// WASM-exposed API for parsing LukiWiki markup
