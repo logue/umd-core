@@ -58,6 +58,7 @@ pub fn parse_to_html(input: &str, options: &ParserOptions) -> String {
         comrak_options.extension.table = true;
         comrak_options.extension.autolink = true;
         comrak_options.extension.tasklist = true;
+        comrak_options.extension.footnotes = true; // Enable footnotes
         comrak_options.extension.header_ids = Some("".to_string());
     }
 

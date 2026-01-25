@@ -7,6 +7,7 @@ LukiWikiのWikiパーサーをRustで再実装したプロジェクトです。C
 - **CommonMark準拠**: 標準Markdown構文の高い互換性
 - **LukiWiki構文サポート**: レガシーPHP実装との互換性
 - **フロントマターサポート**: YAML/TOML形式のメタデータ
+- **フットノート**: 標準的な脚注構文のサポート
 - **セキュリティ**: HTMLサニタイゼーションによるXSS対策
 - **WASM対応**: WebAssembly出力によるブラウザ実行
 - **拡張性**: プラグインシステムによる機能拡張
@@ -56,6 +57,36 @@ if let Some(fm) = result.frontmatter {
 }
 println!("HTML: {}", result.html);
 ```
+
+## フットノート（脚注）
+
+Markdownの標準的なフットノート構文をサポートしています：
+
+```markdown
+本文にフットノート[^1]を含めます。
+
+別の段落で別のフットノート[^note2]を参照。
+
+[^1]: これが最初のフットノートです。
+
+[^note2]: 名前付きフットノートも使えます。
+```
+
+フットノートは本文から分離され、`ParseResult`の`footnotes`フィールドで取得できます：
+
+```rust
+use lukiwiki_parser::parse_with_frontmatter;
+
+let input = "Text with footnote[^1].\n\n[^1]: Footnote content.";
+let result = parse_with_frontmatter(input);
+
+println!("Body: {}", result.html);
+if let Some(footnotes) = result.footnotes {
+    println!("Footnotes: {}", footnotes);
+}
+```
+
+フットノートは`<section class="footnotes">`として生成され、適切にスタイリングできます。
 
 ## プラグインシステム
 
