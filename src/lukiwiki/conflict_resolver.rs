@@ -149,8 +149,25 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
+    // Protect inline plugins with content but no args: &function{content};
+    // Use base64 encoding to safely preserve content with special characters
+    let inline_plugin_noargs_content = Regex::new(r"&(\w+)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
+    result = inline_plugin_noargs_content
+        .replace_all(&result, |caps: &regex::Captures| {
+            use base64::{Engine as _, engine::general_purpose};
+            let function = &caps[1];
+            let content = &caps[2];
+            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
+            format!(
+                "{{{{INLINE_PLUGIN:{}::{}:INLINE_PLUGIN}}}}",
+                function, encoded_content
+            )
+        })
+        .to_string();
+
     // Protect inline plugins: &function(args){content};
     // Use base64 encoding to safely preserve content with special characters
+    // Note: Inline decoration functions ARE protected here and processed in postprocess
     let inline_plugin = Regex::new(r"&(\w+)\(([^)]*)\)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
     result = inline_plugin
         .replace_all(&result, |caps: &regex::Captures| {
@@ -257,6 +274,110 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
 /// # Returns
 ///
 /// HTML with LukiWiki blockquotes properly rendered and custom IDs applied
+/// Convert inline decoration function to HTML
+/// Returns None if not a decoration function
+fn convert_inline_decoration_to_html(function: &str, args: &str, content: &str) -> Option<String> {
+    match function {
+        // Simple wrapper tags without content
+        "dfn" => Some(format!("<dfn>{}</dfn>", content)),
+        "kbd" => Some(format!("<kbd>{}</kbd>", content)),
+        "samp" => Some(format!("<samp>{}</samp>", content)),
+        "var" => Some(format!("<var>{}</var>", content)),
+        "cite" => Some(format!("<cite>{}</cite>", content)),
+        "q" => Some(format!("<q>{}</q>", content)),
+        "small" => Some(format!("<small>{}</small>", content)),
+        "u" => Some(format!("<u>{}</u>", content)),
+        "bdi" => Some(format!("<bdi>{}</bdi>", content)),
+
+        // Tags with attributes
+        "ruby" => {
+            // &ruby(reading){text}; → <ruby>text<rp>(</rp><rt>reading</rt><rp>)</rp></ruby>
+            Some(format!(
+                "<ruby>{}<rp>(</rp><rt>{}</rt><rp>)</rp></ruby>",
+                content, args
+            ))
+        }
+        "time" => {
+            // &time(datetime){text}; → <time datetime="datetime">text</time>
+            Some(format!("<time datetime=\"{}\">{}</time>", args, content))
+        }
+        "data" => {
+            // &data(value){text}; → <data value="value">text</data>
+            Some(format!("<data value=\"{}\">{}</data>", args, content))
+        }
+        "bdo" => {
+            // &bdo(dir){text}; → <bdo dir="dir">text</bdo>
+            Some(format!("<bdo dir=\"{}\">{}</bdo>", args, content))
+        }
+        "lang" => {
+            // &lang(locale){text}; → <span lang="locale">text</span>
+            Some(format!("<span lang=\"{}\">{}</span>", args, content))
+        }
+        "abbr" => {
+            // &abbr(text){description}; → <abbr title="description">text</abbr>
+            Some(format!("<abbr title=\"{}\">{}</abbr>", content, args))
+        }
+        "sup" => {
+            // &sup(text); → <sup>text</sup>
+            Some(format!("<sup>{}</sup>", args))
+        }
+        "sub" => {
+            // &sub(text); → <sub>text</sub>
+            Some(format!("<sub>{}</sub>", args))
+        }
+        "color" => {
+            // &color(fg,bg){text}; → <span style="color: fg; background-color: bg">text</span>
+            let parts: Vec<&str> = args.split(',').collect();
+            let fg = parts.get(0).map(|s| s.trim()).unwrap_or("");
+            let bg = parts.get(1).map(|s| s.trim()).unwrap_or("");
+
+            let mut styles = Vec::new();
+            if !fg.is_empty() && fg != "inherit" {
+                styles.push(format!("color: {}", fg));
+            }
+            if !bg.is_empty() && bg != "inherit" {
+                styles.push(format!("background-color: {}", bg));
+            }
+
+            if styles.is_empty() {
+                Some(content.to_string())
+            } else {
+                Some(format!(
+                    "<span style=\"{}\">{}</span>",
+                    styles.join("; "),
+                    content
+                ))
+            }
+        }
+        "size" => {
+            // &size(rem){text}; → <span style="font-size: remrem">text</span>
+            Some(format!(
+                "<span style=\"font-size: {}rem\">{}</span>",
+                args, content
+            ))
+        }
+        _ => None,
+    }
+}
+
+/// Convert args-only inline decoration function to HTML
+fn convert_inline_decoration_argsonly_to_html(function: &str, args: &str) -> Option<String> {
+    match function {
+        "sup" => Some(format!("<sup>{}</sup>", args)),
+        "sub" => Some(format!("<sub>{}</sub>", args)),
+        _ => None,
+    }
+}
+
+/// Convert no-args inline decoration function to HTML
+fn convert_inline_decoration_noargs_to_html(function: &str) -> Option<String> {
+    match function {
+        "wbr" => Some("<wbr />".to_string()),
+        "br" => Some("<br />".to_string()),
+        _ => None,
+    }
+}
+
 pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
     use crate::lukiwiki::block_decorations;
 
@@ -319,6 +440,7 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
             let function = &caps[1];
             let args = &caps[2];
             let encoded_content = &caps[3];
+
             // Decode base64 to get original content
             let content = general_purpose::STANDARD
                 .decode(encoded_content.as_bytes())
@@ -326,6 +448,12 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_content.to_string());
 
+            // Try to convert as inline decoration function
+            if let Some(html) = convert_inline_decoration_to_html(function, args, &content) {
+                return html;
+            }
+
+            // Otherwise, convert to plugin HTML
             // Escape HTML entities in content while preserving & for nested plugins
             let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
 
@@ -346,6 +474,13 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
         .replace_all(&result, |caps: &Captures| {
             let function = &caps[1];
             let args = &caps[2];
+
+            // Try to convert as inline decoration function
+            if let Some(html) = convert_inline_decoration_argsonly_to_html(function, args) {
+                return html;
+            }
+
+            // Otherwise, convert to plugin HTML
             let json_args = args_to_json(args);
 
             format!(
@@ -362,6 +497,12 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
         .replace_all(&result, |caps: &Captures| {
             let function = &caps[1];
 
+            // Try to convert as inline decoration function
+            if let Some(html) = convert_inline_decoration_noargs_to_html(function) {
+                return html;
+            }
+
+            // Otherwise, convert to plugin HTML
             format!("<span class=\"plugin-{}\" data-args='[]' />", function)
         })
         .to_string();

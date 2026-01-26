@@ -106,6 +106,26 @@
     - `&lang(locale){text};` - 言語指定 → `<span lang="locale">text</span>`
       - 例: `&lang(en){Hello};` → `<span lang="en">Hello</span>`
     - `&abbr(text){description};` - 略語説明 → `<abbr title="description">text</abbr>`
+    - `&ruby(reading){text};` - ルビ（ふりがな）表示 → `<ruby>text<rp>(</rp><rt>reading</rt><rp>)</rp></ruby>`
+      - 例: `&ruby(Ashita){明日};` → `<ruby>明日<rp>(</rp><rt>Ashita</rt><rp>)</rp></ruby>`
+      - 注: `<rp>`タグはルビ未対応ブラウザで括弧を表示するためのフォールバック
+    - **セマンティックHTML要素**:
+      - `&dfn{text};` - 定義される用語 → `<dfn>text</dfn>`
+      - `&kbd{text};` - キーボード入力 → `<kbd>text</kbd>`
+      - `&samp{text};` - サンプル出力 → `<samp>text</samp>`
+      - `&var{text};` - 変数 → `<var>text</var>`
+      - `&cite{text};` - 作品タイトル → `<cite>text</cite>`
+      - `&q{text};` - 短い引用 → `<q>text</q>`
+      - `&small{text};` - 細目・注釈 → `<small>text</small>`
+      - `&u{text};` - 下線（非言語的注釈） → `<u>text</u>`
+        - 注: Markdownに下線構文は存在しないため矛盾なし
+      - `&time(datetime){text};` - 日時 → `<time datetime="datetime">text</time>`
+        - 例: `&time(2026-01-26){今日};` → `<time datetime="2026-01-26">今日</time>`
+      - `&data(value){text};` - 機械可読データ → `<data value="value">text</data>`
+      - `&bdi{text};` - 双方向テキスト分離 → `<bdi>text</bdi>`
+      - `&bdo(dir){text};` - 双方向テキスト上書き → `<bdo dir="dir">text</bdo>`
+        - 例: `&bdo(rtl){right-to-left};` → `<bdo dir="rtl">right-to-left</bdo>`
+      - `&wbr;` - 改行可能位置 → `<wbr />`
     - [src/lukiwiki/inline_decorations.rs](src/lukiwiki/inline_decorations.rs)実装完了
   - **取り消し線構文の分離**: ✅
     - **LukiWiki**: `%%text%%` → `<s>text</s>` (視覚的な取り消し線)
