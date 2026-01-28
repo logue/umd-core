@@ -12,20 +12,20 @@ repository = "https://github.com/logue/LukiWiki-rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2"          # WASM bindings
-comrak = "0.50.0"             # Markdown parser (GFM)
-ammonia = "4.0"               # HTML sanitization
-maud = "0.27.0"               # Type-safe HTML generation
-regex = "1.11"                # Pattern matching
-once_cell = "1.20"            # Lazy static initialization
-unicode-segmentation = "1.12" # Grapheme cluster handling
-html-escape = "0.2"           # HTML escaping
-base64 = "0.22"               # Base64 encoding for safe content storage
+wasm-bindgen = "0.2.108"        # WASM bindings
+comrak = "0.50.0"               # Markdown parser (GFM)
+ammonia = "4.1.2"               # HTML sanitization
+maud = "0.27.0"                 # Type-safe HTML generation
+regex = "1.12.2"                # Pattern matching
+once_cell = "1.21.3"            # Lazy static initialization
+unicode-segmentation = "1.12.0" # Grapheme cluster handling
+html-escape = "0.2.13"          # HTML escaping
+base64 = "0.22.1"               # Base64 encoding for safe content storage
 
 [dev-dependencies]
-insta = "1.41"            # Snapshot testing
-criterion = "0.8.1"       # Benchmarking
-wasm-bindgen-test = "0.3" # WASM testing
+insta = "1.46.1"             # Snapshot testing
+criterion = "0.8.1"          # Benchmarking
+wasm-bindgen-test = "0.3.58" # WASM testing
 
 [profile.release]
 opt-level = "z"   # Optimize for size

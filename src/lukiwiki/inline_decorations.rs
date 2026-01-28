@@ -11,7 +11,7 @@
 //! - Semantic HTML elements: dfn, kbd, samp, var, cite, q, small, u
 //! - &time(datetime){text};
 //! - &data(value){text};
-//! - &bdi{text}; &bdo(dir){text};
+//! - &bdi(text); &bdo(dir){text};
 //! - &wbr; (word break opportunity)
 //! - %%text%% → <s>text</s> (strikethrough)
 
@@ -38,14 +38,14 @@ static INLINE_RUBY: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"&ruby\(([^)]+?)\)\{([^}]+?)\};").unwrap());
 
 // Semantic HTML elements - simple wrapper tags
-static INLINE_DFN: Lazy<Regex> = Lazy::new(|| Regex::new(r"&dfn\{([^}]+?)\};").unwrap());
-static INLINE_KBD: Lazy<Regex> = Lazy::new(|| Regex::new(r"&kbd\{([^}]+?)\};").unwrap());
-static INLINE_SAMP: Lazy<Regex> = Lazy::new(|| Regex::new(r"&samp\{([^}]+?)\};").unwrap());
-static INLINE_VAR: Lazy<Regex> = Lazy::new(|| Regex::new(r"&var\{([^}]+?)\};").unwrap());
-static INLINE_CITE: Lazy<Regex> = Lazy::new(|| Regex::new(r"&cite\{([^}]+?)\};").unwrap());
-static INLINE_Q: Lazy<Regex> = Lazy::new(|| Regex::new(r"&q\{([^}]+?)\};").unwrap());
-static INLINE_SMALL: Lazy<Regex> = Lazy::new(|| Regex::new(r"&small\{([^}]+?)\};").unwrap());
-static INLINE_U: Lazy<Regex> = Lazy::new(|| Regex::new(r"&u\{([^}]+?)\};").unwrap());
+static INLINE_DFN: Lazy<Regex> = Lazy::new(|| Regex::new(r"&dfn\(([^)]+?)\);").unwrap());
+static INLINE_KBD: Lazy<Regex> = Lazy::new(|| Regex::new(r"&kbd\(([^)]+?)\);").unwrap());
+static INLINE_SAMP: Lazy<Regex> = Lazy::new(|| Regex::new(r"&samp\(([^)]+?)\);").unwrap());
+static INLINE_VAR: Lazy<Regex> = Lazy::new(|| Regex::new(r"&var\(([^)]+?)\);").unwrap());
+static INLINE_CITE: Lazy<Regex> = Lazy::new(|| Regex::new(r"&cite\(([^)]+?)\);").unwrap());
+static INLINE_Q: Lazy<Regex> = Lazy::new(|| Regex::new(r"&q\(([^)]+?)\);").unwrap());
+static INLINE_SMALL: Lazy<Regex> = Lazy::new(|| Regex::new(r"&small\(([^)]+?)\);").unwrap());
+static INLINE_U: Lazy<Regex> = Lazy::new(|| Regex::new(r"&u\(([^)]+?)\);").unwrap());
 
 // Elements with attributes
 static INLINE_TIME: Lazy<Regex> =
@@ -54,7 +54,7 @@ static INLINE_DATA: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"&data\(([^)]+?)\)\{([^}]+?)\};").unwrap());
 
 // Bidirectional text
-static INLINE_BDI: Lazy<Regex> = Lazy::new(|| Regex::new(r"&bdi\{([^}]+?)\};").unwrap());
+static INLINE_BDI: Lazy<Regex> = Lazy::new(|| Regex::new(r"&bdi\(([^)]+?)\);").unwrap());
 static INLINE_BDO: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"&bdo\(([^)]+?)\)\{([^}]+?)\};").unwrap());
 
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn test_semantic_elements() {
-        let input = "&dfn{term}; &kbd{Ctrl}; &samp{output}; &var{x};";
+        let input = "&dfn(term); &kbd(Ctrl); &samp(output); &var(x);";
         let output = apply_inline_decorations(input);
         assert!(output.contains("<dfn>term</dfn>"));
         assert!(output.contains("<kbd>Ctrl</kbd>"));
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_cite_q_small_u() {
-        let input = "&cite{Book Title}; &q{quote}; &small{note}; &u{underline};";
+        let input = "&cite(Book Title); &q(quote); &small(note); &u(underline);";
         let output = apply_inline_decorations(input);
         assert!(output.contains("<cite>Book Title</cite>"));
         assert!(output.contains("<q>quote</q>"));
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_bidirectional_text() {
-        let input = "&bdi{مرحبا}; &bdo(rtl){right-to-left};";
+        let input = "&bdi(مرحبا); &bdo(rtl){right-to-left};";
         let output = apply_inline_decorations(input);
         assert!(output.contains("<bdi>مرحبا</bdi>"));
         assert!(output.contains("<bdo dir=\"rtl\">right-to-left</bdo>"));
