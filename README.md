@@ -156,7 +156,164 @@ SIZE(1.5): COLOR(danger): RIGHT: 複合スタイル
   - Pill: `&badge(success-pill){Active};` → `<span class="badge rounded-pill bg-success">Active</span>`
   - リンク: `&badge(danger){[Error](/error)};` → `<a href="/error" class="badge bg-danger">Error</a>`
 
-### テーブルセル垂直配置
+## テーブル
+
+Universal Markdownは、GFM（GitHub Flavored Markdown）標準のテーブルに加えて、LukiWiki拡張機能をサポートしています。
+
+### 基本テーブル（GFM準拠）
+
+```markdown
+| Header1 | Header2 | Header3 |
+| ------- | ------- | ------- |
+| Cell1   | Cell2   | Cell3   |
+| Cell4   | Cell5   | Cell6   |
+```
+
+出力：
+
+```html
+<table class="table">
+  <thead>
+    <tr>
+      <th>Header1</th>
+      <th>Header2</th>
+      <th>Header3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Cell1</td>
+      <td>Cell2</td>
+      <td>Cell3</td>
+    </tr>
+    <tr>
+      <td>Cell4</td>
+      <td>Cell5</td>
+      <td>Cell6</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+**特徴**：
+
+- 自動的にBootstrapの`table`クラスが付与されます
+- GFMテーブルとLukiWikiテーブルの両方で`<thead>`と`<tbody>`が正しく生成されます
+
+### LukiWiki拡張：セル連結
+
+Markdownの標準テーブルでは表現できないセル連結をサポートします。
+
+#### 横方向連結（colspan）
+
+`|>`マーカーを使用して、右のセルと連結します：
+
+```markdown
+| Header1 |> | Header3 |
+| Cell1 | Cell2 | Cell3 |
+```
+
+出力：
+
+```html
+<table class="table" data-lukiwiki="true">
+  <thead>
+    <tr>
+      <th colspan="2">Header1</th>
+      <th>Header3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Cell1</td>
+      <td>Cell2</td>
+      <td>Cell3</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+#### 縦方向連結（rowspan）
+
+`|^`マーカーを使用して、上のセルと連結します：
+
+```markdown
+| Header1 | Header2 |
+| Cell1 | Cell2 |
+| |^ | Cell3 |
+```
+
+出力：
+
+```html
+<table class="table" data-lukiwiki="true">
+  <thead>
+    <tr>
+      <th>Header1</th>
+      <th>Header2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2">Cell1</td>
+      <td>Cell2</td>
+    </tr>
+    <tr>
+      <td>Cell3</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+#### 複合連結
+
+colspanとrowspanを組み合わせることもできます：
+
+```markdown
+| Header1 |> | Header3 |
+| Cell1 |> | Cell3 |
+| |^ |^ | Cell4 |
+```
+
+### セル内装飾
+
+#### 色指定
+
+`COLOR(fg,bg):`プレフィックスでセルの前景色・背景色を指定できます：
+
+```markdown
+| COLOR(primary): Header | COLOR(,success): Cell |
+| Normal | COLOR(danger,warning): Alert |
+```
+
+- Bootstrap色名（`primary`, `secondary`, `success`, `danger`, `warning`, `info`, `light`, `dark`）は自動的に`text-*`/`bg-*`クラスに変換
+- カスタムカラーコードも使用可能（インラインスタイルとして出力）
+- 前景色のみ、背景色のみの指定も可能（`,`で区切る）
+
+#### サイズ指定
+
+`SIZE(value):`プレフィックスでフォントサイズを指定できます：
+
+```markdown
+| SIZE(1.5): Large | SIZE(0.8): Small |
+```
+
+#### 配置指定
+
+##### 水平配置
+
+```markdown
+| LEFT: Left | CENTER: Center | RIGHT: Right |
+```
+
+- `LEFT:` → `text-start`（左寄せ）
+- `CENTER:` → `text-center`（中央寄せ）
+- `RIGHT:` → `text-end`（右寄せ）
+- `JUSTIFY:` → `text-justify`（両端揃え）
+
+##### 垂直配置
+
+##### 垂直配置
 
 テーブルセル内でBootstrap配置クラスを使用できます：
 
@@ -166,10 +323,25 @@ SIZE(1.5): COLOR(danger): RIGHT: 複合スタイル
 | BOTTOM: A     | BASELINE: B    |
 ```
 
-- `TOP:` → `align-top`
-- `MIDDLE:` → `align-middle`
-- `BOTTOM:` → `align-bottom`
-- `BASELINE:` → `align-baseline`
+- `TOP:` → `align-top`（上揃え）
+- `MIDDLE:` → `align-middle`（中央揃え）
+- `BOTTOM:` → `align-bottom`（下揃え）
+- `BASELINE:` → `align-baseline`（ベースライン揃え）
+
+#### 装飾の組み合わせ
+
+複数の装飾を組み合わせることができます：
+
+```markdown
+| COLOR(primary): SIZE(1.2): CENTER: Header |
+| RIGHT: Normal cell |
+```
+
+**重要な注意点**：
+
+- GFM形式（2行目が`|---|---|`の形式）では、セル連結や装飾拡張は使用できません
+- これらの拡張機能はLukiWiki形式のテーブル（2行目が区切り線でない）でのみ動作します
+- LukiWikiテーブルには自動的に`data-lukiwiki="true"`属性が付与されます
 
 ### Definition Lists
 

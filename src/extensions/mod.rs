@@ -8,6 +8,8 @@ pub mod conflict_resolver;
 pub mod emphasis;
 pub mod inline_decorations;
 pub mod plugins;
+pub mod table_colspan;
+pub mod table_lukiwiki;
 
 /// Apply extended syntax transformations to HTML output
 ///

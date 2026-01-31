@@ -430,19 +430,69 @@
       | Cell1   | Cell2   |
       ```
     - **デフォルトクラス**: `<table class="table">` （Bootstrap基本クラスを自動付与）
+    - **セル連結（LukiWiki拡張）**: 🚧 実装予定
+      - **横方向連結（colspan）**: `|>` を使用
+        - セル内容の後に `|>` を配置すると、右のセルと連結
+        - 例: `| Header1 |> |` → `<th colspan="2">Header1</th>`
+        - 例: `| Cell1 |> |> |` → `<td colspan="3">Cell1</td>`
+        - 連結される側のセルは空またはスペースのみ
+      - **縦方向連結（rowspan）**: `|^` を使用
+        - セル内に `|^` のみを配置すると、上のセルと連結
+        - 例:
+          ```
+          | Header1 | Header2 |
+          |---------|---------|
+          | Cell1   | Cell2   |
+          | |^      | Cell3   |
+          ```
+          → `Cell1`が2行分連結（`<td rowspan="2">Cell1</td>`）
+        - 連結される側のセルは `|^` のみ
+      - **複合連結**: colspan と rowspan の組み合わせ
+        - 例:
+          ```
+          | Header1 |> | Header3 |
+          |---------|--|---------|
+          | Cell1   |> | Cell3   |
+          | |^      |^ | Cell4   |
+          ```
+          → `Cell1`が2x2のセル連結（`<td colspan="2" rowspan="2">Cell1</td>`）
+      - **実装方針**: ✅
+        - [src/extensions/table_lukiwiki.rs](src/extensions/table_lukiwiki.rs)で完全実装
+        - テーブルをパースし、`|>`と`|^`を検出
+        - colspan: 連続する`|>`をカウントし、`colspan`属性を追加
+        - rowspan: 同じ列の`|^`をカウントし、`rowspan`属性を追加
+        - 連結されるセルは出力しない（HTMLの仕様に従う）
+        - GFMとLukiWikiを自動判別（2行目が`|`, `:`, `-`のみならGFM、それ以外はLukiWiki）
+        - LukiWikiテーブルに`data-lukiwiki="true"`属性を付与して識別
+      - **制約**: ✅
+        - セル連結はテーブルヘッダー（`<th>`）とボディ（`<td>`）の両方で使用可能
+        - 不正な連結（例: 範囲外への連結）はエラーとせず、通常のセルとして扱う
+        - Markdown標準テーブルとの互換性を維持（`|>`や`|^`がない場合は通常動作）
+        - GFMテーブルはcomrakが処理、LukiWikiテーブルは独自パーサーが処理
     - **テーブルバリエーション**: 🔮 今後の課題
       - 色（`table-striped`, `table-hover`, `table-dark`など）
       - ボーダー（`table-bordered`, `table-borderless`）
       - サイズ（`table-sm`）
       - 現状: プラグインシステムで対応予定（例: `@table(striped,hover){{ ... }}`）
-    - **セル内装飾（水平配置）**: ブロック装飾プレフィックスと同様
+    - **セル内装飾（水平配置）**: ✅ **完了**
       - `RIGHT:` → `text-end`（右寄せ）
       - `CENTER:` → `text-center`（中央寄せ）
       - `LEFT:` → `text-start`（左寄せ）
       - `JUSTIFY:` → `text-justify`（両端揃え）
       - 例: `| RIGHT: Cell1 | CENTER: Cell2 |`
-    - **セル内装飾（垂直配置）**: 🚧 実装予定
+    - **セル内装飾（垂直配置）**: ✅ **完了**
       - `TOP:` → `align-top`（上揃え）
+      - `MIDDLE:` → `align-middle`（中央揃え）
+      - `BOTTOM:` → `align-bottom`（下揃え）
+      - `BASELINE:` → `align-baseline`（ベースライン揃え）
+    - **セル内色指定**: ✅ **完了**
+      - `COLOR(fg,bg):` プレフィックスでセルの前景色・背景色を指定可能
+      - Bootstrap色名（`primary`, `danger`等）は自動的に`text-*`/`bg-*`クラスに変換
+      - 任意のカラーコードも使用可能（インラインスタイルとして出力）
+      - 例: `| COLOR(primary): Header | COLOR(,success): Cell |`
+    - **セル内サイズ指定**: ✅ **完了**
+      - `SIZE(value):` プレフィックスでフォントサイズを指定可能
+      - 例: `| SIZE(1.5): Large Text | SIZE(0.8): Small Text |`
       - `MIDDLE:` → `align-middle`（中央揃え）
       - `BOTTOM:` → `align-bottom`（下揃え）
       - `BASELINE:` → `align-baseline`（ベースライン揃え）

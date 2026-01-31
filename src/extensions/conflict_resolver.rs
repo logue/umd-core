@@ -123,17 +123,20 @@ static TRIPLE_STAR_EMPHASIS: Lazy<Regex> =
 static CUSTOM_HEADER_ID: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^(#{1,6})\s+(.+?)\s+\{#([a-zA-Z0-9_-]+)\}\s*$").unwrap());
 
-/// Store custom header IDs during preprocessing
+/// Store custom header IDs and LukiWiki tables during preprocessing
 #[derive(Debug, Clone)]
 pub struct HeaderIdMap {
     /// Maps heading number (1-based) to custom ID
     pub ids: HashMap<usize, String>,
+    /// Maps table markers to HTML content
+    pub tables: Vec<(String, String)>,
 }
 
 impl HeaderIdMap {
     pub fn new() -> Self {
         Self {
             ids: HashMap::new(),
+            tables: Vec::new(),
         }
     }
 }
@@ -327,8 +330,12 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
+    // Extract and protect LukiWiki tables (before definition lists)
+    let (result, table_map) = crate::extensions::table_lukiwiki::extract_lukiwiki_tables(&result);
+    header_map.tables = table_map;
+
     // Process definition lists: :term|definition
-    result = process_definition_lists(&result);
+    let result = process_definition_lists(&result);
 
     (result, header_map)
 }
@@ -776,7 +783,7 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
     result = wrapped_dl.replace_all(&result, "$1").to_string();
 
     // Apply Bootstrap default classes, GFM alerts, and table cell alignment
-    result = apply_bootstrap_enhancements(&result);
+    result = apply_bootstrap_enhancements(&result, &header_map);
 
     result
 }
@@ -787,7 +794,7 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 /// - Add default `blockquote` class to all <blockquote> elements (except LukiWiki-style)
 /// - Convert GFM alerts ([!NOTE], etc.) to Bootstrap alert components
 /// - Add JUSTIFY support for tables (w-100 class)
-fn apply_bootstrap_enhancements(html: &str) -> String {
+fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String {
     let mut result = html.to_string();
 
     // Add default class to tables
@@ -831,8 +838,16 @@ fn apply_bootstrap_enhancements(html: &str) -> String {
         })
         .to_string();
 
-    // Process table cell vertical alignment prefixes
-    result = process_table_cell_alignment(&result);
+    // Restore LukiWiki tables
+    // comrak wraps markers in <p> tags and strips newlines
+    for (marker, html) in &header_map.tables {
+        let marker_text = marker.trim();
+        let comrak_marker = format!("<p>{}</p>", marker_text);
+        result = result.replace(&comrak_marker, html);
+    }
+
+    // Process table cell vertical alignment prefixes (for GFM tables only)
+    result = process_table_cell_alignment(&result, header_map);
 
     result
 }
@@ -840,8 +855,12 @@ fn apply_bootstrap_enhancements(html: &str) -> String {
 /// Process table cell alignment prefixes (TOP:, MIDDLE:, BOTTOM:, BASELINE:)
 ///
 /// Detects alignment prefixes in table cells and adds Bootstrap alignment classes.
-fn process_table_cell_alignment(html: &str) -> String {
+fn process_table_cell_alignment(html: &str, _header_map: &HeaderIdMap) -> String {
     let mut result = html.to_string();
+
+    // Apply table cell spanning (colspan and rowspan) ONLY for GFM tables
+    // LukiWiki tables already have spanning applied
+    result = crate::extensions::table_colspan::apply_table_colspan(&result);
 
     // Process <td> tags
     let td_pattern = Regex::new(r"<td([^>]*)>(.*?)</td>").unwrap();
