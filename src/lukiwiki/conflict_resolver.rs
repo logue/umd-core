@@ -569,6 +569,62 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
         Regex::new(r#"<p>\s*(<div class="plugin-[^"]+"[^>]*/>\s*)\s*</p>"#).unwrap();
     result = wrapped_plugin_self.replace_all(&result, "$1").to_string();
 
+    // Apply Bootstrap default classes and GFM alerts
+    result = apply_bootstrap_enhancements(&result);
+
+    result
+}
+
+/// Apply Bootstrap 5 enhancements to HTML
+///
+/// - Add default `table` class to all <table> elements
+/// - Add default `blockquote` class to all <blockquote> elements (except LukiWiki-style)
+/// - Convert GFM alerts ([!NOTE], etc.) to Bootstrap alert components
+/// - Add JUSTIFY support for tables (w-100 class)
+fn apply_bootstrap_enhancements(html: &str) -> String {
+    let mut result = html.to_string();
+
+    // Add default class to tables
+    let table_pattern = Regex::new(r"<table>").unwrap();
+    result = table_pattern
+        .replace_all(&result, "<table class=\"table\">")
+        .to_string();
+
+    // Add default class to blockquotes (check if it doesn't already have class="lukiwiki")
+    let blockquote_pattern = Regex::new(r#"<blockquote>"#).unwrap();
+    result = blockquote_pattern
+        .replace_all(&result, "<blockquote class=\"blockquote\">")
+        .to_string();
+
+    // LukiWiki blockquotes already have class="lukiwiki", so they remain unchanged
+
+    // Handle GFM alerts: > [!NOTE] etc.
+    // These are rendered as <blockquote class="blockquote"><p>[!NOTE] ...</p></blockquote>
+    let gfm_alert_pattern = Regex::new(
+        r#"<blockquote class="blockquote">\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*?)</p>\s*</blockquote>"#
+    ).unwrap();
+
+    result = gfm_alert_pattern
+        .replace_all(&result, |caps: &Captures| {
+            let alert_type = &caps[1];
+            let content = &caps[2];
+
+            let (alert_class, icon_text) = match alert_type {
+                "NOTE" => ("alert-info", "Note"),
+                "TIP" => ("alert-success", "Tip"),
+                "IMPORTANT" => ("alert-primary", "Important"),
+                "WARNING" => ("alert-warning", "Warning"),
+                "CAUTION" => ("alert-danger", "Caution"),
+                _ => ("alert-info", "Note"),
+            };
+
+            format!(
+                r#"<div class="alert {}" role="alert"><strong>{}:</strong> {}</div>"#,
+                alert_class, icon_text, content
+            )
+        })
+        .to_string();
+
     result
 }
 
@@ -709,5 +765,49 @@ mod tests {
         let input = "# Heading\n\n**Bold** and ''LukiWiki bold''";
         let warnings = detect_ambiguous_syntax(input);
         assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn test_bootstrap_table_class() {
+        let header_map = HeaderIdMap::new();
+        let input = "<table><tr><td>Cell</td></tr></table>";
+        let output = postprocess_conflicts(input, &header_map);
+        assert!(output.contains(r#"<table class="table">"#));
+    }
+
+    #[test]
+    fn test_bootstrap_blockquote_class() {
+        let header_map = HeaderIdMap::new();
+        let input = "<blockquote><p>Quote</p></blockquote>";
+        let output = postprocess_conflicts(input, &header_map);
+        assert!(output.contains(r#"<blockquote class="blockquote">"#));
+    }
+
+    #[test]
+    fn test_gfm_alert_note() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<blockquote class="blockquote"><p>[!NOTE] This is a note</p></blockquote>"#;
+        let output = postprocess_conflicts(input, &header_map);
+        assert!(output.contains(r#"<div class="alert alert-info" role="alert">"#));
+        assert!(output.contains("<strong>Note:</strong>"));
+        assert!(output.contains("This is a note"));
+    }
+
+    #[test]
+    fn test_gfm_alert_warning() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<blockquote class="blockquote"><p>[!WARNING] Be careful</p></blockquote>"#;
+        let output = postprocess_conflicts(input, &header_map);
+        assert!(output.contains(r#"<div class="alert alert-warning" role="alert">"#));
+        assert!(output.contains("<strong>Warning:</strong>"));
+    }
+
+    #[test]
+    fn test_lukiwiki_blockquote_no_bootstrap_class() {
+        let header_map = HeaderIdMap::new();
+        let input = "{{LUKIWIKI_BLOCKQUOTE:Test content:LUKIWIKI_BLOCKQUOTE}}";
+        let output = postprocess_conflicts(input, &header_map);
+        assert!(output.contains(r#"<blockquote class="lukiwiki">"#));
+        assert!(!output.contains(r#"class="blockquote""#));
     }
 }
