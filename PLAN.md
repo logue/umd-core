@@ -152,7 +152,7 @@
           |---------|---------|
           | Cell1   | Cell2   |
           ```
-          → `<table class="w-100">...</table>` または `<table style="width: 100%">...</table>`
+          → `<table class="table w-100">...</table>` （デフォルトで`table`クラスが追加される）
         - 用途: `CENTER:`でテーブル自体を中央寄せするのではなく、テーブルを画面幅いっぱいに広げた上でセル内のテキストを配置
         - 区別:
           - `CENTER: | Header |` → テーブル自体を中央寄せ（テーブルはコンテンツ幅）
@@ -420,10 +420,114 @@
     - 本文から分離され、`ParseResult.footnotes`で取得可能
     - comrakの`extension.footnotes`を有効化
     - [examples/test_footnotes.rs](examples/test_footnotes.rs)でデモンストレーション
-  - **テーブル**: `|~Header|h` 形式 ⏸️ 保留
-    - 行修飾子: `h`(ヘッダー), `f`(フッター), `c`(キャプション)
-    - セル内色/配置: `COLOR(fg,bg):`, `RIGHT:`, `CENTER:`, `LEFT:`
-  - **定義リスト**: `:term|definition` ⏸️ 保留
+  - **テーブル**: Markdown標準形式 + LukiWiki拡張 🚧 実装予定
+    - **基本構文**: Markdown標準のテーブル構文（GFM準拠）
+      ```
+      | Header1 | Header2 |
+      |---------|---------|
+      | Cell1   | Cell2   |
+      ```
+    - **デフォルトクラス**: `<table class="table">` （Bootstrap基本クラスを自動付与）
+    - **テーブルバリエーション**: 🔮 今後の課題
+      - 色（`table-striped`, `table-hover`, `table-dark`など）
+      - ボーダー（`table-bordered`, `table-borderless`）
+      - サイズ（`table-sm`）
+      - 現状: プラグインシステムで対応予定（例: `@table(striped,hover){{ ... }}`）
+    - **セル内装飾（水平配置）**: ブロック装飾プレフィックスと同様
+      - `RIGHT:` → `text-end`（右寄せ）
+      - `CENTER:` → `text-center`（中央寄せ）
+      - `LEFT:` → `text-start`（左寄せ）
+      - `JUSTIFY:` → `text-justify`（両端揃え）
+      - 例: `| RIGHT: Cell1 | CENTER: Cell2 |`
+    - **セル内装飾（垂直配置）**: 🚧 実装予定
+      - `TOP:` → `align-top`（上揃え）
+      - `MIDDLE:` → `align-middle`（中央揃え）
+      - `BOTTOM:` → `align-bottom`（下揃え）
+      - `BASELINE:` → `align-baseline`（ベースライン揃え）
+      - 例: `| TOP: Cell1 | MIDDLE: Cell2 |`
+      - 複合: `| TOP: RIGHT: Cell1 |` → `<td class="align-top text-end">Cell1</td>`
+    - **セル内その他装飾**: `COLOR()`, `SIZE()`, `TRUNCATE`も使用可能
+      - 例: `| COLOR(primary): SIZE(1.5): MIDDLE: CENTER: 強調セル |`
+    - **テーブル幅指定**: `JUSTIFY:`でテーブル全体を100%幅に設定（上記参照）
+    - **レスポンシブ対応**: プラグインで実装予定
+      - 例: `@table(responsive){{ ... }}` → `<div class="table-responsive"><table>...</table></div>`
+  - **ブロック引用**: LukiWiki形式 + Markdown標準形式 ✅
+    - **LukiWiki形式**: `> ... <` （閉じタグあり）
+    - **Markdown形式**: `> text` （行頭プレフィックス）
+    - **デフォルトクラス**: 🚧 実装予定
+      - `<blockquote class="blockquote">` （Bootstrap基本クラスを自動付与）
+      - Bootstrap標準の引用スタイルを適用
+    - **GFMアラート**: `> [!NOTE]`などは別途`<div class="alert">`に変換（上記参照）
+  - **定義リスト**: 🚧 実装予定
+    - **LukiWiki構文**: `:term|definition`
+      ```
+      :用語1|定義1
+      :用語2|定義2の説明文
+      ```
+    - **Markdown拡張構文（オプション）**: CommonMarkには標準定義リスト構文がないが、一部の実装で対応
+
+      ```
+      用語1
+      : 定義1
+
+      用語2
+      : 定義2の説明文
+      ```
+
+    - **HTML出力**: `<dl>`, `<dt>`, `<dd>`タグ
+      ```html
+      <dl>
+        <dt>用語1</dt>
+        <dd>定義1</dd>
+        <dt>用語2</dt>
+        <dd>定義2の説明文</dd>
+      </dl>
+      ```
+    - **Bootstrapスタイリング**: デフォルトクラスなし（カスタムCSSまたはユーティリティクラスで調整）
+      - オプション: `<dl class="row">`で2カラムレイアウト可能
+        ```html
+        <dl class="row">
+          <dt class="col-sm-3">用語</dt>
+          <dd class="col-sm-9">定義</dd>
+        </dl>
+        ```
+    - **実装方針**:
+      - LukiWiki構文`:term|definition`を優先実装
+      - 行頭の`:`で定義リストを検出
+      - 連続する定義リスト項目を1つの`<dl>`タグにグループ化
+      - 定義は複数行対応（インデントで継続行を判定）
+      - Markdown拡張構文は将来的な検討事項
+    - **複数定義の対応**:
+      ```
+      :用語1|定義1-1
+      :用語1|定義1-2
+      ```
+      →
+      ```html
+      <dl>
+        <dt>用語1</dt>
+        <dd>定義1-1</dd>
+        <dd>定義1-2</dd>
+      </dl>
+      ```
+    - **複数用語の対応**:
+      ```
+      :用語1|定義
+      :用語2|定義
+      ```
+      →
+      ```html
+      <dl>
+        <dt>用語1</dt>
+        <dt>用語2</dt>
+        <dd>定義</dd>
+      </dl>
+      ```
+      （注: 同じ定義を持つ複数の用語）
+    - **ネストされたコンテンツ**:
+      - 定義内でMarkdown構文（強調、リンクなど）をサポート
+      - 定義内でLukiWiki装飾関数（`&color()`, `&badge()`など）をサポート
+    - **用途**: 用語集、FAQ、仕様書などでの使用を想定
 
 **成果物**:
 
