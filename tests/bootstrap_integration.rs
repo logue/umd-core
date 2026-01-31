@@ -14,10 +14,10 @@ fn test_bootstrap_table_default_class() {
 #[test]
 fn test_bootstrap_blockquote_default_class() {
     // Note: Due to sanitization, Markdown blockquote syntax (>) is escaped.
-    // We use LukiWiki blockquote syntax (> ... <) which has class="lukiwiki"
-    let input = "> This is a LukiWiki quote <";
+    // We use UMD blockquote syntax (> ... <) which has class="umd-blockquote"
+    let input = "> This is a UMD quote <";
     let output = parse(input);
-    assert!(output.contains(r#"<blockquote class="lukiwiki">"#));
+    assert!(output.contains(r#"<blockquote class="umd-blockquote">"#));
 }
 
 #[test]
@@ -168,7 +168,8 @@ fn test_mixed_bootstrap_features() {
     // Check all features are present
     assert!(output.contains(r#"class="badge bg-info""#));
     assert!(output.contains(r#"class="text-primary""#));
-    assert!(output.contains(r#"<table class="table""#));
+    // UMD table syntax (because of TOP: and MIDDLE: prefixes)
+    assert!(output.contains(r#"class="table umd-table""#));
     assert!(output.contains(r#"class="align-top""#));
     assert!(output.contains(r#"class="align-middle""#));
     assert!(output.contains("<dl>"));
@@ -176,17 +177,17 @@ fn test_mixed_bootstrap_features() {
 }
 
 #[test]
-fn test_lukiwiki_blockquote_preserves_class() {
-    let input = "> LukiWiki quote <";
+fn test_umd_blockquote_preserves_class() {
+    let input = "> UMD quote <";
     let output = parse(input);
-    assert!(output.contains(r#"<blockquote class="lukiwiki">"#));
-    assert!(!output.contains(r#"class="blockquote""#));
+    assert!(output.contains(r#"<blockquote class="umd-blockquote">"#));
+    assert!(!output.contains(r#"class="blockquote""#)); // Should NOT get default class
 }
 
 #[test]
 fn test_strikethrough_compatibility() {
-    let input = "%%LukiWiki strikethrough%% and ~~GFM strikethrough~~";
+    let input = "%%UMD strikethrough%% and ~~GFM strikethrough~~";
     let output = parse(input);
-    assert!(output.contains("<s>LukiWiki strikethrough</s>"));
+    assert!(output.contains("<s>UMD strikethrough</s>"));
     assert!(output.contains("<del>GFM strikethrough</del>"));
 }

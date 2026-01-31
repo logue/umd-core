@@ -1,9 +1,9 @@
 # Universal Markdown実装プラン
 
-**プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テストを合理的にパス(75%+目標)しつつ、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステムを提供。LukiWikiレガシー構文との後方互換性も維持。
+**プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テストを合理的にパス(75%+目標)しつつ、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステムを提供。UMDレガシー構文との後方互換性も維持。
 
 **作成日**: 2026年1月23日
-**最終更新**: 2026年1月31日
+**最終更新**: 2026年2月1日
 **Rustバージョン**: 1.93 (最新安定版)
 **ライセンス**: MIT
 
@@ -12,7 +12,7 @@
 - CommonMark仕様テストで75%以上のパス率を達成
 - Bootstrap 5完全統合（Core UI互換）
 - セマンティックHTML要素の包括的サポート
-- LukiWiki既存コンテンツとの後方互換性を維持
+- UMD既存コンテンツとの後方互換性を維持
 - HTML直接入力を禁止し、セキュアなHTML生成のみ許可
 - 既存Markdownパーサー（`comrak`）を基盤として活用
 
@@ -68,9 +68,9 @@
 
 ---
 
-### Step 3: LukiWiki構文拡張の実装 ✅ 完了
+### Step 3: UMD構文拡張の実装 ✅ 完了
 
-**目的**: LukiWiki独自構文のサポート
+**目的**: UMD独自構文のサポート
 
 **ステータス**: ✅ **完了** (2025年版)
 
@@ -80,7 +80,7 @@
 - 実装する構文:
   - **ブロック引用**: `> ... <` (開始・終了タグ形式) ✅
     - [src/extensions/conflict_resolver.rs](src/extensions/conflict_resolver.rs)でマーカー方式実装
-  - **LukiWiki強調**: ✅
+  - **UMD強調**: ✅
     - `''text''` → `<b>text</b>` (視覚的な太字)
     - `'''text'''` → `<i>text</i>` (視覚的な斜体)
     - [src/extensions/emphasis.rs](src/extensions/emphasis.rs)実装完了
@@ -136,14 +136,14 @@
         - 例: `SIZE(1.5rem): 1.5rem` → `<p style="font-size: 1.5rem">1.5rem</p>`
         - 例: `SIZE(2em): 2em` → `<p style="font-size: 2em">2em</p>`
         - 例: `SIZE(16px): 16px` → `<p style="font-size: 16px">16px</p>`
-      - 原則: LukiWikiはrem単位を標準とする
+      - 原則: UMDはrem単位を標準とする
     - `RIGHT: text` - 右寄せ → `<p class="text-end">text</p>` (Bootstrap) ✅
     - `CENTER: text` - 中央寄せ → `<p class="text-center">text</p>` (Bootstrap) ✅
     - `LEFT: text` - 左寄せ → `<p class="text-start">text</p>` (Bootstrap) ✅
     - `JUSTIFY: text` - 両端揃え/ブロック幅指定 🚧 実装予定
       - **用途1: テキストの両端揃え（段落）**
         - 例: `JUSTIFY: この文章は両端揃えで表示されます。` → `<p class="text-justify">この文章は両端揃えで表示されます。</p>`
-        - 注: Bootstrap 5では`text-justify`が非推奨だが、LukiWikiでは明示的に対応
+        - 注: Bootstrap 5では`text-justify`が非推奨だが、UMDでは明示的に対応
         - ブラウザ対応: モダンブラウザでは`text-align: justify`で両端揃えが可能
       - **用途2: ブロック要素の幅指定（テーブル等）**
         - テーブル行の前に`JUSTIFY:`がある場合、テーブル全体の幅を100%に設定
@@ -390,8 +390,8 @@
       - `<blockquote>`タグを`<div class="alert alert-{type}">`に変換
       - アイコン追加はフロントエンドJavaScript/CSSで対応（Bootstrap Iconsなど）
       - アクセシビリティ: `role="alert"`属性を自動追加
-    - **既存LukiWiki引用構文との共存**:
-      - LukiWiki形式: `> ... <` （閉じタグあり）→ 通常のブロック引用として処理
+    - **既存UMD引用構文との共存**:
+      - UMD形式: `> ... <` （閉じタグあり）→ 通常のブロック引用として処理
       - GFMアラート形式: `> [!TYPE]` → Bootstrapアラートに変換
       - Markdown標準: `> text` （閉じタグなし、`[!TYPE]`なし）→ 通常のブロック引用
     - **利点**:
@@ -457,7 +457,7 @@
           ```
           → `Cell1`が2x2のセル連結（`<td colspan="2" rowspan="2">Cell1</td>`）
       - **実装方針**: ✅
-        - [src/extensions/table_lukiwiki.rs](src/extensions/table_lukiwiki.rs)で完全実装
+        - [src/extensions/table/umd/](src/extensions/table/umd/)で完全実装
         - テーブルをパースし、`|>`と`|^`を検出
         - colspan: 連続する`|>`をカウントし、`colspan`属性を追加
         - rowspan: 同じ列の`|^`をカウントし、`rowspan`属性を追加
@@ -468,7 +468,7 @@
         - セル連結はテーブルヘッダー（`<th>`）とボディ（`<td>`）の両方で使用可能
         - 不正な連結（例: 範囲外への連結）はエラーとせず、通常のセルとして扱う
         - Markdown標準テーブルとの互換性を維持（`|>`や`|^`がない場合は通常動作）
-        - GFMテーブルはcomrakが処理、LukiWikiテーブルは独自パーサーが処理
+        - GFMテーブルはcomrakが処理、UMDテーブルは独自パーサーが処理
     - **テーブルバリエーション**: 🔮 今後の課題
       - 色（`table-striped`, `table-hover`, `table-dark`など）
       - ボーダー（`table-bordered`, `table-borderless`）
@@ -503,15 +503,15 @@
     - **テーブル幅指定**: `JUSTIFY:`でテーブル全体を100%幅に設定（上記参照）
     - **レスポンシブ対応**: プラグインで実装予定
       - 例: `@table(responsive){{ ... }}` → `<div class="table-responsive"><table>...</table></div>`
-  - **ブロック引用**: LukiWiki形式 + Markdown標準形式 ✅
-    - **LukiWiki形式**: `> ... <` （閉じタグあり）
+  - **ブロック引用**: UMD形式 + Markdown標準形式 ✅
+    - **UMD形式**: `> ... <` （閉じタグあり）
     - **Markdown形式**: `> text` （行頭プレフィックス）
     - **デフォルトクラス**: 🚧 実装予定
       - `<blockquote class="blockquote">` （Bootstrap基本クラスを自動付与）
       - Bootstrap標準の引用スタイルを適用
     - **GFMアラート**: `> [!NOTE]`などは別途`<div class="alert">`に変換（上記参照）
   - **定義リスト**: 🚧 実装予定
-    - **LukiWiki構文**: `:term|definition`
+    - **UMD構文**: `:term|definition`
       ```
       :用語1|定義1
       :用語2|定義2の説明文
@@ -544,7 +544,9 @@
         </dl>
         ```
     - **実装方針**:
-      - LukiWiki構文`:term|definition`を優先実装
+      - UMD構文を優先実装
+        - 簡潔でシンプル：`:term|definition`
+        - 既存UMDコンテンツとの互換性
       - 行頭の`:`で定義リストを検出
       - 連続する定義リスト項目を1つの`<dl>`タグにグループ化
       - 定義は複数行対応（インデントで継続行を判定）
@@ -578,24 +580,34 @@
       （注: 同じ定義を持つ複数の用語）
     - **ネストされたコンテンツ**:
       - 定義内でMarkdown構文（強調、リンクなど）をサポート
-      - 定義内でLukiWiki装飾関数（`&color()`, `&badge()`など）をサポート
+      - 定義内でUMD装飾関数（`&color()`, `&badge()`など）をサポート
     - **用途**: 用語集、FAQ、仕様書などでの使用を想定
 
 **成果物**:
 
-- LukiWiki構文パーサーモジュール群 ✅
-  - emphasis.rs (5 tests)
-  - block_decorations.rs (7 tests)
-  - inline_decorations.rs (11 tests including strikethrough)
-  - plugins.rs (20 tests including args-only/no-args patterns)
-  - frontmatter.rs (5 tests)
-  - conflict_resolver.rs (11 tests including custom header ID tests)
-- レガシー構文互換性テスト ✅ (48 LukiWiki syntax tests passing)
+- UMD構文パーサーモジュール群 ✅
+  - emphasis.rs: 強調構文 (5 tests)
+  - block_decorations.rs: ブロック装飾 (7 tests)
+  - inline_decorations.rs: インライン装飾 (11 tests including strikethrough)
+  - plugins.rs: プラグインシステム (20 tests, base64 encoding)
+  - conflict_resolver.rs: 構文衝突解決 (11 tests including custom header ID)
+  - table/mod.rs: テーブル統合モジュール
+  - table/umd/parser.rs: UMDテーブルパーサー (7 tests)
+  - table/umd/cell_spanning.rs: セル連結 (2 tests)
+  - table/umd/decorations.rs: セル装飾 (5 tests)
+  - frontmatter.rs: フロントマター (5 tests)
+- レガシー構文互換性テスト ✅ (121 unit tests passing)
 - プラグインパターンデモ: [examples/test_plugin_extended.rs](examples/test_plugin_extended.rs) ✅
+- UMDテーブルデモ: [examples/test_simple_umd.rs](examples/test_simple_umd.rs), [examples/test_umd_header.rs](examples/test_umd_header.rs) ✅
 
-**テスト結果**: 123 tests passing
+**テスト結果**: 184 tests passing (合計)
 
-- 83 unit tests (including 5 frontmatter + 3 custom header ID + 9 new plugin tests + 2 strikethrough tests)
+- 121 unit tests (lib.rs)
+- 22 bootstrap integration tests
+- 18 CommonMark compliance tests
+- 13 conflict resolution tests
+- 1 semantic integration test
+- 9 doctests
 - 18 CommonMark tests
 - 13 conflict resolution tests
 - 9 doctests
@@ -621,14 +633,14 @@
     - 閉じタグ `<` の検出により判定
     - 閉じタグなしの場合はMarkdown `>` 行頭プレフィックスとして処理
   - **リストマーカー**:
-    - 順序なし: `-` (LukiWiki) と `*` (Markdown) 両対応
-    - 順序付き: `+` (LukiWiki) と `1.` (Markdown) 両対応
+    - 順序なし: `-` (UMD) と `*` (Markdown) 両対応
+    - 順序付き: `+` (UMD) と `1.` (Markdown) 両対応
   - **水平線**:
     - `----` (4文字以上のハイフン) を優先
     - `***`, `___` も対応（CommonMark準拠）
   - **強調表現**: ✅
     - Markdown: `*em*`, `**strong**` → セマンティックタグ (`<em>`, `<strong>`)
-    - LukiWiki: `'''italic'''`, `''bold''` → 視覚的タグ (`<i>`, `<b>`)
+    - UMD: `'''italic'''`, `''bold''` → 視覚的タグ (`<i>`, `<b>`)
     - 両方サポート、ネスト時の優先順位を定義
     - 表示は同一だが、HTMLの意味合いが異なる
   - **プラグイン構文の保護**: ✅
@@ -685,9 +697,9 @@
 
 ---
 
-### Step 6: 高度なLukiWiki機能
+### Step 6: 高度なUMD機能
 
-**目的**: LukiWiki固有の複雑な機能をサポート
+**目的**: UMD固有の複雑な機能をサポート
 
 **作業内容**:
 
@@ -705,7 +717,7 @@
 **成果物**:
 
 - 複雑なネスト構造のパース実装
-- 既存LukiWikiコンテンツ互換性テスト
+- 既存UMDコンテンツ互換性テスト
 - パフォーマンステスト（深いネスト）
 
 ---
@@ -722,7 +734,7 @@
   - HTMLエンティティの適切な処理
 - テストスイート:
   - [tests/commonmark.rs](tests/commonmark.rs): CommonMark仕様テスト、目標75%+
-  - [tests/legacy_compat.rs](tests/legacy_compat.rs): LukiWiki互換性
+  - [tests/legacy_compat.rs](tests/legacy_compat.rs): UMD互換性
   - [tests/php_comparison.rs](tests/php_comparison.rs): PHP実装との差分検証
   - [tests/security.rs](tests/security.rs): XSS等のセキュリティテスト
 - ベンチマーク:
@@ -747,11 +759,11 @@ Input Text
     ↓
 [HTML Sanitizer] - HTMLエスケープ、エンティティ保持
     ↓
-[Lexer/Tokenizer] - LukiWiki/Markdown構文検出
+[Lexer/Tokenizer] - UMD/Markdown構文検出
     ↓
 [Parser] - comrakベースAST構築
     ↓
-[LukiWiki Extensions] - 独自ノード追加
+[UMD Extensions] - 独自ノード追加
     ↓
 [Disambiguator] - 構文競合解決
     ↓
@@ -768,22 +780,27 @@ Output HTML
 
 ```toml
 [package]
-name = "lukiwiki-parser"
+name = "universal-markdown"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.93"
 
 [dependencies]
-comrak = "0.28"                    # Markdown parser (GFM)
-ammonia = "4.0"                    # HTML sanitization (html-escapeの後継)
-maud = "0.26"                      # Type-safe HTML (alternative: markup)
-regex = "1.11"                     # Pattern matching
-once_cell = "1.20"                 # Lazy static initialization (lazy_staticの後継)
-unicode-segmentation = "1.12"      # Grapheme cluster handling
+wasm-bindgen = "0.2.108"        # WASM bindings
+comrak = "0.50.0"               # Markdown parser (GFM)
+ammonia = "4.1.2"               # HTML sanitization
+maud = "0.27.0"                 # Type-safe HTML generation
+regex = "1.12.2"                # Pattern matching
+once_cell = "1.21.3"            # Lazy static initialization
+unicode-segmentation = "1.12.0" # Grapheme cluster handling
+html-escape = "0.2.13"          # HTML escaping
+base64 = "0.22.1"               # Base64 encoding for safe content storage
+serde_json = "1.0.149"          # JSON serialization for definition lists
 
 [dev-dependencies]
-insta = "1.41"                     # Snapshot testing
-criterion = "0.5"                  # Benchmarking
+insta = "1.46.2"             # Snapshot testing
+criterion = "0.8.1"          # Benchmarking
+wasm-bindgen-test = "0.3.58" # WASM testing
 ```
 
 **注1**: Rust 1.93 + Edition 2024の最新機能（改善された型推論、パターンマッチング拡張等）を活用します。
@@ -792,33 +809,52 @@ criterion = "0.5"                  # Benchmarking
 ### ディレクトリ構造
 
 ```
-lukiwiki-parser/
+universal-markdown/
 ├── Cargo.toml
+├── build.sh                # WASMビルドスクリプト
+├── README.md
+├── PLAN.md
+├── WASM_BUILD.md
 ├── src/
-│   ├── lib.rs
-│   ├── parser.rs           # エントリーポイント
-│   ├── sanitizer.rs        # HTML安全化
-│   ├── disambiguator.rs    # 構文競合解決
-│   ├── renderer.rs         # HTML生成
-│   ├── ast.rs              # AST定義
-│   ├── markdown/           # Markdown拡張
-│   │   ├── mod.rs
-│   │   ├── tables.rs
-│   │   └── extras.rs
-│   └── lukiwiki/           # LukiWiki拡張
+│   ├── lib.rs              # メインエントリポイント
+│   ├── parser.rs           # Markdownパーサー (comrakベース)
+│   ├── sanitizer.rs        # HTMLサニタイゼーション
+│   ├── frontmatter.rs      # YAML/TOMLフロントマター
+│   └── extensions/         # UMD拡張機能
 │       ├── mod.rs
-│       ├── table.rs
-│       ├── definition_list.rs
-│       ├── blockquote.rs
-│       ├── text_decorations.rs
-│       └── nested_blocks.rs
+│       ├── emphasis.rs         # ''太字'', '''斜体'''
+│       ├── block_decorations.rs # COLOR, SIZE, 配置プレフィックス
+│       ├── inline_decorations.rs # &color(), &size(), 取り消し線
+│       ├── plugins.rs          # プラグインシステム (base64 encoding)
+│       ├── conflict_resolver.rs # 構文衝突解決 + ヘッダーID
+│       └── table/
+│           ├── mod.rs
+│           └── umd/            # UMDテーブル実装
+│               ├── mod.rs
+│               ├── parser.rs       # テーブルパーサー
+│               ├── cell_spanning.rs # colspan/rowspan
+│               └── decorations.rs  # セル装飾
 ├── tests/
-│   ├── commonmark.rs       # CommonMark仕様テスト
-│   ├── lukiwiki_compat.rs  # LukiWiki互換性
-│   ├── php_comparison.rs   # PHP実装比較
-│   └── security.rs         # セキュリティテスト
-└── benches/
-    └── parse_bench.rs      # パフォーマンステスト
+│   ├── commonmark.rs       # CommonMark仕様テスト (18 tests)
+│   ├── bootstrap_integration.rs # Bootstrap統合 (22 tests)
+│   ├── conflict_resolution.rs # 構文衝突 (13 tests)
+│   └── test_semantic_integration.rs # セマンティック (1 test)
+├── examples/
+│   ├── test_output.rs
+│   ├── test_bootstrap_integration.rs
+│   ├── test_frontmatter.rs
+│   ├── test_footnotes.rs
+│   ├── test_header_id.rs
+│   ├── test_plugin_extended.rs
+│   ├── test_simple_umd.rs
+│   ├── test_umd_header.rs
+│   ├── test_table_colspan.rs
+│   ├── test_table_comparison.rs
+│   ├── test_comrak_table.rs
+│   ├── test_strikethrough.rs
+│   ├── test_block_color.rs
+│   └── test_semantic_html.rs
+└── target/                 # ビルド成果物
 ```
 
 ---
@@ -828,13 +864,13 @@ lukiwiki-parser/
 ### 競合時の解決ルール
 
 1. **ブロック引用**:
-   - LukiWiki `> ... <` 優先（閉じタグ検出）
+   - UMD `> ... <` 優先（閉じタグ検出）
    - 閉じタグなし → Markdown `>` 行頭プレフィックス
 
 2. **強調表現**:
    - 両スタイルサポート（共存）
    - Markdown → セマンティックタグ (`<strong>`, `<em>`) - 意味的な強調
-   - LukiWiki → 視覚的タグ (`<b>`, `<i>`) - 見た目の装飾
+   - UMD → 視覚的タグ (`<b>`, `<i>`) - 見た目の装飾
    - 違い: アクセシビリティやSEOへの影響が異なる
    - **潜在的矛盾**: `'''text'''` (3個) がMarkdownの太字 `***text***` と視覚的に類似
 
@@ -842,7 +878,7 @@ lukiwiki-parser/
 
 - 両スタイルサポート（共存）
 - Markdown/GFM → セマンティックタグ (`<del>`) - 削除された内容
-- LukiWiki → 視覚的タグ (`<s>`) - 正確でなくなった内容
+- UMD → 視覚的タグ (`<s>`) - 正確でなくなった内容
 - 違い: HTMLの意味合いが異なる（視覚的 vs セマンティック）
 - **矛盾なし**: 構文が明確に異なる (`%%` vs `~~`)
 
@@ -850,7 +886,7 @@ lukiwiki-parser/
    - 両スタイルサポート
    - `-`, `*` → 順序なしリスト
    - `+`, `1.` → 順序付きリスト
-   - **潜在的矛盾**: LukiWikiの `+` がMarkdownでは順序なしリストに使用される場合がある
+   - **潜在的矛盾**: UMDの `+` がMarkdownでは順序なしリストに使用される場合がある
 
 4. **水平線**:
    - `----` (4+文字) 優先
@@ -858,8 +894,8 @@ lukiwiki-parser/
    - **矛盾なし**: CommonMark準拠
 
 5. **テーブル**:
-   - LukiWiki形式とMarkdown形式を構文で判別
-   - LukiWiki: `|cell|h` (行修飾子あり)
+   - UMD形式とMarkdown形式を構文で判別
+   - UMD: `|cell|h` (行修飾子あり)
    - Markdown: `| header |\n|---|` (区切り行あり)
    - **矛盾なし**: 構文が明確に異なる
 
@@ -915,7 +951,7 @@ lukiwiki-parser/
 
 ### Phase 1: MVP（基本機能）
 
-- Step 1-3: 基盤 + Markdown + LukiWiki基本
+- Step 1-3: 基盤 + Markdown + UMD基本
 - 目標期間: 2-3週間
 - 成果: 基本的なWiki記法のパース・変換
 
@@ -927,7 +963,7 @@ lukiwiki-parser/
 
 ### Phase 3: 高度機能
 
-- Step 6: LukiWiki複雑機能
+- Step 6: UMD複雑機能
 - 目標期間: 1-2週間
 - 成果: 完全なレガシー構文互換性
 
@@ -1007,7 +1043,7 @@ lukiwiki-parser/
 ## 成功基準
 
 1. ✅ CommonMark仕様テスト75%以上パス
-2. ✅ 既存LukiWikiコンテンツが正常変換
+2. ✅ 既存UMDコンテンツが正常変換
 3. ✅ HTML直接入力の完全ブロック
 4. ✅ XSS等セキュリティテスト全パス
 5. ✅ 大規模ドキュメント（10000行）が1秒以内にパース

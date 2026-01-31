@@ -29,8 +29,8 @@ fn main() {
     let output = parse("> This is a markdown quote");
     println!("{}", output);
     
-    println!("\n=== Blockquote LukiWiki ===");
-    let output = parse("> This is a lukiwiki quote <");
+    println!("\n=== Blockquote UMD ===");
+    let output = parse("> This is a UMD quote <");
     println!("{}", output);
     
     println!("\n=== GFM Alert Note ===");

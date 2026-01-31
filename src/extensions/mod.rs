@@ -8,8 +8,7 @@ pub mod conflict_resolver;
 pub mod emphasis;
 pub mod inline_decorations;
 pub mod plugins;
-pub mod table_colspan;
-pub mod table_lukiwiki;
+pub mod table;
 
 /// Apply extended syntax transformations to HTML output
 ///
@@ -51,7 +50,7 @@ pub fn apply_extensions_with_headers(
     // Apply transformations in order
     // Note: Plugins are handled in conflict_resolver::postprocess_conflicts
     result = conflict_resolver::postprocess_conflicts(&result, header_map);
-    result = emphasis::apply_lukiwiki_emphasis(&result);
+    result = emphasis::apply_umd_emphasis(&result);
     result = block_decorations::apply_block_decorations(&result);
     result = inline_decorations::apply_inline_decorations(&result);
 
@@ -115,7 +114,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_lukiwiki_syntax_integration() {
+    fn test_umd_syntax_integration() {
         let input = "<p>This is ''bold'' and '''italic'''</p>";
         let output = apply_extensions(input);
         assert!(output.contains("<b>bold</b>"));

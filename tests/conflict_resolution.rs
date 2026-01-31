@@ -4,23 +4,23 @@ use universal_markdown::extensions::conflict_resolver::detect_ambiguous_syntax;
 use universal_markdown::parse;
 
 #[test]
-fn test_lukiwiki_blockquote() {
-    let input = "> This is a LukiWiki-style blockquote <";
+fn test_umd_blockquote() {
+    let input = "> This is a UMD-style blockquote <";
     let output = parse(input);
-    assert!(output.contains(r#"<blockquote class="lukiwiki">"#));
-    assert!(output.contains("This is a LukiWiki-style blockquote"));
+    assert!(output.contains(r#"<blockquote class="umd-blockquote">"#));
+    assert!(output.contains("This is a UMD-style blockquote"));
 }
 
 #[test]
 fn test_emphasis_coexistence() {
-    let input = "**Markdown bold** and LukiWiki bold";
+    let input = "**Markdown bold** and UMD bold";
     let output = parse(input);
     assert!(output.contains("<strong>Markdown bold</strong>"));
 }
 
 #[test]
 fn test_italic_coexistence() {
-    let input = "*Markdown italic* and LukiWiki italic";
+    let input = "*Markdown italic* and UMD italic";
     let output = parse(input);
     assert!(output.contains("<em>Markdown italic</em>"));
 }
@@ -64,7 +64,7 @@ fn test_color_decoration() {
 fn test_plugin_syntax_preserved() {
     let input = "@toc(){{ }}";
     let output = parse(input);
-    assert!(output.contains(r#"class="plugin-toc""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-toc""#));
 }
 
 #[test]
@@ -99,9 +99,9 @@ fn test_complex_nesting() {
 
 #[test]
 fn test_multiline_content() {
-    let input = "# Heading\n\n> LukiWiki blockquote <\n\nParagraph\n\nCOLOR(blue): Blue paragraph";
+    let input = "# Heading\n\n> UMD blockquote <\n\nParagraph\n\nCOLOR(blue): Blue paragraph";
     let output = parse(input);
-    assert!(output.contains("<h1"));
-    assert!(output.contains(r#"<blockquote class="lukiwiki">"#));
+    assert!(output.contains("<h1>"));
+    assert!(output.contains(r#"<blockquote class="umd-blockquote">"#));
     assert!(output.contains("color: blue"));
 }

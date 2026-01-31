@@ -1,5 +1,5 @@
 #!/bin/bash
-# WASM Build Script for LukiWiki Parser
+# WASM Build Script for Universal Markdown
 #
 # This script builds the Rust library to WebAssembly
 # and generates TypeScript bindings.
@@ -14,7 +14,7 @@ set -e
 
 BUILD_TYPE="${1:-release}"
 
-echo "🔧 Building LukiWiki Parser for WASM (${BUILD_TYPE})..."
+echo "🔧 Building Universal Markdown for WASM (${BUILD_TYPE})..."
 
 # Check if wasm-pack is installed
 if ! command -v wasm-pack &> /dev/null; then
@@ -34,6 +34,6 @@ echo "✅ Build completed successfully!"
 echo "📦 Output directory: pkg/"
 echo ""
 echo "Usage example:"
-echo "  import init, { parse_wiki } from './pkg/lukiwiki_parser.js';"
+echo "  import init, { parse_wiki } from './pkg/universal_markdown.js';"
 echo "  await init();"
 echo "  const html = parse_wiki('# Hello World');"

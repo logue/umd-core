@@ -1,11 +1,12 @@
-//! Syntax conflict resolution for LukiWiki and Markdown
+//! Syntax conflict resolution for UMD and Markdown
 //!
-//! This module handles cases where LukiWiki and Markdown syntax might conflict.
+//! This module handles cases where UMD and Markdown syntax might conflict.
 //! The general strategy is:
 //! 1. Process input before Markdown parsing (pre-processing)
-//! 2. Apply LukiWiki-specific transformations after Markdown rendering (post-processing)
+//! 2. Apply UMD-specific transformations after Markdown rendering (post-processing)
 //! 3. Use distinctive markers to avoid ambiguous patterns
 
+use base64::{Engine as _, engine::general_purpose};
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use std::collections::HashMap;
@@ -35,6 +36,19 @@ fn args_to_json(args: &str) -> String {
         .collect();
 
     format!("[{}]", parts.join(","))
+}
+
+/// Encode JSON string to base64 for safe HTML attribute usage
+///
+/// # Arguments
+///
+/// * `json_args` - JSON array string
+///
+/// # Returns
+///
+/// Base64 encoded string
+fn encode_args(json_args: &str) -> String {
+    general_purpose::STANDARD.encode(json_args.as_bytes())
 }
 
 /// Map font size value to Bootstrap class or inline style
@@ -108,13 +122,13 @@ fn map_color_value(value: &str, is_background: bool) -> (bool, String) {
 
 // Patterns that need special handling
 
-/// Regex to detect LukiWiki blockquote: > ... <
-static LUKIWIKI_BLOCKQUOTE: Lazy<Regex> = Lazy::new(|| {
+/// Regex to detect UMD blockquote: > ... <
+static UMD_BLOCKQUOTE: Lazy<Regex> = Lazy::new(|| {
     // Match single line > content < pattern
     Regex::new(r"(?m)^>\s*(.+?)\s*<\s*$").unwrap()
 });
 
-/// Regex to detect Markdown-style emphasis that might conflict with LukiWiki
+/// Regex to detect Markdown-style emphasis that might conflict with UMD
 /// Detects ***text*** which could be confused with '''text'''
 static TRIPLE_STAR_EMPHASIS: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\*\*\*([^*]+)\*\*\*").unwrap());
@@ -123,7 +137,7 @@ static TRIPLE_STAR_EMPHASIS: Lazy<Regex> =
 static CUSTOM_HEADER_ID: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^(#{1,6})\s+(.+?)\s+\{#([a-zA-Z0-9_-]+)\}\s*$").unwrap());
 
-/// Store custom header IDs and LukiWiki tables during preprocessing
+/// Store custom header IDs and UMD tables during preprocessing
 #[derive(Debug, Clone)]
 pub struct HeaderIdMap {
     /// Maps heading number (1-based) to custom ID
@@ -161,7 +175,7 @@ impl HeaderIdMap {
 ///
 /// let input = "> quote <";
 /// let (output, _) = preprocess_conflicts(input);
-/// // LukiWiki blockquote is preserved
+/// // UMD blockquote is preserved
 /// ```
 pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
     let mut result = input.to_string();
@@ -186,19 +200,16 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
-    // Handle LukiWiki blockquotes: > ... <
+    // Handle UMD blockquotes: > ... <
     // Use a safe marker that won't be affected by HTML escaping
-    result = LUKIWIKI_BLOCKQUOTE
+    result = UMD_BLOCKQUOTE
         .replace_all(&result, |caps: &Captures| {
             let content = &caps[1];
-            format!(
-                "{{{{LUKIWIKI_BLOCKQUOTE:{}:LUKIWIKI_BLOCKQUOTE}}}}",
-                content
-            )
+            format!("{{{{UMD_BLOCKQUOTE:{}:UMD_BLOCKQUOTE}}}}", content)
         })
         .to_string();
 
-    // Protect LukiWiki block decorations (COLOR, SIZE, alignment)
+    // Protect UMD block decorations (COLOR, SIZE, alignment)
     // These will be applied in post-processing
     let color_prefix = Regex::new(r"(?m)^(COLOR\([^)]*\):\s*.+)$").unwrap();
     result = color_prefix
@@ -330,8 +341,8 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
-    // Extract and protect LukiWiki tables (before definition lists)
-    let (result, table_map) = crate::extensions::table_lukiwiki::extract_lukiwiki_tables(&result);
+    // Extract and protect UMD tables (before definition lists)
+    let (result, table_map) = crate::extensions::table::umd::extract_umd_tables(&result);
     header_map.tables = table_map;
 
     // Process definition lists: :term|definition
@@ -585,14 +596,16 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
         })
         .to_string();
 
-    // Restore LukiWiki blockquotes
-    let lukiwiki_blockquote_marker =
-        Regex::new(r"\{\{LUKIWIKI_BLOCKQUOTE:(.+?):LUKIWIKI_BLOCKQUOTE\}\}").unwrap();
+    // Restore UMD blockquotes
+    let umd_blockquote_marker = Regex::new(r"\{\{UMD_BLOCKQUOTE:(.+?):UMD_BLOCKQUOTE\}\}").unwrap();
 
-    result = lukiwiki_blockquote_marker
+    result = umd_blockquote_marker
         .replace_all(&result, |caps: &Captures| {
             let content = &caps[1];
-            format!("<blockquote class=\"lukiwiki\">{}</blockquote>", content)
+            format!(
+                "<blockquote class=\"umd-blockquote\">{}</blockquote>",
+                content
+            )
         })
         .to_string();
 
@@ -636,10 +649,11 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 
             // Convert args to JSON array
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
 
             format!(
-                "<span class=\"plugin-{}\" data-args='{}'>{}</span>",
-                function, json_args, escaped_content
+                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}< /span>",
+                function, encoded_args, escaped_content
             )
         })
         .to_string();
@@ -659,10 +673,11 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 
             // Otherwise, convert to plugin HTML
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
 
             format!(
-                "<span class=\"plugin-{}\" data-args='{}' />",
-                function, json_args
+                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
+                function, encoded_args
             )
         })
         .to_string();
@@ -680,7 +695,11 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
             }
 
             // Otherwise, convert to plugin HTML
-            format!("<span class=\"plugin-{}\" data-args='[]' />", function)
+            let encoded_args = encode_args("[]");
+            format!(
+                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
+                function, encoded_args
+            )
         })
         .to_string();
 
@@ -705,10 +724,11 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 
             // Convert args to JSON array
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
 
             format!(
-                "<div class=\"plugin-{}\" data-args='{}'>{}</div>",
-                function, json_args, escaped_content
+                "<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{ }</div>",
+                function, encoded_args, escaped_content
             )
         })
         .to_string();
@@ -728,10 +748,11 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_args.to_string());
             let json_args = args_to_json(&args);
+            let encoded_args = encode_args(&json_args);
 
             format!(
-                "<div class=\"plugin-{}\" data-args='{}' />",
-                function, json_args
+                "<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
+                function, encoded_args
             )
         })
         .to_string();
@@ -791,7 +812,7 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 /// Apply Bootstrap 5 enhancements to HTML
 ///
 /// - Add default `table` class to all <table> elements
-/// - Add default `blockquote` class to all <blockquote> elements (except LukiWiki-style)
+/// - Add default `blockquote` class to all <blockquote> elements (except UMD-style)
 /// - Convert GFM alerts ([!NOTE], etc.) to Bootstrap alert components
 /// - Add JUSTIFY support for tables (w-100 class)
 fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String {
@@ -803,13 +824,13 @@ fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String 
         .replace_all(&result, "<table class=\"table\">")
         .to_string();
 
-    // Add default class to blockquotes (check if it doesn't already have class="lukiwiki")
+    // Add default class to blockquotes (check if it doesn't already have class="umd-blockquote")
     let blockquote_pattern = Regex::new(r#"<blockquote>"#).unwrap();
     result = blockquote_pattern
         .replace_all(&result, "<blockquote class=\"blockquote\">")
         .to_string();
 
-    // LukiWiki blockquotes already have class="lukiwiki", so they remain unchanged
+    // UMD blockquotes already have class="umd-blockquote", so they remain unchanged
 
     // Handle GFM alerts: > [!NOTE] etc.
     // These are rendered as <blockquote class="blockquote"><p>[!NOTE] ...</p></blockquote>
@@ -838,7 +859,7 @@ fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String 
         })
         .to_string();
 
-    // Restore LukiWiki tables
+    // Restore UMD tables
     // comrak wraps markers in <p> tags and strips newlines
     for (marker, html) in &header_map.tables {
         let marker_text = marker.trim();
@@ -855,12 +876,10 @@ fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String 
 /// Process table cell alignment prefixes (TOP:, MIDDLE:, BOTTOM:, BASELINE:)
 ///
 /// Detects alignment prefixes in table cells and adds Bootstrap alignment classes.
+/// Note: GFM tables are handled by comrak without extensions.
+/// UMD tables have their own cell spanning and decoration support.
 fn process_table_cell_alignment(html: &str, _header_map: &HeaderIdMap) -> String {
     let mut result = html.to_string();
-
-    // Apply table cell spanning (colspan and rowspan) ONLY for GFM tables
-    // LukiWiki tables already have spanning applied
-    result = crate::extensions::table_colspan::apply_table_colspan(&result);
 
     // Process <td> tags
     let td_pattern = Regex::new(r"<td([^>]*)>(.*?)</td>").unwrap();
@@ -939,7 +958,7 @@ pub fn detect_ambiguous_syntax(input: &str) -> Vec<String> {
     // Check for ***text*** which could be confused with '''text'''
     if TRIPLE_STAR_EMPHASIS.is_match(input) && input.contains("'''") {
         warnings.push(
-            "Detected both ***text*** (Markdown) and '''text''' (LukiWiki). \
+            "Detected both ***text*** (Markdown) and '''text''' (UMD). \
              Consider using **text** for Markdown bold-italic."
                 .to_string(),
         );
@@ -962,19 +981,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_lukiwiki_blockquote_preprocessing() {
-        let input = "> This is a LukiWiki quote <";
+    fn test_umd_blockquote_preprocessing() {
+        let input = "> This is a UMD quote <";
         let (output, _) = preprocess_conflicts(input);
-        assert!(output.contains("{{LUKIWIKI_BLOCKQUOTE:"));
+        assert!(output.contains("{{UMD_BLOCKQUOTE:"));
         assert!(!output.starts_with(">"));
     }
 
     #[test]
-    fn test_lukiwiki_blockquote_postprocessing() {
+    fn test_umd_blockquote_postprocessing() {
         let header_map = HeaderIdMap::new();
-        let input = "{{LUKIWIKI_BLOCKQUOTE:Test content:LUKIWIKI_BLOCKQUOTE}}";
+        let input = "{{UMD_BLOCKQUOTE:Test content:UMD_BLOCKQUOTE}}";
         let output = postprocess_conflicts(input, &header_map);
-        assert!(output.contains("<blockquote class=\"lukiwiki\">Test content</blockquote>"));
+        assert!(output.contains("<blockquote class=\"umd-blockquote\">Test content</blockquote>"));
     }
 
     #[test]
@@ -988,10 +1007,10 @@ mod tests {
     #[test]
     fn test_roundtrip_blockquote() {
         let header_map = HeaderIdMap::new();
-        let input = "> LukiWiki style <";
+        let input = "> UMD style <";
         let (preprocessed, _) = preprocess_conflicts(input);
         let postprocessed = postprocess_conflicts(&preprocessed, &header_map);
-        assert!(postprocessed.contains("<blockquote class=\"lukiwiki\">"));
+        assert!(postprocessed.contains("<blockquote class=\"umd-blockquote\">"));
     }
 
     #[test]
@@ -1039,7 +1058,7 @@ mod tests {
 
     #[test]
     fn test_detect_triple_emphasis_conflict() {
-        let input = "***Markdown*** and '''LukiWiki'''";
+        let input = "***Markdown*** and '''UMD'''";
         let warnings = detect_ambiguous_syntax(input);
         assert!(!warnings.is_empty());
         assert!(warnings[0].contains("***text***"));
@@ -1055,7 +1074,7 @@ mod tests {
 
     #[test]
     fn test_no_warnings_for_clean_syntax() {
-        let input = "# Heading\n\n**Bold** and ''LukiWiki bold''";
+        let input = "# Heading\n\n**Bold** and ''UMD bold''";
         let warnings = detect_ambiguous_syntax(input);
         assert!(warnings.is_empty());
     }
@@ -1096,11 +1115,11 @@ mod tests {
     }
 
     #[test]
-    fn test_lukiwiki_blockquote_no_bootstrap_class() {
+    fn test_umd_blockquote_no_bootstrap_class() {
         let header_map = HeaderIdMap::new();
-        let input = "{{LUKIWIKI_BLOCKQUOTE:Test content:LUKIWIKI_BLOCKQUOTE}}";
+        let input = "{{UMD_BLOCKQUOTE:Test content:UMD_BLOCKQUOTE}}";
         let output = postprocess_conflicts(input, &header_map);
-        assert!(output.contains(r#"<blockquote class="lukiwiki">"#));
+        assert!(output.contains(r#"<blockquote class="umd-blockquote">"#));
         assert!(!output.contains(r#"class="blockquote""#));
     }
 

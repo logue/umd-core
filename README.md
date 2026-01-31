@@ -1,6 +1,6 @@
 # Universal Markdown
 
-CommonMark準拠のMarkdownパーサーに、Bootstrap 5統合、セマンティックHTML要素、拡張可能なプラグインシステムを備えたポストMarkdownパーサーです。LukiWikiレガシー構文との互換性もサポートします。
+CommonMark準拠のMarkdownパーサーに、Bootstrap 5統合、セマンティックHTML要素、拡張可能なプラグインシステムを備えたポストMarkdownパーサーです。UMDレガシー構文との互換性もサポートします。
 
 ## 特徴
 
@@ -9,7 +9,7 @@ CommonMark準拠のMarkdownパーサーに、Bootstrap 5統合、セマンティ
 - **Bootstrap 5統合**: デフォルトでBootstrapクラスを生成（Core UI互換）
 - **セマンティックHTML**: アクセシビリティとSEOに優しいHTML生成
 - **Definition Lists**: 用語辞典構文のサポート
-- **LukiWiki互換**: レガシーPHP実装との後方互換性
+- **UMD互換**: レガシーPHP実装との後方互換性
 - **フロントマターサポート**: YAML/TOML形式のメタデータ
 - **フットノート**: 標準的な脚注構文のサポート
 - **セキュリティ**: HTMLサニタイゼーションによるXSS対策
@@ -94,14 +94,14 @@ if let Some(footnotes) = result.footnotes {
 
 ## Bootstrap 5統合
 
-LukiWiki-rsは、デフォルトでBootstrap 5のクラスを生成します。これにより、CoreUIなどのBootstrapベースのフレームワークとシームレスに統合できます。
+Universal Markdownは、デフォルトでBootstrap 5のクラスを生成します。これにより、CoreUIなどのBootstrapベースのフレームワークとシームレスに統合できます。
 
 ### デフォルトクラス
 
 特定のHTML要素には、自動的にBootstrapクラスが適用されます：
 
 - **テーブル**: `<table class="table">`
-- **ブロック引用**: `<blockquote class="blockquote">` (Markdown標準) / `<blockquote class="lukiwiki">` (LukiWiki形式)
+- **ブロック引用**: `<blockquote class="blockquote">` (Markdown標準) / `<blockquote class="umd-blockquote">` (UMD形式)
 
 ### ブロック装飾プレフィックス
 
@@ -111,6 +111,7 @@ LukiWiki-rsは、デフォルトでBootstrap 5のクラスを生成します。�
 COLOR(primary): プライマリカラーのテキスト
 SIZE(2): 大きいテキスト (fs-2)
 CENTER: 中央寄せのテキスト
+JUSTIFY: 両端揃えのテキスト
 SIZE(1.5): COLOR(danger): RIGHT: 複合スタイル
 ```
 
@@ -126,7 +127,7 @@ SIZE(1.5): COLOR(danger): RIGHT: 複合スタイル
   - 例: `SIZE(1.5): テキスト` → `<p class="fs-4">テキスト</p>`
   - カスタム: `SIZE(3rem): 大きい` → `<p style="font-size: 3rem">大きい</p>`
 
-- **配置**: `LEFT:`, `CENTER:`, `RIGHT:` → `text-start`, `text-center`, `text-end`
+- **配置**: `LEFT:`, `CENTER:`, `RIGHT:`, `JUSTIFY:` → `text-start`, `text-center`, `text-end`, `text-justify`
 
 - **複合**: 複数のプレフィックスを組み合わせ可能
   - 例: `SIZE(2): COLOR(primary): CENTER: テキスト`
@@ -158,7 +159,7 @@ SIZE(1.5): COLOR(danger): RIGHT: 複合スタイル
 
 ## テーブル
 
-Universal Markdownは、GFM（GitHub Flavored Markdown）標準のテーブルに加えて、LukiWiki拡張機能をサポートしています。
+Universal Markdownは、GFM（GitHub Flavored Markdown）標準のテーブルに加えて、UMD拡張機能をサポートしています。
 
 ### 基本テーブル（GFM準拠）
 
@@ -198,9 +199,9 @@ Universal Markdownは、GFM（GitHub Flavored Markdown）標準のテーブル�
 **特徴**：
 
 - 自動的にBootstrapの`table`クラスが付与されます
-- GFMテーブルとLukiWikiテーブルの両方で`<thead>`と`<tbody>`が正しく生成されます
+- GFMテーブルとUMDテーブルの両方で`<thead>`と`<tbody>`が正しく生成されます
 
-### LukiWiki拡張：セル連結
+### UMD拡張：セル連結
 
 Markdownの標準テーブルでは表現できないセル連結をサポートします。
 
@@ -209,14 +210,14 @@ Markdownの標準テーブルでは表現できないセル連結をサポート
 `|>`マーカーを使用して、右のセルと連結します：
 
 ```markdown
-| Header1 |> | Header3 |
+| ~Header1 |> | ~Header3 |h
 | Cell1 | Cell2 | Cell3 |
 ```
 
 出力：
 
 ```html
-<table class="table" data-lukiwiki="true">
+<table class="table umd-table">
   <thead>
     <tr>
       <th colspan="2">Header1</th>
@@ -238,7 +239,7 @@ Markdownの標準テーブルでは表現できないセル連結をサポート
 `|^`マーカーを使用して、上のセルと連結します：
 
 ```markdown
-| Header1 | Header2 |
+| ~Header1 | ~Header2 |h
 | Cell1 | Cell2 |
 | |^ | Cell3 |
 ```
@@ -246,7 +247,7 @@ Markdownの標準テーブルでは表現できないセル連結をサポート
 出力：
 
 ```html
-<table class="table" data-lukiwiki="true">
+<table class="table umd-table">
   <thead>
     <tr>
       <th>Header1</th>
@@ -270,7 +271,7 @@ Markdownの標準テーブルでは表現できないセル連結をサポート
 colspanとrowspanを組み合わせることもできます：
 
 ```markdown
-| Header1 |> | Header3 |
+| ~Header1 |> | ~Header3 |h
 | Cell1 |> | Cell3 |
 | |^ |^ | Cell4 |
 ```
@@ -313,8 +314,6 @@ colspanとrowspanを組み合わせることもできます：
 
 ##### 垂直配置
 
-##### 垂直配置
-
 テーブルセル内でBootstrap配置クラスを使用できます：
 
 ```markdown
@@ -337,13 +336,13 @@ colspanとrowspanを組み合わせることもできます：
 | RIGHT: Normal cell |
 ```
 
-**重要な注意点**：
+**注意事項**：
 
-- GFM形式（2行目が`|---|---|`の形式）では、セル連結や装飾拡張は使用できません
-- これらの拡張機能はLukiWiki形式のテーブル（2行目が区切り線でない）でのみ動作します
-- LukiWikiテーブルには自動的に`data-lukiwiki="true"`属性が付与されます
+- これらの拡張機能はUMD形式のテーブル（2行目が区切り線でない）でのみ動作します
+- UMDテーブルには自動的に`umd-table`クラスが付与されます
+- GFM形式（2行目が`|---|---|`の区切り線）のテーブルでは、標準のMarkdownテーブルとして処理されます
 
-### Definition Lists
+### 定義リスト
 
 用語と定義をセマンティックにマークアップできます：
 
@@ -365,7 +364,7 @@ colspanとrowspanを組み合わせることもできます：
 
 ## プラグインシステム
 
-LukiWiki-rsは、拡張可能なプラグインシステムを提供します。プラグインは3つのパターンをサポートします。
+Universal Markdownは、拡張可能なプラグインシステムを提供します。プラグインは3つのパターンをサポートします。
 
 ### インライン型プラグイン
 
@@ -442,7 +441,7 @@ LukiWiki-rsは、拡張可能なプラグインシステムを提供します。
 <div class="plugin-box" data-args="">**bold** and *italic* text</div>
 ```
 
-プラグイン実装側でDOMのテキストコンテンツを取得し、再度LukiWikiパーサーに渡すことで、ネストされた構文も正しく処理できます。
+プラグイン実装側でDOMのテキストコンテンツを取得し、再度Universal Markdownパーサーに渡すことで、ネストされた構文も正しく処理できます。
 
 **重要な特徴：**
 
@@ -452,7 +451,7 @@ LukiWiki-rsは、拡張可能なプラグインシステムを提供します。
 
 ### 組み込み装飾との違い
 
-LukiWiki-rsには、プラグインと同じ表記を使う**組み込み装飾関数**があります：
+Universal Markdownには、プラグインと同じ表記を使う**組み込み装飾関数**があります：
 
 - `&color(fg,bg){text};` - 文字色・背景色
 - `&size(rem){text};` - フォントサイズ
@@ -463,9 +462,7 @@ LukiWiki-rsには、プラグインと同じ表記を使う**組み込み装飾�
 
 これらはパーサー内で直接HTMLに変換されます。組み込み装飾以外の名前は、すべて汎用プラグインとして処理されます。
 
-## LukiWiki構文
-
-## LukiWiki構文
+## UMD構文
 
 ### ヘッダーID
 
@@ -513,7 +510,7 @@ LukiWiki-rsには、プラグインと同じ表記を使う**組み込み装飾�
 
 ### 強調表現
 
-LukiWiki独自の視覚的強調：
+UMD独自の視覚的強調：
 
 ```
 ''太字'' → <b>太字</b>
@@ -532,11 +529,11 @@ Markdownのセマンティック強調も利用可能：
 2種類の取り消し線構文をサポート：
 
 ```
-%%LukiWiki取り消し線%% → <s>LukiWiki取り消し線</s>
+%%UMD取り消し線%% → <s>UMD取り消し線</s>
 ~~GFM取り消し線~~ → <del>GFM取り消し線</del>
 ```
 
-- `%%text%%` - LukiWiki形式（`<s>`タグ）
+- `%%text%%` - UMD形式（`<s>`タグ）
 - `~~text~~` - GitHub Flavored Markdown形式（`<del>`タグ）
 
 両方の構文を同じドキュメント内で使い分けることができます。
@@ -550,11 +547,12 @@ COLOR(red): 赤い文字
 SIZE(1.5): 大きな文字
 RIGHT: 右寄せ
 CENTER: 中央寄せ
+JUSTIFY: 両端揃え
 ```
 
 ### ブロック引用
 
-LukiWiki形式（開始・終了タグ）：
+UMD形式（開始・終了タグ）：
 
 ```
 > 引用文
@@ -604,4 +602,4 @@ Masashi Yoshikawa
 
 ## リポジトリ
 
-https://github.com/logue/LukiWiki-rs
+https://github.com/logue/UniversalMarkdown

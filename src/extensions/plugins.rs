@@ -11,6 +11,7 @@
 
 use once_cell::sync::Lazy;
 use regex::Regex;
+use base64::{engine::general_purpose, Engine as _};
 
 /// Convert comma-separated args to JSON array
 ///
@@ -37,6 +38,19 @@ fn args_to_json(args: &str) -> String {
         .collect();
 
     format!("[{}]", parts.join(","))
+}
+
+/// Encode JSON args to base64 for safe HTML attribute storage
+///
+/// # Arguments
+///
+/// * `json_args` - JSON string to encode
+///
+/// # Returns
+///
+/// Base64 encoded string
+fn encode_args(json_args: &str) -> String {
+    general_purpose::STANDARD.encode(json_args.as_bytes())
 }
 
 // Block plugin patterns
@@ -112,13 +126,14 @@ static INLINE_PLUGIN_NOARGS: Lazy<Regex> = Lazy::new(|| {
 /// // Block plugin
 /// let input = "@toc(2){{ }}";
 /// let output = apply_plugin_syntax(input);
-/// assert!(output.contains("class=\"plugin-toc\""));
-/// assert!(output.contains("data-args='[\"2\"]'"));
+/// assert!(output.contains("class=\"umd-plugin umd-plugin-toc\""));
+/// // data-args is base64 encoded for security
+/// assert!(output.contains("data-args=\""));
 ///
 /// // Inline plugin
 /// let input = "&highlight(yellow){important text};";
 /// let output = apply_plugin_syntax(input);
-/// assert!(output.contains("class=\"plugin-highlight\""));
+/// assert!(output.contains("class=\"umd-plugin umd-plugin-highlight\""));
 /// ```
 pub fn apply_plugin_syntax(html: &str) -> String {
     let mut result = html.to_string();
@@ -132,9 +147,10 @@ pub fn apply_plugin_syntax(html: &str) -> String {
 
             let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
             format!(
-                "\n<div class=\"plugin-{}\" data-args='{}'>{}\n</div>\n",
-                function, json_args, escaped_content
+                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}\n</div>\n",
+                function, encoded_args, escaped_content
             )
         })
         .to_string();
@@ -148,9 +164,10 @@ pub fn apply_plugin_syntax(html: &str) -> String {
 
             let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
             format!(
-                "\n<div class=\"plugin-{}\" data-args='{}'>{}\n</div>\n",
-                function, json_args, escaped_content
+                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}\n</div>\n",
+                function, encoded_args, escaped_content
             )
         })
         .to_string();
@@ -162,9 +179,10 @@ pub fn apply_plugin_syntax(html: &str) -> String {
             let args = caps.get(2).map_or("", |m| m.as_str());
 
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
             format!(
-                "\n<div class=\"plugin-{}\" data-args='{}' />\n",
-                function, json_args
+                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />\n",
+                function, encoded_args
             )
         })
         .to_string();
@@ -173,7 +191,11 @@ pub fn apply_plugin_syntax(html: &str) -> String {
     result = BLOCK_PLUGIN_NOARGS
         .replace_all(&result, |caps: &regex::Captures| {
             let function = caps.get(1).map_or("", |m| m.as_str());
-            format!("\n<div class=\"plugin-{}\" data-args='[]' />\n", function)
+            let encoded_args = encode_args("[]");
+            format!(
+                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />\n",
+                function, encoded_args
+            )
         })
         .to_string();
 
@@ -186,9 +208,10 @@ pub fn apply_plugin_syntax(html: &str) -> String {
 
             let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
             format!(
-                "<span class=\"plugin-{}\" data-args='{}'>{}</span>",
-                function, json_args, escaped_content
+                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}</span>",
+                function, encoded_args, escaped_content
             )
         })
         .to_string();
@@ -200,9 +223,10 @@ pub fn apply_plugin_syntax(html: &str) -> String {
             let args = caps.get(2).map_or("", |m| m.as_str());
 
             let json_args = args_to_json(args);
+            let encoded_args = encode_args(&json_args);
             format!(
-                "<span class=\"plugin-{}\" data-args='{}' />",
-                function, json_args
+                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
+                function, encoded_args
             )
         })
         .to_string();
@@ -211,7 +235,11 @@ pub fn apply_plugin_syntax(html: &str) -> String {
     result = INLINE_PLUGIN_NOARGS
         .replace_all(&result, |caps: &regex::Captures| {
             let function = caps.get(1).map_or("", |m| m.as_str());
-            format!("<span class=\"plugin-{}\" data-args='[]' />", function)
+            let encoded_args = encode_args("[]");
+            format!(
+                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
+                function, encoded_args
+            )
         })
         .to_string();
 
@@ -226,32 +254,32 @@ mod tests {
     fn test_simple_plugin() {
         let input = "@toc(2){{ }}";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-toc\""));
-        assert!(output.contains("data-args='[\"2\"]'"));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-toc\""));
+        assert!(output.contains("data-args=\"WyIyIl0=\""));
     }
 
     #[test]
     fn test_plugin_with_complex_args() {
         let input = "@calendar(2024,1,true){{ }}";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("plugin-calendar"));
-        assert!(output.contains("data-args='[\"2024\",\"1\",\"true\"]'"));
+        assert!(output.contains("umd-plugin-calendar"));
+        assert!(output.contains("data-args=\"WyIyMDI0IiwiMSIsInRydWUiXQ==\""));
     }
 
     #[test]
     fn test_plugin_no_args() {
         let input = "@timestamp(){{ }}";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("plugin-timestamp"));
-        assert!(output.contains("data-args='[]'"));
+        assert!(output.contains("umd-plugin-timestamp"));
+        assert!(output.contains("data-args=\"W10=\""));
     }
 
     #[test]
     fn test_plugin_with_content() {
         let input = "@code(rust){{ fn main() {} }}";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("plugin-code"));
-        assert!(output.contains("data-args='[\"rust\"]'"));
+        assert!(output.contains("umd-plugin-code"));
+        assert!(output.contains("data-args=\"WyJydXN0Il0=\""));
         assert!(output.contains("fn main()"));
     }
 
@@ -259,8 +287,8 @@ mod tests {
     fn test_multiple_plugins() {
         let input = "@toc(2){{ }} and @timestamp(){{ }}";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("plugin-toc"));
-        assert!(output.contains("plugin-timestamp"));
+        assert!(output.contains("umd-plugin-toc"));
+        assert!(output.contains("umd-plugin-timestamp"));
     }
 
     #[test]
@@ -275,8 +303,8 @@ mod tests {
     fn test_inline_plugin() {
         let input = "&highlight(yellow){important text};";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-highlight\""));
-        assert!(output.contains("data-args='[\"yellow\"]'"));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-highlight\""));
+        assert!(output.contains("data-args=\"WyJ5ZWxsb3ciXQ==\""));
         assert!(output.contains("important text"));
         assert!(output.contains("<span"));
     }
@@ -285,8 +313,8 @@ mod tests {
     fn test_block_plugin_singleline() {
         let input = "@include(file.txt){default content}";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-include\""));
-        assert!(output.contains("data-args='[\"file.txt\"]'"));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-include\""));
+        assert!(output.contains("data-args=\"WyJmaWxlLnR4dCJd\""));
         assert!(output.contains("default content"));
     }
 
@@ -294,7 +322,7 @@ mod tests {
     fn test_nested_plugins() {
         let input = "&outer(arg1){text &inner(arg2){nested}; more};";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-outer\""));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-outer\""));
         // Content should preserve the nested plugin syntax (& not escaped)
         assert!(output.contains("&inner"));
     }
@@ -303,7 +331,7 @@ mod tests {
     fn test_plugin_with_wiki_syntax() {
         let input = "@box(){{ **bold** and text }}";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-box\""));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-box\""));
         // Content should preserve wiki syntax for JS processing
         assert!(output.contains("**bold**"));
     }
@@ -312,8 +340,8 @@ mod tests {
     fn test_mixed_plugin_types() {
         let input = "@block(){{ content }} and &inline(arg){text}; mixed";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("plugin-block"));
-        assert!(output.contains("plugin-inline"));
+        assert!(output.contains("umd-plugin-block"));
+        assert!(output.contains("umd-plugin-inline"));
     }
 
     // New tests for additional patterns
@@ -321,16 +349,16 @@ mod tests {
     fn test_block_plugin_no_args() {
         let input = "@toc()";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-toc\""));
-        assert!(output.contains("data-args='[]'"));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-toc\""));
+        assert!(output.contains("data-args=\"W10=\""));
     }
 
     #[test]
     fn test_block_plugin_args_only() {
         let input = "@feed(https://example.com/feed.atom, 10)";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-feed\""));
-        assert!(output.contains("data-args='[\"https://example.com/feed.atom\",\"10\"]'"));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-feed\""));
+        assert!(output.contains("data-args=\"WyJodHRwczovL2V4YW1wbGUuY29tL2ZlZWQuYXRvbSIsIjEwIl0=\""));
         assert!(output.contains("/>")); // Self-closing div
     }
 
@@ -338,8 +366,8 @@ mod tests {
     fn test_inline_plugin_args_only() {
         let input = "&icon(mdi-pencil);";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-icon\""));
-        assert!(output.contains("data-args='[\"mdi-pencil\"]'"));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-icon\""));
+        assert!(output.contains("data-args=\"WyJtZGktcGVuY2lsIl0=\""));
         assert!(output.contains("/>")); // Self-closing tag
     }
 
@@ -347,8 +375,8 @@ mod tests {
     fn test_inline_plugin_no_args() {
         let input = "&br;";
         let output = apply_plugin_syntax(input);
-        assert!(output.contains("class=\"plugin-br\""));
-        assert!(output.contains("data-args='[]'"));
+        assert!(output.contains("class=\"umd-plugin umd-plugin-br\""));
+        assert!(output.contains("data-args=\"W10=\""));
         assert!(output.contains("/>")); // Self-closing tag
     }
 
