@@ -316,17 +316,32 @@
         - Bootstrapの`table`クラスはデフォルトで`width: 100%`のため、`w-100`クラスは不要
         - 用途: テーブルを画面幅いっぱいに広げる（デフォルト動作を明示）
         - 注: Markdown標準テーブル（区切り行あり）ではサポートしない
-      - **UMDテーブルの配置まとめ**:
-        - `LEFT: | Header |` → `w-auto`（コンテンツ幅、左寄せ）
-        - `CENTER: | Header |` → `w-auto mx-auto`（コンテンツ幅、中央寄せ）
-        - `RIGHT: | Header |` → `w-auto ms-auto me-0`（コンテンツ幅、右寄せ）
-        - `JUSTIFY: | Header |` → デフォルト（100%幅）
-        - `JUSTIFY: CENTER: | Header |` → 100%幅のテーブルで、セル内テキストを中央揃え
+      - **UMDブロック要素の配置まとめ**:
+        - 適用対象: UMDテーブル（区切り行なし）、ブロック型プラグイン（`@function(...)`）
+        - `LEFT: <block>` → `w-auto`（コンテンツ幅、左寄せ）
+        - `CENTER: <block>` → `w-auto mx-auto`（コンテンツ幅、中央寄せ）
+        - `RIGHT: <block>` → `w-auto ms-auto me-0`（コンテンツ幅、右寄せ）
+        - `JUSTIFY: <block>` → `w-100`（100%幅）
+          - 注: テーブルは`table`クラスでデフォルト100%のため`w-100`不要、プラグインは明示的に追加
+        - `JUSTIFY: CENTER: <block>` → `w-100`（100%幅） + セル内/コンテンツ内テキストを中央揃え
+      - **UMDテーブルの配置例**:
+        - `LEFT: | Header |` → `<table class="table umd-table w-auto">...</table>`
+        - `CENTER: | Header |` → `<table class="table umd-table w-auto mx-auto">...</table>`
+        - `RIGHT: | Header |` → `<table class="table umd-table w-auto ms-auto me-0">...</table>`
+        - `JUSTIFY: | Header |` → `<table class="table umd-table">...</table>`（デフォルト100%）
+      - **ブロック型プラグインの配置例**:
+        - `LEFT: @function(args)` → `<div class="umd-plugin umd-plugin-function w-auto" data-args='["args"]' data-tag="div" />`
+        - `CENTER: @function(args)` → `<div class="umd-plugin umd-plugin-function w-auto mx-auto" data-args='["args"]' data-tag="div" />`
+        - `RIGHT: @function(args)` → `<div class="umd-plugin umd-plugin-function w-auto ms-auto me-0" data-args='["args"]' data-tag="div" />`
+        - `JUSTIFY: @function(args)` → `<div class="umd-plugin umd-plugin-function w-100" data-args='["args"]' data-tag="div" />`
+        - 注: プラグインのデフォルトタグ（`div`/`template`/セマンティックタグ）に関わらず、配置クラスを適用
       - **実装方針**:
         - 段落に対しては`text-justify`クラスを適用
-        - UMDテーブル（区切り行なし）にのみ配置プレフィックスを適用
+        - UMDブロック要素（UMDテーブル、ブロック型プラグイン）に配置プレフィックスを適用
         - Markdown標準テーブル（区切り行あり）は配置プレフィックスをサポートしない（comrakの出力をそのまま使用）
-        - テーブル検出: プレフィックスの直後の行が`|`で始まり、かつ区切り行がない場合、次のブロック（UMDテーブル）に適用
+        - ブロック検出: プレフィックスの直後の行が以下のいずれかの場合、次のブロックに適用
+          - `|`で始まる（UMDテーブル、区切り行なし）
+          - `@`で始まる（ブロック型プラグイン）
     - `TRUNCATE: text` - テキスト省略 → `<p class="text-truncate">text</p>` (Bootstrap) 🚧 実装予定
       - 長いテキストを`...`で省略（`overflow: hidden; text-overflow: ellipsis; white-space: nowrap`）
       - 幅指定はユーザーがCSSで指定する前提（テーブルセルでは自動適用）
