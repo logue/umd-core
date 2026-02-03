@@ -1,19 +1,34 @@
-//! Plugin system for LukiWiki
+//! Plugin system for Universal Markdown
 //!
 //! Provides plugin syntax support:
 //! - Inline plugins: &function(args){content};
 //! - Block plugins (multiline): @function(args){{ content }}
 //! - Block plugins (single line): @function(args){content}
 //!
-//! Note: This only parses plugin syntax and outputs placeholder HTML.
-//! Actual plugin execution is handled by JavaScript/frontend layer.
+//! Note: This only parses plugin syntax and outputs <template> with <data> elements.
+//! Actual plugin execution is handled by backend (Nuxt/Laravel) or frontend.
 //! Content within plugins may contain nested plugins or other Wiki syntax.
 
 use once_cell::sync::Lazy;
 use regex::Regex;
-use base64::{engine::general_purpose, Engine as _};
 
-/// Convert comma-separated args to JSON array
+/// Escape HTML special characters
+///
+/// # Arguments
+///
+/// * `input` - Text to escape
+///
+/// # Returns
+///
+/// HTML-escaped string
+fn escape_html_text(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// Parse comma-separated args into a vector
 ///
 /// # Arguments
 ///
@@ -21,36 +36,30 @@ use base64::{engine::general_purpose, Engine as _};
 ///
 /// # Returns
 ///
-/// JSON array string
-fn args_to_json(args: &str) -> String {
-    if args.is_empty() {
-        return "[]".to_string();
+/// Vector of trimmed argument strings
+fn parse_args(args: &str) -> Vec<String> {
+    if args.trim().is_empty() {
+        return vec![];
     }
-
-    let parts: Vec<String> = args
-        .split(',')
-        .map(|s| {
-            let trimmed = s.trim();
-            // Escape quotes and backslashes in the string
-            let escaped = trimmed.replace('\\', "\\\\").replace('"', "\\\"");
-            format!("\"{}\"", escaped)
-        })
-        .collect();
-
-    format!("[{}]", parts.join(","))
+    args.split(',').map(|s| s.trim().to_string()).collect()
 }
 
-/// Encode JSON args to base64 for safe HTML attribute storage
+/// Render args as <data> elements
 ///
 /// # Arguments
 ///
-/// * `json_args` - JSON string to encode
+/// * `args` - Comma-separated argument string
 ///
 /// # Returns
 ///
-/// Base64 encoded string
-fn encode_args(json_args: &str) -> String {
-    general_purpose::STANDARD.encode(json_args.as_bytes())
+/// HTML string with <data value="index">arg</data> elements
+fn render_args_as_data(args: &str) -> String {
+    parse_args(args)
+        .iter()
+        .enumerate()
+        .map(|(i, arg)| format!("<data value=\"{}\">{}</data>", i, escape_html_text(arg)))
+        .collect::<Vec<_>>()
+        .join("")
 }
 
 // Block plugin patterns
@@ -93,21 +102,51 @@ static INLINE_PLUGIN_ARGSONLY: Lazy<Regex> = Lazy::new(|| {
 // Inline plugin without args: &function;
 static INLINE_PLUGIN_NOARGS: Lazy<Regex> = Lazy::new(|| {
     // Match &function; (no args, no content)
-    Regex::new(r"&(\w+);").unwrap()
+    // Function name must start with a letter to avoid conflicts with HTML entities
+    Regex::new(r"&([a-zA-Z]\w*);").unwrap()
+});
+
+// Common HTML entities that should NOT be treated as plugins
+static HTML_ENTITIES: Lazy<std::collections::HashSet<&'static str>> = Lazy::new(|| {
+    [
+        "lt", "gt", "amp", "nbsp", "quot", "apos", "ndash", "mdash", "hellip", "copy", "reg",
+        "trade", "times", "divide", "plusmn", "le", "ge", "ne", "asymp", "equiv", "forall",
+        "exist", "empty", "nabla", "isin", "notin", "ni", "prod", "sum", "minus", "lowast",
+        "radic", "prop", "infin", "ang", "and", "or", "cap", "cup", "int", "there4", "sim", "cong",
+        "sub", "sup", "nsub", "sube", "supe", "oplus", "otimes", "perp", "sdot", "lceil", "rceil",
+        "lfloor", "rfloor", "lang", "rang", "loz", "spades", "clubs", "hearts", "diams", "alpha",
+        "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa", "lambda",
+        "mu", "nu", "xi", "omicron", "pi", "rho", "sigma", "tau", "upsilon", "phi", "chi", "psi",
+        "omega", "Iuml", "iuml", "Uuml", "uuml", "Auml", "auml", "Ouml", "ouml", "Euml", "euml",
+        "Aring", "aring", "AElig", "aelig", "Ccedil", "ccedil", "Eth", "eth", "Ntilde", "ntilde",
+        "Oslash", "oslash", "Thorn", "thorn", "szlig", "yuml", "Agrave", "agrave", "Aacute",
+        "aacute", "Acirc", "acirc", "Atilde", "atilde", "Egrave", "egrave", "Eacute", "eacute",
+        "Ecirc", "ecirc", "Igrave", "igrave", "Iacute", "iacute", "Icirc", "icirc", "Ograve",
+        "ograve", "Oacute", "oacute", "Ocirc", "ocirc", "Otilde", "otilde", "Ugrave", "ugrave",
+        "Uacute", "uacute", "Ucirc", "ucirc", "Yacute", "yacute", "cent", "pound", "curren", "yen",
+        "brvbar", "sect", "uml", "ordf", "laquo", "not", "shy", "macr", "deg", "sup2", "sup3",
+        "acute", "micro", "para", "middot", "cedil", "sup1", "ordm", "raquo", "frac14", "frac12",
+        "frac34", "iquest", "ensp", "emsp", "thinsp", "zwnj", "zwj", "lrm", "rlm",
+    ]
+    .iter()
+    .copied()
+    .collect()
 });
 
 /// Apply plugin syntax transformation
 ///
-/// Converts plugin syntax to HTML containers that can be processed by JavaScript.
+/// Converts plugin syntax to <template> elements with <data> children.
 /// The parser only detects and preserves plugin metadata; actual execution happens
-/// in the frontend.
+/// on the backend (Nuxt/Laravel) or frontend.
 ///
-/// Supports three plugin patterns:
+/// Supports multiple plugin patterns:
 /// - Inline: `&function(args){content};`
 /// - Block multiline: `@function(args){{ content }}`
 /// - Block singleline: `@function(args){content}`
+/// - Args only: `@function(args)` or `&function(args);`
+/// - No args: `@function()` or `&function;`
 ///
-/// Content within plugins is preserved as-is and can contain nested plugins
+/// Content within plugins is escaped and can contain nested plugins
 /// or other Wiki syntax that will be processed by the plugin at runtime.
 ///
 /// # Arguments
@@ -116,7 +155,7 @@ static INLINE_PLUGIN_NOARGS: Lazy<Regex> = Lazy::new(|| {
 ///
 /// # Returns
 ///
-/// HTML with plugin syntax converted to containers
+/// HTML with plugin syntax converted to <template> containers
 ///
 /// # Examples
 ///
@@ -127,13 +166,14 @@ static INLINE_PLUGIN_NOARGS: Lazy<Regex> = Lazy::new(|| {
 /// let input = "@toc(2){{ }}";
 /// let output = apply_plugin_syntax(input);
 /// assert!(output.contains("class=\"umd-plugin umd-plugin-toc\""));
-/// // data-args is base64 encoded for security
-/// assert!(output.contains("data-args=\""));
+/// assert!(output.contains("<data value=\"0\">2</data>"));
 ///
 /// // Inline plugin
 /// let input = "&highlight(yellow){important text};";
 /// let output = apply_plugin_syntax(input);
 /// assert!(output.contains("class=\"umd-plugin umd-plugin-highlight\""));
+/// assert!(output.contains("<data value=\"0\">yellow</data>"));
+/// assert!(output.contains("important text"));
 /// ```
 pub fn apply_plugin_syntax(html: &str) -> String {
     let mut result = html.to_string();
@@ -145,13 +185,20 @@ pub fn apply_plugin_syntax(html: &str) -> String {
             let args = caps.get(2).map_or("", |m| m.as_str());
             let content = caps.get(3).map_or("", |m| m.as_str());
 
-            let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
-            format!(
-                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}\n</div>\n",
-                function, encoded_args, escaped_content
-            )
+            let args_html = render_args_as_data(args);
+            let escaped_content = escape_html_text(content);
+
+            if escaped_content.is_empty() {
+                format!(
+                    "\n<template class=\"umd-plugin umd-plugin-{}\">{}</template>\n",
+                    function, args_html
+                )
+            } else {
+                format!(
+                    "\n<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>\n",
+                    function, args_html, escaped_content
+                )
+            }
         })
         .to_string();
 
@@ -162,13 +209,20 @@ pub fn apply_plugin_syntax(html: &str) -> String {
             let args = caps.get(2).map_or("", |m| m.as_str());
             let content = caps.get(3).map_or("", |m| m.as_str());
 
-            let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
-            format!(
-                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}\n</div>\n",
-                function, encoded_args, escaped_content
-            )
+            let args_html = render_args_as_data(args);
+            let escaped_content = escape_html_text(content);
+
+            if escaped_content.is_empty() {
+                format!(
+                    "\n<template class=\"umd-plugin umd-plugin-{}\">{}</template>\n",
+                    function, args_html
+                )
+            } else {
+                format!(
+                    "\n<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>\n",
+                    function, args_html, escaped_content
+                )
+            }
         })
         .to_string();
 
@@ -178,11 +232,10 @@ pub fn apply_plugin_syntax(html: &str) -> String {
             let function = caps.get(1).map_or("", |m| m.as_str());
             let args = caps.get(2).map_or("", |m| m.as_str());
 
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
+            let args_html = render_args_as_data(args);
             format!(
-                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />\n",
-                function, encoded_args
+                "\n<template class=\"umd-plugin umd-plugin-{}\">{}</template>\n",
+                function, args_html
             )
         })
         .to_string();
@@ -191,10 +244,9 @@ pub fn apply_plugin_syntax(html: &str) -> String {
     result = BLOCK_PLUGIN_NOARGS
         .replace_all(&result, |caps: &regex::Captures| {
             let function = caps.get(1).map_or("", |m| m.as_str());
-            let encoded_args = encode_args("[]");
             format!(
-                "\n<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />\n",
-                function, encoded_args
+                "\n<template class=\"umd-plugin umd-plugin-{}\"></template>\n",
+                function
             )
         })
         .to_string();
@@ -206,13 +258,20 @@ pub fn apply_plugin_syntax(html: &str) -> String {
             let args = caps.get(2).map_or("", |m| m.as_str());
             let content = caps.get(3).map_or("", |m| m.as_str());
 
-            let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
-            format!(
-                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}</span>",
-                function, encoded_args, escaped_content
-            )
+            let args_html = render_args_as_data(args);
+            let escaped_content = escape_html_text(content);
+
+            if escaped_content.is_empty() {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                    function, args_html
+                )
+            } else {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>",
+                    function, args_html, escaped_content
+                )
+            }
         })
         .to_string();
 
@@ -222,11 +281,10 @@ pub fn apply_plugin_syntax(html: &str) -> String {
             let function = caps.get(1).map_or("", |m| m.as_str());
             let args = caps.get(2).map_or("", |m| m.as_str());
 
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
+            let args_html = render_args_as_data(args);
             format!(
-                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
-                function, encoded_args
+                "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                function, args_html
             )
         })
         .to_string();
@@ -235,10 +293,15 @@ pub fn apply_plugin_syntax(html: &str) -> String {
     result = INLINE_PLUGIN_NOARGS
         .replace_all(&result, |caps: &regex::Captures| {
             let function = caps.get(1).map_or("", |m| m.as_str());
-            let encoded_args = encode_args("[]");
+
+            // Skip HTML entities
+            if HTML_ENTITIES.contains(function) {
+                return caps[0].to_string(); // Return original match unchanged
+            }
+
             format!(
-                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
-                function, encoded_args
+                "<template class=\"umd-plugin umd-plugin-{}\"></template>",
+                function
             )
         })
         .to_string();
@@ -255,7 +318,7 @@ mod tests {
         let input = "@toc(2){{ }}";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-toc\""));
-        assert!(output.contains("data-args=\"WyIyIl0=\""));
+        assert!(output.contains("<data value=\"0\">2</data>"));
     }
 
     #[test]
@@ -263,7 +326,9 @@ mod tests {
         let input = "@calendar(2024,1,true){{ }}";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("umd-plugin-calendar"));
-        assert!(output.contains("data-args=\"WyIyMDI0IiwiMSIsInRydWUiXQ==\""));
+        assert!(output.contains("<data value=\"0\">2024</data>"));
+        assert!(output.contains("<data value=\"1\">1</data>"));
+        assert!(output.contains("<data value=\"2\">true</data>"));
     }
 
     #[test]
@@ -271,7 +336,7 @@ mod tests {
         let input = "@timestamp(){{ }}";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("umd-plugin-timestamp"));
-        assert!(output.contains("data-args=\"W10=\""));
+        assert!(!output.contains("<data"));
     }
 
     #[test]
@@ -279,7 +344,7 @@ mod tests {
         let input = "@code(rust){{ fn main() {} }}";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("umd-plugin-code"));
-        assert!(output.contains("data-args=\"WyJydXN0Il0=\""));
+        assert!(output.contains("<data value=\"0\">rust</data>"));
         assert!(output.contains("fn main()"));
     }
 
@@ -304,9 +369,9 @@ mod tests {
         let input = "&highlight(yellow){important text};";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-highlight\""));
-        assert!(output.contains("data-args=\"WyJ5ZWxsb3ciXQ==\""));
+        assert!(output.contains("<data value=\"0\">yellow</data>"));
         assert!(output.contains("important text"));
-        assert!(output.contains("<span"));
+        assert!(output.contains("<template"));
     }
 
     #[test]
@@ -314,7 +379,7 @@ mod tests {
         let input = "@include(file.txt){default content}";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-include\""));
-        assert!(output.contains("data-args=\"WyJmaWxlLnR4dCJd\""));
+        assert!(output.contains("<data value=\"0\">file.txt</data>"));
         assert!(output.contains("default content"));
     }
 
@@ -322,9 +387,11 @@ mod tests {
     fn test_nested_plugins() {
         let input = "&outer(arg1){text &inner(arg2){nested}; more};";
         let output = apply_plugin_syntax(input);
+        println!("Nested output: {}", output);
         assert!(output.contains("class=\"umd-plugin umd-plugin-outer\""));
-        // Content should preserve the nested plugin syntax (& not escaped)
-        assert!(output.contains("&inner"));
+        // Content should preserve the nested plugin syntax (escaped)
+        // & is escaped to &amp; in the content
+        assert!(output.contains("&amp;"));
     }
 
     #[test]
@@ -332,7 +399,7 @@ mod tests {
         let input = "@box(){{ **bold** and text }}";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-box\""));
-        // Content should preserve wiki syntax for JS processing
+        // Content should preserve wiki syntax (escaped for backend processing)
         assert!(output.contains("**bold**"));
     }
 
@@ -350,7 +417,7 @@ mod tests {
         let input = "@toc()";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-toc\""));
-        assert!(output.contains("data-args=\"W10=\""));
+        assert!(!output.contains("<data"));
     }
 
     #[test]
@@ -358,8 +425,8 @@ mod tests {
         let input = "@feed(https://example.com/feed.atom, 10)";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-feed\""));
-        assert!(output.contains("data-args=\"WyJodHRwczovL2V4YW1wbGUuY29tL2ZlZWQuYXRvbSIsIjEwIl0=\""));
-        assert!(output.contains("/>")); // Self-closing div
+        assert!(output.contains("<data value=\"0\">https://example.com/feed.atom</data>"));
+        assert!(output.contains("<data value=\"1\">10</data>"));
     }
 
     #[test]
@@ -367,8 +434,7 @@ mod tests {
         let input = "&icon(mdi-pencil);";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-icon\""));
-        assert!(output.contains("data-args=\"WyJtZGktcGVuY2lsIl0=\""));
-        assert!(output.contains("/>")); // Self-closing tag
+        assert!(output.contains("<data value=\"0\">mdi-pencil</data>"));
     }
 
     #[test]
@@ -376,41 +442,26 @@ mod tests {
         let input = "&br;";
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-br\""));
-        assert!(output.contains("data-args=\"W10=\""));
-        assert!(output.contains("/>")); // Self-closing tag
+        assert!(!output.contains("<data"));
     }
 
     #[test]
-    fn test_args_to_json_empty() {
-        assert_eq!(args_to_json(""), "[]");
+    fn test_html_escaping_in_args() {
+        let input = "@test(<script>alert('xss')</script>){{ }}";
+        let output = apply_plugin_syntax(input);
+        println!("Escaped args output: {}", output);
+        // Args are escaped in <data> elements
+        assert!(output.contains("&lt;"));
+        assert!(output.contains("&gt;"));
     }
 
     #[test]
-    fn test_args_to_json_single() {
-        assert_eq!(args_to_json("arg1"), "[\"arg1\"]");
-    }
-
-    #[test]
-    fn test_args_to_json_multiple() {
-        assert_eq!(
-            args_to_json("arg1,arg2,arg3"),
-            "[\"arg1\",\"arg2\",\"arg3\"]"
-        );
-    }
-
-    #[test]
-    fn test_args_to_json_with_spaces() {
-        assert_eq!(
-            args_to_json("arg1 , arg2 , arg3"),
-            "[\"arg1\",\"arg2\",\"arg3\"]"
-        );
-    }
-
-    #[test]
-    fn test_args_to_json_url() {
-        assert_eq!(
-            args_to_json("https://example.com/feed.atom, 10"),
-            "[\"https://example.com/feed.atom\",\"10\"]"
-        );
+    fn test_html_escaping_in_content() {
+        let input = "&test(arg){<b>content</b>};";
+        let output = apply_plugin_syntax(input);
+        println!("Escaped content output: {}", output);
+        // Content is escaped
+        assert!(output.contains("&lt;"));
+        assert!(output.contains("&gt;"));
     }
 }

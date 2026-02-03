@@ -6,12 +6,27 @@
 //! 2. Apply UMD-specific transformations after Markdown rendering (post-processing)
 //! 3. Use distinctive markers to avoid ambiguous patterns
 
-use base64::{Engine as _, engine::general_purpose};
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use std::collections::HashMap;
 
-/// Convert comma-separated args to JSON array
+/// Escape HTML special characters
+///
+/// # Arguments
+///
+/// * `input` - Text to escape
+///
+/// # Returns
+///
+/// HTML-escaped string
+fn escape_html_text(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// Parse comma-separated args into a vector
 ///
 /// # Arguments
 ///
@@ -19,36 +34,30 @@ use std::collections::HashMap;
 ///
 /// # Returns
 ///
-/// JSON array string
-fn args_to_json(args: &str) -> String {
-    if args.is_empty() {
-        return "[]".to_string();
+/// Vector of trimmed argument strings
+fn parse_args(args: &str) -> Vec<String> {
+    if args.trim().is_empty() {
+        return vec![];
     }
-
-    let parts: Vec<String> = args
-        .split(',')
-        .map(|s| {
-            let trimmed = s.trim();
-            // Escape quotes and backslashes in the string
-            let escaped = trimmed.replace('\\', "\\\\").replace('"', "\\\"");
-            format!("\"{}\"", escaped)
-        })
-        .collect();
-
-    format!("[{}]", parts.join(","))
+    args.split(',').map(|s| s.trim().to_string()).collect()
 }
 
-/// Encode JSON string to base64 for safe HTML attribute usage
+/// Render args as <data> elements
 ///
 /// # Arguments
 ///
-/// * `json_args` - JSON array string
+/// * `args` - Comma-separated argument string
 ///
 /// # Returns
 ///
-/// Base64 encoded string
-fn encode_args(json_args: &str) -> String {
-    general_purpose::STANDARD.encode(json_args.as_bytes())
+/// HTML string with <data value="index">arg</data> elements
+fn render_args_as_data(args: &str) -> String {
+    parse_args(args)
+        .iter()
+        .enumerate()
+        .map(|(i, arg)| format!("<data value=\"{}\">{}</data>", i, escape_html_text(arg)))
+        .collect::<Vec<_>>()
+        .join("")
 }
 
 /// Map font size value to Bootstrap class or inline style
@@ -280,10 +289,43 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         .to_string();
 
     // Protect inline plugins (no args): &function;
-    let inline_plugin_noargs = Regex::new(r"&(\w+);").unwrap();
+    // Function name must start with a letter to avoid conflicts with HTML entities like &lt;
+    let inline_plugin_noargs = Regex::new(r"&([a-zA-Z]\w*);").unwrap();
+
+    // Common HTML entities that should NOT be treated as plugins
+    let html_entities: std::collections::HashSet<&str> = [
+        "lt", "gt", "amp", "nbsp", "quot", "apos", "ndash", "mdash", "hellip", "copy", "reg",
+        "trade", "times", "divide", "plusmn", "le", "ge", "ne", "asymp", "equiv", "forall",
+        "exist", "empty", "nabla", "isin", "notin", "ni", "prod", "sum", "minus", "lowast",
+        "radic", "prop", "infin", "ang", "and", "or", "cap", "cup", "int", "there4", "sim", "cong",
+        "sub", "sup", "nsub", "sube", "supe", "oplus", "otimes", "perp", "sdot", "lceil", "rceil",
+        "lfloor", "rfloor", "lang", "rang", "loz", "spades", "clubs", "hearts", "diams", "alpha",
+        "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa", "lambda",
+        "mu", "nu", "xi", "omicron", "pi", "rho", "sigma", "tau", "upsilon", "phi", "chi", "psi",
+        "omega", "Iuml", "iuml", "Uuml", "uuml", "Auml", "auml", "Ouml", "ouml", "Euml", "euml",
+        "Aring", "aring", "AElig", "aelig", "Ccedil", "ccedil", "Eth", "eth", "Ntilde", "ntilde",
+        "Oslash", "oslash", "Thorn", "thorn", "szlig", "yuml", "Agrave", "agrave", "Aacute",
+        "aacute", "Acirc", "acirc", "Atilde", "atilde", "Egrave", "egrave", "Eacute", "eacute",
+        "Ecirc", "ecirc", "Igrave", "igrave", "Iacute", "iacute", "Icirc", "icirc", "Ograve",
+        "ograve", "Oacute", "oacute", "Ocirc", "ocirc", "Otilde", "otilde", "Ugrave", "ugrave",
+        "Uacute", "uacute", "Ucirc", "ucirc", "Yacute", "yacute", "cent", "pound", "curren", "yen",
+        "brvbar", "sect", "uml", "ordf", "laquo", "not", "shy", "macr", "deg", "sup2", "sup3",
+        "acute", "micro", "para", "middot", "cedil", "sup1", "ordm", "raquo", "frac14", "frac12",
+        "frac34", "iquest", "ensp", "emsp", "thinsp", "zwnj", "zwj", "lrm", "rlm",
+    ]
+    .iter()
+    .copied()
+    .collect();
+
     result = inline_plugin_noargs
         .replace_all(&result, |caps: &regex::Captures| {
             let function = &caps[1];
+
+            // Skip HTML entities
+            if html_entities.contains(function) {
+                return caps[0].to_string(); // Return original match unchanged
+            }
+
             format!(
                 "{{{{INLINE_PLUGIN_NOARGS:{}:INLINE_PLUGIN_NOARGS}}}}",
                 function
@@ -643,18 +685,21 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 return html;
             }
 
-            // Otherwise, convert to plugin HTML
-            // Escape HTML entities in content while preserving & for nested plugins
-            let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
+            // Otherwise, convert to plugin <template>
+            let args_html = render_args_as_data(args);
+            let escaped_content = escape_html_text(&content);
 
-            // Convert args to JSON array
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
-
-            format!(
-                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{}< /span>",
-                function, encoded_args, escaped_content
-            )
+            if escaped_content.is_empty() {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                    function, args_html
+                )
+            } else {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>",
+                    function, args_html, escaped_content
+                )
+            }
         })
         .to_string();
 
@@ -671,13 +716,11 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 return html;
             }
 
-            // Otherwise, convert to plugin HTML
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
-
+            // Otherwise, convert to plugin <template>
+            let args_html = render_args_as_data(args);
             format!(
-                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
-                function, encoded_args
+                "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                function, args_html
             )
         })
         .to_string();
@@ -694,11 +737,10 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 return html;
             }
 
-            // Otherwise, convert to plugin HTML
-            let encoded_args = encode_args("[]");
+            // Otherwise, convert to plugin <template>
             format!(
-                "<span class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
-                function, encoded_args
+                "<template class=\"umd-plugin umd-plugin-{}\"></template>",
+                function
             )
         })
         .to_string();
@@ -712,6 +754,7 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
             let function = &caps[1];
             let args = &caps[2];
             let encoded_content = &caps[3];
+
             // Decode base64 to get original content
             let content = general_purpose::STANDARD
                 .decode(encoded_content.as_bytes())
@@ -719,17 +762,20 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_content.to_string());
 
-            // Escape HTML entities in content while preserving & for nested plugins
-            let escaped_content = content.replace('<', "&lt;").replace('>', "&gt;");
+            let args_html = render_args_as_data(args);
+            let escaped_content = escape_html_text(&content);
 
-            // Convert args to JSON array
-            let json_args = args_to_json(args);
-            let encoded_args = encode_args(&json_args);
-
-            format!(
-                "<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\">{ }</div>",
-                function, encoded_args, escaped_content
-            )
+            if escaped_content.is_empty() {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                    function, args_html
+                )
+            } else {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>",
+                    function, args_html, escaped_content
+                )
+            }
         })
         .to_string();
 
@@ -741,31 +787,27 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
             use base64::{Engine as _, engine::general_purpose};
             let function = &caps[1];
             let encoded_args = &caps[2];
+
             // Decode base64 to get original args
             let args = general_purpose::STANDARD
                 .decode(encoded_args.as_bytes())
                 .ok()
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_args.to_string());
-            let json_args = args_to_json(&args);
-            let encoded_args = encode_args(&json_args);
 
+            let args_html = render_args_as_data(&args);
             format!(
-                "<div class=\"umd-plugin umd-plugin-{}\" data-args=\"{}\" />",
-                function, encoded_args
+                "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                function, args_html
             )
         })
         .to_string();
 
-    // Remove wrapping <p> tags around block plugins
+    // Remove wrapping <p> tags around template plugins
     let wrapped_plugin =
-        Regex::new(r#"<p>\s*(<div class="plugin-[^"]+"[^>]*>.*?</div>)\s*</p>"#).unwrap();
+        Regex::new(r#"<p>\s*(<template class="umd-plugin[^"]*"[^>]*>.*?</template>)\s*</p>"#)
+            .unwrap();
     result = wrapped_plugin.replace_all(&result, "$1").to_string();
-
-    // Remove wrapping <p> tags around self-closing block plugins
-    let wrapped_plugin_self =
-        Regex::new(r#"<p>\s*(<div class="plugin-[^"]+"[^>]*/>\s*)\s*</p>"#).unwrap();
-    result = wrapped_plugin_self.replace_all(&result, "$1").to_string();
 
     // Restore definition lists
     let definition_list_marker =

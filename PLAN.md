@@ -536,59 +536,166 @@
       - `<del>`: ドキュメントから削除された内容
     - 実装: [src/extensions/inline_decorations.rs](src/extensions/inline_decorations.rs)でUMD形式を処理後、comrakでMarkdown形式を処理
   - **プラグインシステム** (拡張可能なWiki機能): ✅
+    - **出力HTML形式**: `<template>`タグと`<data>`要素を使用
+      - `<template class="umd-plugin umd-plugin-{function}">`で各プラグインを表現
+      - 引数は`<data value="index">arg</data>`として順序付きで格納
+      - contentは`<template>`直下にテキストノードまたはHTMLとして配置
+      - **バックエンド処理に最適化**: Nuxt/LaravelでのSSRレンダリングが容易
+      - **エンコード不要**: `data-args`のbase64エンコード/デコードが不要でパフォーマンス向上
+      - **構造がシンプル**: DOMツリーを直接解析するだけで引数とcontentを取得可能
     - **インライン型（完全形）**: `&function(args){content};`
-      - パース出力: `<span class="plugin-function" data-args='["arg1","arg2"]'>content</span>`
+      - 構文: `&function(arg1,arg2){content};`
+      - パース出力:
+        ```html
+        <template class="umd-plugin umd-plugin-function">
+          <data value="0">arg1</data>
+          <data value="1">arg2</data>
+          content
+        </template>
+        ```
+      - 例: `&highlight(yellow){important text};`
+        ```html
+        <template class="umd-plugin umd-plugin-highlight">
+          <data value="0">yellow</data>
+          important text
+        </template>
+        ```
     - **インライン型（args-only）**: `&function(args);` ✅
-      - パース出力: `<span class="plugin-function" data-args='["arg1","arg2"]' />`
-      - 例: `&icon(mdi-pencil);` → `<span class="plugin-icon" data-args='["mdi-pencil"]' />`
+      - 構文: `&function(arg1,arg2);`
+      - パース出力:
+        ```html
+        <template class="umd-plugin umd-plugin-function">
+          <data value="0">arg1</data>
+          <data value="1">arg2</data>
+        </template>
+        ```
+      - 例: `&icon(mdi-pencil);`
+        ```html
+        <template class="umd-plugin umd-plugin-icon">
+          <data value="0">mdi-pencil</data>
+        </template>
+        ```
     - **インライン型（no-args）**: `&function;` ✅
-      - パース出力: `<span class="plugin-function" data-args='[]' />`
-      - 例: `&br;` → `<span class="plugin-br" data-args='[]' />`
+      - 構文: `&function;`
+      - パース出力:
+        ```html
+        <template class="umd-plugin umd-plugin-function"></template>
+        ```
+      - 例: `&br;`
+        ```html
+        <template class="umd-plugin umd-plugin-br"></template>
+        ```
     - **ブロック型（複数行）**: `@function(args){{ content }}`
-      - パース出力: `<div class="plugin-function" data-args='["arg1","arg2"]'>content</div>`
-      - デフォルトタグ: `div`（SSR対応、SEO対応、アクセシビリティ対応）
-      - カスタムタグ指定: プラグイン側で`data-tag`属性を使用して任意のタグを指定可能
-        - セマンティックタグ: `aside`, `figure`, `section`, `nav`, `article`, `header`, `footer`, `main`
-        - 遅延実行: `template`（JavaScript必須、SSR非対応）
-      - 使い分け:
-        - `div`/セマンティックタグ: サーバーサイドレンダリング、静的コンテンツ、SEO重要、アクセシビリティ必須
-        - `template`: クライアントサイド専用、動的コンテンツ（API取得等）、遅延実行、JavaScript必須
+      - 構文: `@function(arg1,arg2){{ content }}`
+      - パース出力:
+        ```html
+        <template class="umd-plugin umd-plugin-function">
+          <data value="0">arg1</data>
+          <data value="1">arg2</data>
+          content
+        </template>
+        ```
+      - 例: `@code(rust){{ fn main() {} }}`
+        ```html
+        <template class="umd-plugin umd-plugin-code">
+          <data value="0">rust</data>
+          fn main() {}
+        </template>
+        ```
+      - **用途**: SSR対応、SEO対応、GoogleBotでも理解可能なHTML出力
     - **ブロック型（単行）**: `@function(args){content}`
-      - パース出力: `<div class="plugin-function" data-args='["arg1","arg2"]'>content</div>`
-      - デフォルトタグ: `div`
-      - カスタムタグ指定: プラグイン側で`data-tag`属性を使用
+      - 構文: `@function(arg1,arg2){content}`
+      - パース出力:
+        ```html
+        <template class="umd-plugin umd-plugin-function">
+          <data value="0">arg1</data>
+          <data value="1">arg2</data>
+          content
+        </template>
+        ```
+      - 例: `@include(file.txt){default content}`
+        ```html
+        <template class="umd-plugin umd-plugin-include">
+          <data value="0">file.txt</data>
+          default content
+        </template>
+        ```
     - **ブロック型（args-only）**: `@function(args)` ✅
-      - パース出力: `<div class="plugin-function" data-args='["arg1","arg2"]' data-tag="div" />`
-      - デフォルトタグ: `div`（SSR対応、SEO対応、アクセシビリティ対応）
-      - カスタムタグ指定: プラグイン側で`data-tag`属性を読み取り、指定されたタグで置換
-      - 例: `@callout(info)` → `<div class="plugin-callout" data-args='["info"]' data-tag="div" />`
-      - 例（カスタムタグ）: `<aside class="plugin-callout" data-args='["info"]'>...</aside>`
+      - 構文: `@function(arg1,arg2)`
+      - パース出力:
+        ```html
+        <template class="umd-plugin umd-plugin-function">
+          <data value="0">arg1</data>
+          <data value="1">arg2</data>
+        </template>
+        ```
+      - 例: `@callout(info)`
+        ```html
+        <template class="umd-plugin umd-plugin-callout">
+          <data value="0">info</data>
+        </template>
+        ```
       - **重要**: 括弧必須（`@function()`）で@mentionと区別
-      - **URL保護**: argsをbase64エンコードしてMarkdownパーサーのautolink機能から保護
+      - **URL保護不要**: `<data>`要素内に格納されるためMarkdownパーサーのautolink機能の影響を受けない
     - **ブロック型（no-args）**: `@function()` ✅
-      - パース出力: `<div class="plugin-function" data-args='[]' data-tag="div" />`
-      - デフォルトタグ: `div`
-      - カスタムタグ指定: プラグイン側で`data-tag`属性を読み取り
-      - 例: `@toc()` → `<div class="plugin-toc" data-args='[]' data-tag="div" />`
-      - 例（カスタムタグ）: `<nav class="plugin-toc">...</nav>`
+      - 構文: `@function()`
+      - パース出力:
+        ```html
+        <template class="umd-plugin umd-plugin-function"></template>
+        ```
+      - 例: `@toc()`
+        ```html
+        <template class="umd-plugin umd-plugin-toc"></template>
+        ```
       - **重要**: 括弧必須で@mentionと区別
-    - **カスタムタグの使用例**:
-      - `@gallery(photos){{ ... }}` → JavaScript側で `<figure class="plugin-gallery">...</figure>` に変換
-      - `@callout(warning){{ ... }}` → JavaScript側で `<aside class="plugin-callout">...</aside>` に変換
-      - `@toc()` → JavaScript側で `<nav class="plugin-toc">...</nav>` に変換
-      - `@feed(url)` → JavaScript側で `<template>`から動的コンテンツ生成（CSR専用）
-    - **許可されるタグ**:
-      - **セマンティックタグ**（推奨）: `div`, `aside`, `figure`, `section`, `nav`, `article`, `header`, `footer`, `main`
-      - **遅延実行タグ**: `template`（JavaScript必須、SSR非対応）
-    - **タグ選択ガイドライン**:
-      - `div`/セマンティックタグ: サーバーサイドレンダリング、静的コンテンツ、SEO重要、アクセシビリティ必須
-      - `template`: クライアントサイド専用、動的コンテンツ（API取得等）、遅延実行、JavaScript必須
-    - **セキュリティ**: プラグイン側でタグ名のホワイトリストチェックを推奨
+    - **バックエンド処理例**:
+
+      ```php
+      // PHP/Laravel (DOMDocument)
+      $template = $dom->getElementsByClassName('umd-plugin-function')[0];
+      $args = [];
+      $content = '';
+
+      foreach ($template->childNodes as $node) {
+          if ($node->nodeName === 'data') {
+              $args[(int)$node->getAttribute('value')] = $node->textContent;
+          } else {
+              $content .= $dom->saveHTML($node);
+          }
+      }
+      ```
+
+      ```javascript
+      // Nuxt/Node.js (jsdom or cheerio)
+      const template = $(".umd-plugin-function");
+      const args = template
+        .find("data")
+        .toArray()
+        .sort((a, b) => $(a).attr("value") - $(b).attr("value"))
+        .map((el) => $(el).text());
+      const content = template.clone().children("data").remove().end().html();
+      ```
+
+    - **利点**:
+      - **SSR最適化**: バックエンドでのレンダリングが容易
+      - **パフォーマンス**: base64エンコード/デコードが不要
+      - **SEO対応**: GoogleBotが`<template>`内のコンテンツを理解可能
+      - **構造の明確性**: 引数とcontentがDOM構造で明確に分離
+      - **保守性**: HTML標準の`<data>`要素を使用し、セマンティック
+    - **セキュリティ**:
+      - contentはHTMLエスケープ済みで出力
+      - プラグイン実行時にバックエンド側でサニタイズを推奨
+      - `<data>`要素の`value`属性は数値インデックスのみ許可
+
   - **プラグイン開発者向けガイドライン**: 🚧 ドキュメント作成予定
-    - パーサーは`plugin-*`クラスのみ生成
-    - フロントエンドJavaScriptでBootstrapコンポーネントを動的追加
-    - 例: `<div class="plugin-alert" data-args='["info"]'>` → JavaScript側で`alert alert-info`クラス追加
+    - パーサーは`<template class="umd-plugin umd-plugin-*">`のみ生成
+    - バックエンド（Nuxt/Laravel）で`<template>`をパースし、最終HTMLを生成
+    - フロントエンドJavaScriptでの動的処理も可能（クライアントサイドレンダリング）
     - Bootstrap 5（Core UI互換）のユーティリティクラス（`text-*`, `mb-*`, `d-*`, `fs-*`等）を活用可能
+    - **レンダリング順序**:
+      1. Rustパーサー: UMD構文 → `<template class="umd-plugin">`
+      2. バックエンド: `<template>` → 最終HTML（SSR）
+      3. フロントエンド: 必要に応じて動的処理（CSR）
   - **GitHub Flavored Markdownアラート（Callouts）**: ✅ **完了** (注: sanitization制約あり)
     - GFM拡張機能として、ブロック引用ベースのアラート構文をサポート
     - **構文**: `> [!TYPE]`で始まるブロック引用
