@@ -7,7 +7,9 @@ pub mod block_decorations;
 pub mod conflict_resolver;
 pub mod emphasis;
 pub mod inline_decorations;
+pub mod plugin_markers;
 pub mod plugins;
+pub mod preprocessor;
 pub mod table;
 
 /// Apply extended syntax transformations to HTML output

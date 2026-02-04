@@ -1,14 +1,14 @@
 //! Syntax conflict resolution for UMD and Markdown
 //!
-//! This module handles cases where UMD and Markdown syntax might conflict.
-//! The general strategy is:
-//! 1. Process input before Markdown parsing (pre-processing)
-//! 2. Apply UMD-specific transformations after Markdown rendering (post-processing)
-//! 3. Use distinctive markers to avoid ambiguous patterns
+//! This module coordinates the pre-processing and post-processing stages
+//! to resolve conflicts between UMD and Markdown syntax.
 
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use std::collections::HashMap;
+
+use super::plugin_markers;
+use super::preprocessor;
 
 /// Escape HTML special characters
 ///
@@ -164,115 +164,6 @@ impl HeaderIdMap {
     }
 }
 
-/// Remove comment syntax from input
-///
-/// Removes single-line comments (`//`) and multi-line comments (`/* ... */`)
-/// while preserving comments inside code blocks and inline code.
-///
-/// # Arguments
-///
-/// * `input` - The raw markup input
-///
-/// # Returns
-///
-/// String with comments removed
-fn remove_comments(input: &str) -> String {
-    let mut result = String::new();
-    let mut in_code_block = false;
-    let mut code_fence_marker = "";
-    let mut in_multiline_comment = false;
-
-    for line in input.lines() {
-        // Detect code block start/end
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            if !in_code_block {
-                in_code_block = true;
-                code_fence_marker = if trimmed.starts_with("```") {
-                    "```"
-                } else {
-                    "~~~"
-                };
-            } else if trimmed.contains(code_fence_marker) {
-                in_code_block = false;
-            }
-            result.push_str(line);
-            result.push('\n');
-            continue;
-        }
-
-        // Inside code block: preserve everything
-        if in_code_block {
-            result.push_str(line);
-            result.push('\n');
-            continue;
-        }
-
-        // Process line outside code blocks
-        let mut processed_line = String::new();
-        let mut chars = line.chars().peekable();
-        let mut in_inline_code = false;
-        let mut prev_ch = '\0';
-
-        while let Some(ch) = chars.next() {
-            // Detect inline code
-            if ch == '`' {
-                in_inline_code = !in_inline_code;
-                processed_line.push(ch);
-                prev_ch = ch;
-                continue;
-            }
-
-            // Inside inline code: preserve everything
-            if in_inline_code {
-                processed_line.push(ch);
-                prev_ch = ch;
-                continue;
-            }
-
-            // Multi-line comment start: /*
-            if !in_multiline_comment && ch == '/' && chars.peek() == Some(&'*') {
-                in_multiline_comment = true;
-                chars.next(); // consume '*'
-                prev_ch = '*';
-                continue;
-            }
-
-            // Multi-line comment end: */
-            if in_multiline_comment && ch == '*' && chars.peek() == Some(&'/') {
-                in_multiline_comment = false;
-                chars.next(); // consume '/'
-                prev_ch = '/';
-                continue;
-            }
-
-            // Single-line comment start: //
-            // But NOT if preceded by ':' (URL scheme like https://)
-            if !in_multiline_comment && ch == '/' && chars.peek() == Some(&'/') && prev_ch != ':' {
-                // Skip rest of line
-                break;
-            }
-
-            // Normal character (not in comment)
-            if !in_multiline_comment {
-                processed_line.push(ch);
-                prev_ch = ch;
-            }
-        }
-
-        // Add processed line if not empty or if we're still in multiline comment
-        if !processed_line.trim().is_empty() {
-            result.push_str(&processed_line);
-            result.push('\n');
-        } else if !in_multiline_comment {
-            // Preserve empty lines (important for Markdown structure)
-            result.push('\n');
-        }
-    }
-
-    result
-}
-
 /// Pre-process input to resolve conflicts before Markdown parsing
 ///
 /// This function escapes or transforms syntax that would otherwise create
@@ -297,7 +188,7 @@ fn remove_comments(input: &str) -> String {
 /// ```
 pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
     // Step 1: Remove comments before any other processing
-    let mut result = remove_comments(input);
+    let mut result = preprocessor::remove_comments(input);
 
     let mut header_map = HeaderIdMap::new();
     let mut heading_counter = 0;
@@ -352,222 +243,20 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
-    // Protect inline plugins with content but no args: &function{content};
-    // Use base64 encoding to safely preserve content with special characters
-    let inline_plugin_noargs_content = Regex::new(r"&(\w+)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
-    result = inline_plugin_noargs_content
-        .replace_all(&result, |caps: &regex::Captures| {
-            use base64::{Engine as _, engine::general_purpose};
-            let function = &caps[1];
-            let content = &caps[2];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{INLINE_PLUGIN:{}::{}:INLINE_PLUGIN}}}}",
-                function, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins: &function(args){content};
-    // Use base64 encoding to safely preserve content with special characters
-    // Note: Inline decoration functions ARE protected here and processed in postprocess
-    let inline_plugin = Regex::new(r"&(\w+)\(([^)]*)\)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
-    result = inline_plugin
-        .replace_all(&result, |caps: &regex::Captures| {
-            use base64::{Engine as _, engine::general_purpose};
-            let function = &caps[1];
-            let args = &caps[2];
-            let content = &caps[3];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{INLINE_PLUGIN:{}:{}:{}:INLINE_PLUGIN}}}}",
-                function, args, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins (args only): &function(args);
-    let inline_plugin_argsonly = Regex::new(r"&(\w+)\(([^)]*)\);").unwrap();
-    result = inline_plugin_argsonly
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-            let args = &caps[2];
-            format!(
-                "{{{{INLINE_PLUGIN_ARGSONLY:{}:{}:INLINE_PLUGIN_ARGSONLY}}}}",
-                function, args
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins (no args): &function;
-    // Function name must start with a letter to avoid conflicts with HTML entities like &lt;
-    let inline_plugin_noargs = Regex::new(r"&([a-zA-Z]\w*);").unwrap();
-
-    // Common HTML entities that should NOT be treated as plugins
-    let html_entities: std::collections::HashSet<&str> = [
-        "lt", "gt", "amp", "nbsp", "quot", "apos", "ndash", "mdash", "hellip", "copy", "reg",
-        "trade", "times", "divide", "plusmn", "le", "ge", "ne", "asymp", "equiv", "forall",
-        "exist", "empty", "nabla", "isin", "notin", "ni", "prod", "sum", "minus", "lowast",
-        "radic", "prop", "infin", "ang", "and", "or", "cap", "cup", "int", "there4", "sim", "cong",
-        "sub", "sup", "nsub", "sube", "supe", "oplus", "otimes", "perp", "sdot", "lceil", "rceil",
-        "lfloor", "rfloor", "lang", "rang", "loz", "spades", "clubs", "hearts", "diams", "alpha",
-        "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa", "lambda",
-        "mu", "nu", "xi", "omicron", "pi", "rho", "sigma", "tau", "upsilon", "phi", "chi", "psi",
-        "omega", "Iuml", "iuml", "Uuml", "uuml", "Auml", "auml", "Ouml", "ouml", "Euml", "euml",
-        "Aring", "aring", "AElig", "aelig", "Ccedil", "ccedil", "Eth", "eth", "Ntilde", "ntilde",
-        "Oslash", "oslash", "Thorn", "thorn", "szlig", "yuml", "Agrave", "agrave", "Aacute",
-        "aacute", "Acirc", "acirc", "Atilde", "atilde", "Egrave", "egrave", "Eacute", "eacute",
-        "Ecirc", "ecirc", "Igrave", "igrave", "Iacute", "iacute", "Icirc", "icirc", "Ograve",
-        "ograve", "Oacute", "oacute", "Ocirc", "ocirc", "Otilde", "otilde", "Ugrave", "ugrave",
-        "Uacute", "uacute", "Ucirc", "ucirc", "Yacute", "yacute", "cent", "pound", "curren", "yen",
-        "brvbar", "sect", "uml", "ordf", "laquo", "not", "shy", "macr", "deg", "sup2", "sup3",
-        "acute", "micro", "para", "middot", "cedil", "sup1", "ordm", "raquo", "frac14", "frac12",
-        "frac34", "iquest", "ensp", "emsp", "thinsp", "zwnj", "zwj", "lrm", "rlm",
-    ]
-    .iter()
-    .copied()
-    .collect();
-
-    result = inline_plugin_noargs
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-
-            // Skip HTML entities
-            if html_entities.contains(function) {
-                return caps[0].to_string(); // Return original match unchanged
-            }
-
-            format!(
-                "{{{{INLINE_PLUGIN_NOARGS:{}:INLINE_PLUGIN_NOARGS}}}}",
-                function
-            )
-        })
-        .to_string();
-
-    // Protect block plugins multiline: @function(args){{ content }}
-    // Use base64 encoding and markers to preserve content
-    let block_plugin_multi = Regex::new(r"@(\w+)\(([^)]*)\)\{\{([\s\S]*?)\}\}").unwrap();
-    result = block_plugin_multi
-        .replace_all(&result, |caps: &regex::Captures| {
-            use base64::{Engine as _, engine::general_purpose};
-            let function = &caps[1];
-            let args = &caps[2];
-            let content = &caps[3];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{BLOCK_PLUGIN:{}:{}:{}:BLOCK_PLUGIN}}}}",
-                function, args, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect block plugins singleline: @function(args){content}
-    let block_plugin_single = Regex::new(r"@(\w+)\(([^)]*)\)\{([^}]*)\}").unwrap();
-    result = block_plugin_single
-        .replace_all(&result, |caps: &Captures| {
-            use base64::{Engine as _, engine::general_purpose};
-            let function = &caps[1];
-            let args = &caps[2];
-            let content = &caps[3];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{BLOCK_PLUGIN:{}:{}:{}:BLOCK_PLUGIN}}}}",
-                function, args, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect block plugins (args only, no content): @function(args)
-    // This should be processed AFTER patterns with { and {{
-    let block_plugin_argsonly = Regex::new(r"@(\w+)\(([^)]*)\)").unwrap();
-    result = block_plugin_argsonly
-        .replace_all(&result, |caps: &regex::Captures| {
-            use base64::{Engine as _, engine::general_purpose};
-            let function = &caps[1];
-            let args = &caps[2];
-            // Encode args to prevent Markdown parser from converting URLs
-            let encoded_args = general_purpose::STANDARD.encode(args.as_bytes());
-            format!(
-                "{{{{BLOCK_PLUGIN_ARGSONLY:{}:{}:BLOCK_PLUGIN_ARGSONLY}}}}",
-                function, encoded_args
-            )
-        })
-        .to_string();
+    // Protect inline and block plugin syntax
+    result = plugin_markers::protect_inline_plugins(&result);
+    result = plugin_markers::protect_block_plugins(&result);
 
     // Extract and protect UMD tables (before definition lists)
     let (result, table_map) = crate::extensions::table::umd::extract_umd_tables(&result);
     header_map.tables = table_map;
 
     // Process definition lists: :term|definition
-    let result = process_definition_lists(&result);
+    let result = preprocessor::process_definition_lists(&result);
 
     (result, header_map)
 }
 
-/// Process definition lists (:term|definition syntax)
-///
-/// Converts consecutive lines starting with `:term|definition` into
-/// a single `<dl>` element with `<dt>` and `<dd>` tags.
-fn process_definition_lists(input: &str) -> String {
-    let mut result = Vec::new();
-    let mut lines = input.lines().peekable();
-
-    while let Some(line) = lines.next() {
-        // Check if this line starts a definition list
-        if line.trim_start().starts_with(':') && line.contains('|') {
-            let mut dl_items = Vec::new();
-
-            // Collect consecutive definition list items
-            let mut current_line = line;
-            loop {
-                if let Some(stripped) = current_line.trim_start().strip_prefix(':') {
-                    if let Some((term, definition)) = stripped.split_once('|') {
-                        dl_items.push((term.trim().to_string(), definition.trim().to_string()));
-                    }
-                }
-
-                // Check if next line is also a definition list item
-                match lines.peek() {
-                    Some(next_line)
-                        if next_line.trim_start().starts_with(':') && next_line.contains('|') =>
-                    {
-                        current_line = lines.next().unwrap();
-                    }
-                    _ => break,
-                }
-            }
-
-            // Create marker for the definition list
-            if !dl_items.is_empty() {
-                use base64::{Engine as _, engine::general_purpose};
-                let items_json = serde_json::to_string(&dl_items).unwrap();
-                let encoded_items = general_purpose::STANDARD.encode(items_json.as_bytes());
-                result.push(format!(
-                    "{{{{DEFINITION_LIST:{}:DEFINITION_LIST}}}}",
-                    encoded_items
-                ));
-            }
-        } else {
-            result.push(line.to_string());
-        }
-    }
-
-    result.join("\n")
-}
-
-/// Post-process HTML to restore LukiWiki-specific syntax and apply custom header IDs
-///
-/// This function converts temporary markers back to their intended HTML output
-/// and replaces sequential header IDs with custom IDs where specified.
-///
-/// # Arguments
-///
-/// * `html` - The HTML output from Markdown parser
-/// * `header_map` - Map of custom header IDs
-///
-/// # Returns
-///
-/// HTML with LukiWiki blockquotes properly rendered and custom IDs applied
 /// Convert inline decoration function to HTML
 /// Returns None if not a decoration function
 fn convert_inline_decoration_to_html(function: &str, args: &str, content: &str) -> Option<String> {
