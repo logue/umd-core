@@ -78,9 +78,6 @@ pub fn parse_to_html(input: &str, options: &ParserOptions) -> String {
     // Parse markdown to AST
     let root = parse_document(&arena, input, &comrak_options);
 
-    // TODO: Apply LukiWiki-specific transformations to AST here
-    // This is where we'll add custom syntax handling in later steps
-
     // Render to HTML
     let mut html = String::new();
     format_html_with_plugins(root, &comrak_options, &mut html, &Plugins::default())
@@ -165,8 +162,9 @@ mod tests {
     #[test]
     fn test_image() {
         let input = "![Alt text](https://example.com/image.png)";
-        let html = parse_to_html(input, &ParserOptions::default());
-        assert!(html.contains("<img"));
+        let html = crate::parse(input);
+        // Now images are wrapped in <picture> tags
+        assert!(html.contains("<picture"));
         assert!(html.contains("src=\"https://example.com/image.png\""));
         assert!(html.contains("alt=\"Alt text\""));
     }
@@ -193,5 +191,51 @@ mod tests {
         let html = parse_to_html(input, &ParserOptions::default());
         assert!(html.contains("type=\"checkbox\""));
         assert!(html.contains("disabled"));
+    }
+
+    #[test]
+    fn test_video_media() {
+        let input = "![Demo video](https://example.com/video.mp4)";
+        let html = crate::parse(input);
+        println!("Video HTML output: {}", html);
+        assert!(html.contains("<video controls"));
+        assert!(html.contains("src=\"https://example.com/video.mp4\""));
+        assert!(html.contains("type=\"video/mp4\""));
+        assert!(html.contains("<track kind=\"captions\" label=\"Demo video\""));
+    }
+
+    #[test]
+    fn test_audio_media() {
+        let input = "![Background music](https://example.com/audio.mp3)";
+        let html = crate::parse(input);
+        assert!(html.contains("<audio controls"));
+        assert!(html.contains("src=\"https://example.com/audio.mp3\""));
+        assert!(html.contains("type=\"audio/mpeg\""));
+    }
+
+    #[test]
+    fn test_image_with_title() {
+        let input = "![Logo](https://example.com/logo.png \"Company Logo\")";
+        let html = crate::parse(input);
+        assert!(html.contains("<picture"));
+        assert!(html.contains("title=\"Company Logo\""));
+        assert!(html.contains("alt=\"Logo\""));
+    }
+
+    #[test]
+    fn test_video_with_title() {
+        let input = "![Product demo](video.mp4 \"Our new product\")";
+        let html = crate::parse(input);
+        assert!(html.contains("<video controls"));
+        assert!(html.contains("title=\"Our new product\""));
+    }
+
+    #[test]
+    fn test_jxl_image() {
+        let input = "![Modern image](image.jxl \"JPEG XL format\")";
+        let html = crate::parse(input);
+        assert!(html.contains("<picture"));
+        assert!(html.contains("type=\"image/jxl\""));
+        assert!(html.contains("title=\"JPEG XL format\""));
     }
 }

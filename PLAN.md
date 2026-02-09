@@ -29,6 +29,7 @@
 - ✅ UMD既存コンテンツとの後方互換性を維持
 - ✅ HTML直接入力を禁止し、セキュアなHTML生成のみ許可
 - ✅ 既存Markdownパーサー（`comrak`）を基盤として活用
+- ✅ メディアファイル自動検出（動画・音声・画像のHTML5タグ変換）
 
 ### 実装済みステップ
 
@@ -39,14 +40,14 @@
 
 ### テスト結果
 
-**総テスト数**: 209 tests passing
+**総テスト数**: 226 tests passing
 
-- 131 unit tests (lib.rs)
+- 165 unit tests (lib.rs)
 - 22 bootstrap integration tests
 - 18 CommonMark compliance tests
 - 14 comment syntax tests
 - 13 conflict resolution tests
-- 10 doctests
+- 13 doctests
 - 1 semantic integration test
 
 ---

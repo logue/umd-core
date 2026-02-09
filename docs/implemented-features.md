@@ -8,6 +8,7 @@
 
 - [基本Markdown機能](#基本markdown機能)
 - [コメント構文](#コメント構文)
+- [メディアファイル自動検出](#メディアファイル自動検出)
 - [Spoiler機能](#spoiler機能)
 - [定義リスト](#定義リスト)
 - [UMD拡張構文](#umd拡張構文)
@@ -231,6 +232,96 @@ URLスキーム（`https://`等）の `//` はコメントとして扱われま�
 1. **開発用メモ**: ドキュメント内にTODOや注意事項を記載
 2. **一時的な無効化**: 構文を削除せずにコメントアウトで無効化
 3. **コード例の説明**: コメント構文を使って例示の説明を追加
+
+---
+
+## メディアファイル自動検出
+
+画像リンク構文 `![alt](url)` を拡張し、URLの拡張子に基づいて自動的に適切なHTML5メディアタグに変換します。
+
+### 動画ファイル
+
+**対応拡張子**: `.mp4`, `.webm`, `.ogv`, `.mov`, `.avi`, `.mkv`, `.m4v` (大文字小文字区別なし)
+
+**入力**:
+
+```markdown
+![Product demo](video.mp4 "製品デモ")
+```
+
+**出力**:
+
+```html
+<video controls title="製品デモ">
+  <source src="video.mp4" type="video/mp4" />
+  <track kind="captions" label="Product demo" />
+  お使いのブラウザは動画タグをサポートしていません。
+</video>
+```
+
+### 音声ファイル
+
+**対応拡張子**: `.mp3`, `.wav`, `.ogg`, `.oga`, `.m4a`, `.aac`, `.flac`, `.opus`, `.weba` (大文字小文字区別なし)
+
+**入力**:
+
+```markdown
+![Theme song](audio.mp3 "テーマソング")
+```
+
+**出力**:
+
+```html
+<audio controls title="テーマソング">
+  <source src="audio.mp3" type="audio/mpeg" />
+  お使いのブラウザは音声タグをサポートしていません。
+</audio>
+```
+
+### 画像ファイル
+
+**対応拡張子**: `.jpg`, `.jpeg`, `.png`, `.gif`, `.svg`, `.webp`, `.avif`, `.bmp`, `.ico`, `.jxl`
+
+**入力**:
+
+```markdown
+![Company logo](logo.png "会社ロゴ")
+```
+
+**出力**:
+
+```html
+<picture title="会社ロゴ">
+  <source srcset="logo.png" type="image/png" />
+  <img src="logo.png" alt="Company logo" title="会社ロゴ" loading="lazy" />
+</picture>
+```
+
+### 特徴
+
+- **自動検出**: 拡張子に基づいて適切なメディアタグを自動生成
+- **title属性対応**: CommonMark標準のタイトル属性 (`![alt](url "title")`) に対応
+- **HTML5準拠**: 最新のHTML5メディアタグを使用
+- **遅延読み込み**: 画像には `loading="lazy"` 属性を自動追加
+- **アクセシビリティ**: 動画のaltテキストはキャプションラベルとして使用
+
+### 使用例
+
+```markdown
+# プロジェクト紹介
+
+製品デモ動画:
+
+![製品デモ](demo.mp4 "当社の製品をご紹介します")
+
+テーマソング:
+
+![BGM](theme.mp3 "オープニングテーマ")
+
+最新の画像フォーマット:
+
+![次世代画像](modern.jxl "JPEG XL形式")
+```
 
 ---
 
