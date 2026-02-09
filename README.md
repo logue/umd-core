@@ -227,6 +227,20 @@ Universal Markdownは、Markdownの画像構文`![alt](url)`を拡張し、拡�
 </video>
 ```
 
+タイトル属性も指定できます：
+
+```markdown
+![製品デモ](demo.mp4 "新製品のデモンストレーション")
+```
+
+```html
+<video controls title="新製品のデモンストレーション">
+  <source src="demo.mp4" type="video/mp4" />
+  <track kind="captions" label="製品デモ" />
+  お使いのブラウザは動画タグをサポートしていません。
+</video>
+```
+
 ### 音声ファイル
 
 音声拡張子（`.mp3`, `.wav`, `.ogg`, `.flac`など）が検出されると、自動的に`<audio>`タグを生成します：
@@ -240,6 +254,19 @@ Universal Markdownは、Markdownの画像構文`![alt](url)`を拡張し、拡�
 ```html
 <audio controls>
   <source src="audio.mp3" type="audio/mpeg" />
+  お使いのブラウザは音声タグをサポートしていません。
+</audio>
+```
+
+タイトル属性も指定できます：
+
+```markdown
+![テーマソング](theme.mp3 "オープニングテーマ")
+```
+
+```html
+<audio controls title="オープニングテーマ">
+  <source src="theme.mp3" type="audio/mpeg" />
   お使いのブラウザは音声タグをサポートしていません。
 </audio>
 ```
@@ -261,7 +288,20 @@ Universal Markdownは、Markdownの画像構文`![alt](url)`を拡張し、拡�
 </picture>
 ```
 
-`loading="lazy"`属性により、画面外の画像は遅延読み込みされます。
+タイトル属性も指定できます：
+
+```markdown
+![風景画](nature.jpg "美しい山の風景")
+```
+
+```html
+<picture title="美しい山の風景">
+  <source srcset="nature.jpg" type="image/jpeg" />
+  <img src="nature.jpg" alt="風景画" title="美しい山の風景" loading="lazy" />
+</picture>
+```
+
+`loading="lazy"`属性により、画面外の画像は遅延読み込みされます。タイトル属性は`<picture>`タグと内部の`<img>`タグの両方に設定されます。
 
 ## Spoilerタグ（ネタバレ防止）
 

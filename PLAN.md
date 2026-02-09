@@ -124,6 +124,14 @@
 - 通常の段落では従来通り行末スペースやバックスラッシュを推奨
 - **詳細**: [docs/implemented-features.md#ブロック要素を含む定義](docs/implemented-features.md#ブロック要素を含む定義)
 
+### ✅ メディアタグへのタイトル属性対応
+
+- CommonMark標準の画像タイトル構文（`![alt](url "title")`）をサポート
+- `<video>`、`<audio>`、`<picture>`タグの`title`属性に設定
+- `<picture>`タグの場合は内部の`<img>`タグにも`title`属性を付与
+- ツールチップ表示や支援技術での追加情報提供に活用
+- **詳細**: [docs/planned-features.md#メディアファイル自動検出](docs/planned-features.md#メディアファイル自動検出)
+
 ---
 
 ## 実装済み機能（最近完了）

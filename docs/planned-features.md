@@ -36,7 +36,7 @@
 **出力HTML**:
 
 ```html
-<video controls>
+<video controls title="title">
   <source src="url" type="video/ext" />
   <track kind="captions" label="alt" />
   お使いのブラウザは動画タグをサポートしていません。
@@ -48,11 +48,13 @@
 - `<source>`タグで明示的にMIMEタイプを指定
 - `alt`テキストは`<track>`タグのキャプションラベルとして使用
 - `controls`属性をデフォルトで追加
+- CommonMark標準のタイトル属性（`![alt](url "title")`）に対応
 
 **使用例**:
 
 ```markdown
 ![プレゼンテーション](video.mp4)
+![製品デモ](demo.mp4 "新製品のデモンストレーション")
 ```
 
 ### 音声ファイル
@@ -63,7 +65,7 @@
 **出力HTML**:
 
 ```html
-<audio controls>
+<audio controls title="title">
   <source src="url" type="audio/ext" />
   お使いのブラウザは音声タグをサポートしていません。
 </audio>
@@ -73,11 +75,13 @@
 
 - `<source>`タグで明示的にMIMEタイプを指定
 - `controls`属性をデフォルトで追加
+- CommonMark標準のタイトル属性（`![alt](url "title")`）に対応
 
 **使用例**:
 
 ```markdown
 ![BGM](audio.mp3)
+![テーマソング](theme.mp3 "オープニングテーマ")
 ```
 
 ### 画像ファイル
@@ -88,9 +92,9 @@
 **出力HTML**:
 
 ```html
-<picture>
+<picture title="title">
   <source srcset="url" type="image/ext" />
-  <img src="url" alt="alt" loading="lazy" />
+  <img src="url" alt="alt" title="title" loading="lazy" />
 </picture>
 ```
 
@@ -98,6 +102,7 @@
 
 - `<picture>`タグで統一的に出力
 - `<source>`タグで明示的にMIMEタイプを指定
+- CommonMark標準のタイトル属性（`![alt](url "title")`）を`<picture>`と`<img>`の両方に設定
 - `<img>`タグはフォールバック兼アクセシビリティ対応
 - `loading="lazy"`属性を自動追加（遅延読み込み）
 
