@@ -149,6 +149,12 @@ static HTML_ENTITIES: Lazy<std::collections::HashSet<&'static str>> = Lazy::new(
 /// Content within plugins is escaped and can contain nested plugins
 /// or other Wiki syntax that will be processed by the plugin at runtime.
 ///
+/// # Plugin-specific behavior
+///
+/// **Table plugin (`@table`)**: Only the first table element found within `{{}}`
+/// will be processed with the specified Bootstrap classes. Multiple tables or
+/// nested `@table` plugins are not recommended and may cause unexpected behavior.
+///
 /// # Arguments
 ///
 /// * `html` - The HTML content to process

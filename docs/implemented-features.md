@@ -99,10 +99,10 @@ _斜体_ または _斜体_
 
 **UMD形式の強調** (視覚的な装飾):
 
-```markdown
+```umd
 ''太字'' → <b>太字</b>
 '''斜体''' → <i>斜体</i>
-**アンダーライン** → <u>アンダーライン</u> (Discord風)
+__アンダーライン__ → <u>アンダーライン</u> (Discord風)
 ```
 
 **注**:
@@ -145,12 +145,12 @@ _斜体_ または _斜体_
 
 `/*` から `*/` までがコメントとして扱われます。
 
-```markdown
+```umd
 これは表示される
-/_
+/*
 このブロック内は
 すべてコメント
-_/
+*/
 これも表示される
 ```
 
@@ -165,8 +165,8 @@ _/
 
 行の途中にもコメントを配置できます。
 
-```markdown
-前部分/_ コメント _/後部分
+```umd
+前部分/* コメント */後部分
 ```
 
 **出力**:
@@ -222,13 +222,13 @@ Discord風のSpoiler構文をサポートしています。
 
 ### Discord構文
 
-```markdown
+```umd
 このキャラは||実は悪役||だった。
 ```
 
 ### UMD装飾関数形式
 
-```markdown
+```umd
 このキャラは&spoiler{実は悪役};だった。
 ```
 
@@ -290,7 +290,7 @@ document.querySelectorAll(".spoiler").forEach((el) => {
 
 ### 構文
 
-```markdown
+```umd
 :HTML|HyperText Markup Language
 :CSS|Cascading Style Sheets
 :JavaScript|プログラミング言語
@@ -368,7 +368,7 @@ RIGHT: 右寄せテキスト → <p class="text-end">...</p>
 
 #### 色指定
 
-```markdown
+```umd
 COLOR(primary): 青いテキスト → Bootstrap text-primary
 COLOR(,warning): 黄色の背景 → Bootstrap bg-warning
 COLOR(danger,danger-subtle): 赤い強調テキスト → text-danger + bg-danger-subtle
@@ -383,7 +383,7 @@ COLOR(#FF0000): カスタム色 → インラインスタイル
 
 #### サイズ指定
 
-```markdown
+```umd
 SIZE(2): 大きいテキスト → <p class="fs-2">...</p>
 SIZE(1.5rem): カスタムサイズ → <p style="font-size: 1.5rem">...</p>
 ```
@@ -401,7 +401,7 @@ SIZE(1.5rem): カスタムサイズ → <p style="font-size: 1.5rem">...</p>
 
 複数のプレフィックスを組み合わせ可能:
 
-```markdown
+```umd
 SIZE(1.5): COLOR(primary): CENTER: 強調テキスト
 ```
 
@@ -413,7 +413,7 @@ SIZE(1.5): COLOR(primary): CENTER: 強調テキスト
 
 #### 基本装飾
 
-```markdown
+```umd
 &color(danger){エラー}; → <span class="text-danger">エラー</span>
 &size(2){大きい文字}; → <span class="fs-2">大きい文字</span>
 &badge(success){Active}; → <span class="badge bg-success">Active</span>
@@ -422,7 +422,7 @@ SIZE(1.5): COLOR(primary): CENTER: 強調テキスト
 
 #### セマンティック要素
 
-```markdown
+```umd
 &sup{上付き}; → <sup>上付き</sup>
 &sub{下付き}; → <sub>下付き</sub>
 &lang(en){Hello}; → <span lang="en">Hello</span>
@@ -452,7 +452,7 @@ Universal Markdownは拡張可能なプラグインシステムを提供しま�
 
 #### インライン型
 
-```markdown
+```umd
 &function(arg1,arg2){content}; 完全形
 &function(args); 引数のみ
 &function; 引数なし
@@ -460,7 +460,7 @@ Universal Markdownは拡張可能なプラグインシステムを提供しま�
 
 #### ブロック型
 
-```markdown
+```umd
 @function(args){{ multi-line content }} 複数行
 @function(args){single-line content} 単行
 @function(args) 引数のみ
@@ -474,9 +474,11 @@ Universal Markdownは拡張可能なプラグインシステムを提供しま�
 **複数引数の例**:
 
 ```html
-<template class="umd-plugin umd-plugin-function"
-  ><data value="0">arg1</data><data value="1">arg2</data>content</template
->
+<template class="umd-plugin umd-plugin-function">
+  <data value="0">arg1</data>
+  <data value="1">arg2</data>
+  content
+</template>
 ```
 
 - `class="umd-plugin umd-plugin-{関数名}"` - プラグイン識別用のクラス
@@ -488,7 +490,7 @@ Universal Markdownは拡張可能なプラグインシステムを提供しま�
 
 コンテンツ内のWiki構文はエスケープされて保持されるため、バックエンド側で`<template>`要素のテキストコンテンツを取得し、再度パーサーに渡すことでネストされた構文も処理可能です：
 
-```markdown
+```umd
 @box(){{ **bold** and *italic* }}
 ```
 
@@ -520,9 +522,9 @@ GFM準拠のテーブル（ソート可能）:
 
 セル連結対応の拡張テーブル:
 
-```markdown
+```umd
 | Header1 |> | Header3 |
-| Cell1 | Cell2 |
+| Cell1      | Cell2   |
 ```
 
 出力: `<table class="table umd-table">...</table>`
@@ -531,26 +533,26 @@ GFM準拠のテーブル（ソート可能）:
 
 **横方向連結 (colspan)**: `|>`
 
-```markdown
-| Header1 |> |
-| Cell1 | Cell2 |
+```umd
+| Header1 |>      |
+| Cell1   | Cell2 |
 ```
 
 **縦方向連結 (rowspan)**: `|^`
 
-```markdown
+```umd
 | Header1 | Header2 |
-| Cell1 | Cell2 |
-| |^ | Cell3 |
+| Cell1   | Cell2   |
+|^        | Cell3   |
 ```
 
 #### セル装飾
 
 セル内でブロック装飾プレフィックスを使用可能:
 
-```markdown
-| RIGHT: 右寄せ | CENTER: 中央 |
-| TOP: 上揃え | MIDDLE: 中央揃え |
+```umd
+| RIGHT: 右寄せ            | CENTER: 中央          |
+| TOP: 上揃え              | MIDDLE: 中央揃え      |
 | COLOR(primary): 青い文字 | SIZE(1.5): 大きい文字 |
 ```
 
@@ -569,6 +571,11 @@ YAMLまたはTOML形式のメタデータをサポート:
 title: ページタイトル
 author: 著者名
 date: 2026-01-26
+description: ページの説明文
+tags: ["universal markdown", "umd"]
+globs: ["**/api/**/*.umd"]
+priority: 2
+alwaysApply: false
 ---
 ```
 
@@ -579,6 +586,11 @@ date: 2026-01-26
 title = "ページタイトル"
 author = "著者名"
 date = 2026-01-26
+description = "ページの説明文"
+tags = ["universal markdown", "umd"]
+globs = ["**/api/**/*.umd"]
+priority = 2
+alwaysApply = false
 +++
 ```
 

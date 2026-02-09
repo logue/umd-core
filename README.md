@@ -113,7 +113,7 @@ Universal Markdownは、デフォルトでBootstrap 5のクラスを生成しま
 
 行の先頭にプレフィックスを付けることで、Bootstrapクラスやスタイルを適用できます：
 
-```markdown
+```umd
 COLOR(primary): プライマリカラーのテキスト
 SIZE(2): 大きいテキスト (fs-2)
 CENTER: 中央寄せのテキスト
@@ -142,7 +142,7 @@ SIZE(1.5): COLOR(danger): RIGHT: 複合スタイル
 
 インラインでBootstrapクラスを適用できます：
 
-```markdown
+```umd
 &color(primary){重要なテキスト};
 &size(1.5){やや大きいテキスト};
 &badge(danger){Error};
@@ -225,13 +225,13 @@ Universal Markdownは、Markdownの画像構文`![alt](url)`を拡張し、拡�
 
 Discord風のSpoiler構文をサポートしています：
 
-```markdown
+```umd
 このキャラは||実は悪役||だった。
 ```
 
 または、UMD装飾関数形式：
 
-```markdown
+```umd
 このキャラは&spoiler{実は悪役};だった。
 ```
 
@@ -301,9 +301,9 @@ Markdownの標準テーブルでは表現できないセル連結をサポート
 
 `|>`マーカーを使用して、右のセルと連結します：
 
-```markdown
-| ~Header1 |> | ~Header3 |h
-| Cell1 | Cell2 | Cell3 |
+```umd
+| ~Header1 |>      | ~Header3 |h
+| Cell1    | Cell2 | Cell3    |
 ```
 
 出力：
@@ -332,10 +332,10 @@ Markdownの標準テーブルでは表現できないセル連結をサポート
 
 `|^`マーカーを使用して、上のセルと連結します：
 
-```markdown
+```umd
 | ~Header1 | ~Header2 |h
-| Cell1 | Cell2 |
-|^ | Cell3 |
+| Cell1    | Cell2    |
+|^         | Cell3    |
 ```
 
 出力：
@@ -366,10 +366,10 @@ Markdownの標準テーブルでは表現できないセル連結をサポート
 
 colspanとrowspanを組み合わせることもできます：
 
-```markdown
+```umd
 | ~Header1 |> | ~Header3 |h
-| Cell1 |> | Cell3 |
-|^ |^ | Cell4 |
+| Cell1    |> | Cell3    |
+|^         |^ | Cell4    |
 ```
 
 **UMDテーブルの構文規則**：
@@ -384,9 +384,9 @@ colspanとrowspanを組み合わせることもできます：
 
 `COLOR(fg,bg):`プレフィックスでセルの前景色・背景色を指定できます：
 
-```markdown
-| COLOR(primary): Header | COLOR(,success): Cell |
-| Normal | COLOR(danger,warning): Alert |
+```umd
+| COLOR(primary): Header | COLOR(,success): Cell        |
+| Normal                 | COLOR(danger,warning): Alert |
 ```
 
 - Bootstrap色名（`primary`, `secondary`, `success`, `danger`, `warning`, `info`, `light`, `dark`）は自動的に`text-*`/`bg-*`クラスに変換
@@ -397,7 +397,7 @@ colspanとrowspanを組み合わせることもできます：
 
 `SIZE(value):`プレフィックスでフォントサイズを指定できます：
 
-```markdown
+```umd
 | SIZE(1.5): Large | SIZE(0.8): Small |
 ```
 
@@ -405,7 +405,7 @@ colspanとrowspanを組み合わせることもできます：
 
 ##### 水平配置
 
-```markdown
+```umd
 | LEFT: Left | CENTER: Center | RIGHT: Right |
 ```
 
@@ -433,9 +433,9 @@ colspanとrowspanを組み合わせることもできます：
 
 複数の装飾を組み合わせることができます：
 
-```markdown
+```umd
 | COLOR(primary): SIZE(1.2): CENTER: Header |
-| RIGHT: Normal cell |
+| RIGHT: Normal cell                        |
 ```
 
 **注意事項**：
@@ -448,10 +448,10 @@ colspanとrowspanを組み合わせることもできます：
 
 UMDテーブルの前に配置プレフィックスを付けることで、テーブル全体の配置を制御できます：
 
-```markdown
+```umd
 CENTER:
 | Header1 | Header2 |
-| Cell1 | Cell2 |
+| Cell1   | Cell2   |
 ```
 
 - `LEFT:`（改行）`| Header |` → テーブルを左寄せ（`w-auto`、デフォルト）
@@ -473,7 +473,7 @@ CENTER:
 
 用語と定義をセマンティックにマークアップできます：
 
-```markdown
+```umd
 :HTML|HyperText Markup Language
 :CSS|Cascading Style Sheets
 ```
@@ -495,7 +495,7 @@ Universal Markdownは、拡張可能なプラグインシステムを提供し�
 
 ### インライン型プラグイン
 
-```
+```umd
 &function(args){content};
 ```
 
@@ -510,7 +510,7 @@ Universal Markdownは、拡張可能なプラグインシステムを提供し�
 
 **使用例**:
 
-```
+```umd
 &highlight(yellow){重要なテキスト};
 ```
 
@@ -525,7 +525,7 @@ Universal Markdownは、拡張可能なプラグインシステムを提供し�
 
 ### ブロック型プラグイン（複数行）
 
-```
+```umd
 @function(args){{ content }}
 ```
 
@@ -540,7 +540,7 @@ Universal Markdownは、拡張可能なプラグインシステムを提供し�
 
 **使用例**:
 
-```
+```umd
 @toc(2){{
 }}
 ```
@@ -553,47 +553,49 @@ Universal Markdownは、拡張可能なプラグインシステムを提供し�
 
 ### ブロック型プラグイン（単行）
 
-```
+```umd
 @function(args){content}
 ```
 
 **出力HTML**:
 
 ```html
-<template class="umd-plugin umd-plugin-function"
-  ><data value="0">args</data>content</template
->
+<template class="umd-plugin umd-plugin-function">
+  <data value="0">args</data>
+  content
+</template>
 ```
 
 **使用例**:
 
-```
+```umd
 @include(file.txt){デフォルトコンテンツ}
 ```
 
 **出力**:
 
 ```html
-<template class="umd-plugin umd-plugin-include"
-  ><data value="0">file.txt</data>デフォルトコンテンツ</template
->
+<template class="umd-plugin umd-plugin-include">
+  <data value="0">file.txt</data>
+  デフォルトコンテンツ
+</template>
 ```
 
 ### 複数引数の例
 
 カンマ区切りで複数の引数を指定できます：
 
-```
+```umd
 @feed(https://example.com/feed.atom, 10)
 ```
 
 **出力**:
 
 ```html
-<template class="umd-plugin umd-plugin-feed"
-  ><data value="0">https://example.com/feed.atom</data
-  ><data value="1">10</data></template
->
+<template class="umd-plugin umd-plugin-feed">
+  <data value="0">https://example.com/feed.atom</data>
+  <data value="1">10</data>
+</template>
 ```
 
 各引数は個別の`<data>`要素として出力され、`value`属性にインデックス（0始まり）が設定されます。
@@ -602,22 +604,22 @@ Universal Markdownは、拡張可能なプラグインシステムを提供し�
 
 プラグインは**ネスト可能**で、コンテンツ内にさらにプラグインを含めることができます：
 
-```
+```umd
 &outer(arg1){text &inner(arg2){nested}; more};
 ```
 
 **元のWiki構文がHTMLエスケープされてテキストコンテンツとして保持**されます。これにより、JavaScript側でプラグイン実行時に再パースが可能です：
 
-```
+```umd
 @box(){{ **bold** and *italic* text }}
 ```
 
 ↓
 
 ```html
-<template class="umd-plugin umd-plugin-box"
-  >**bold** and *italic* text</template
->
+<template class="umd-plugin umd-plugin-box">
+  **bold** and *italic* text
+</template>
 ```
 
 プラグイン実装側で`<template>`要素のテキストコンテンツを取得し、再度Universal Markdownパーサーに渡すことで、ネストされた構文も正しく処理できます。
@@ -693,23 +695,24 @@ Universal Markdownには、プラグインと同じ表記を使う**組み込み
 
 UMD独自の視覚的強調：
 
-```
+```umd
 ''太字'' → <b>太字</b>
 '''斜体''' → <i>斜体</i>
+__下線__ → <u>下線</u>
 ```
 
 Markdownのセマンティック強調も利用可能：
 
-```
+```markdown
 **強調** → <strong>強調</strong>
-*強調* → <em>強調</em>
+_強調_ → <em>強調</em>
 ```
 
 ### 取り消し線
 
 2種類の取り消し線構文をサポート：
 
-```
+```markdown
 %%UMD取り消し線%% → <s>UMD取り消し線</s>
 ~~GFM取り消し線~~ → <del>GFM取り消し線</del>
 ```
@@ -723,7 +726,7 @@ Markdownのセマンティック強調も利用可能：
 
 行頭にプレフィックスを配置：
 
-```
+```umd
 COLOR(red): 赤い文字
 SIZE(1.5): 大きな文字
 RIGHT: 右寄せ
@@ -735,14 +738,14 @@ JUSTIFY: 両端揃え
 
 UMD形式（開始・終了タグ）：
 
-```
+```umd
 > 引用文
 > 複数行対応 <
 ```
 
 Markdown形式（行頭プレフィックス）も使用可能：
 
-```
+```markdown
 > Markdownスタイルの引用
 ```
 
@@ -813,4 +816,4 @@ Masashi Yoshikawa
 
 ## リポジトリ
 
-https://github.com/logue/UniversalMarkdown
+<https://github.com/logue/UniversalMarkdown>

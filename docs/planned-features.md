@@ -262,6 +262,66 @@ TRUNCATE: 長いテキストは省略されます...
 
 出力: `<div class="table-responsive"><table>...</table></div>`
 
+### 仕様と制約
+
+**処理対象**:
+
+- `{{}}` 内の**最初の1つのテーブルのみ**にスタイルを適用
+- GFM形式・UMD形式の両方に対応
+
+**複数テーブルの扱い**:
+
+```markdown
+@table(hover){{
+| Table 1 | A |
+
+| Table 2 | B |
+}}
+```
+
+→ 最初のテーブル（Table 1）のみに`table-hover`が適用される
+
+**テーブルが存在しない場合**:
+
+```markdown
+@table(striped){{
+これはテキストです
+}}
+```
+
+→ 警告を出力し、コンテンツはそのまま表示
+
+**ネストされた@tableプラグイン**:
+
+```markdown
+@table(hover){{
+  | foo | bar |
+  | --- | --:|
+  | 1   |  2 |
+  @table(striped){{
+    | key | value |
+  }}
+}}
+```
+
+→ **非推奨**: 外側のテーブル内にネストされた`@table`プラグインは予期しない動作を引き起こす可能性があります。各テーブルは個別の`@table`ブロックで指定してください。
+
+**推奨される書き方**:
+
+```markdown
+@table(hover){{
+| foo | bar |
+| --- | --:|
+| 1   |  2 |
+}}
+
+@table(striped){{
+| key | value |
+| --- | ----- |
+| alpha | one |
+}}
+```
+
 ### ブロック引用のデフォルトクラス
 
 ```html
