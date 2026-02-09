@@ -17,7 +17,7 @@ CommonMark準拠のMarkdownパーサーに、Bootstrap 5統合、セマンティ
 - **プラグインシステム**: インライン型（`&function(args){content};`）とブロック型（`@function(args){{ content }}`）
 - **UMD互換**: レガシーPHP実装との後方互換性
 - **フロントマターサポート**: YAML/TOML形式のメタデータ
-- **フットノート**: 標準的な脚注構文のサポート
+- **フットノート**: 標準的な脚注構文のサポート（構造化データとして取得）
 - **セキュリティ**: HTMLサニタイゼーション、危険なURLスキーム（javascript:, data:等）のブロック
 - **WASM対応**: WebAssembly出力によるブラウザ実行
 - **拡張性**: プラグインシステムによる機能拡張
@@ -30,12 +30,17 @@ CommonMark準拠のMarkdownパーサーに、Bootstrap 5統合、セマンティ
 
 ```markdown
 ---
-title: ドキュメントタイトル
+title: ページタイトル
 author: 著者名
-date: 2024-01-23
+date: 2026-01-26
+description: ページの説明文
 tags:
-  - rust
-  - wiki
+  - universal markdown
+  - umd
+globs:
+  - "**/api/**/*.umd"
+priority: 2
+alwaysApply: false
 ---
 
 # コンテンツ
@@ -45,9 +50,14 @@ tags:
 
 ```markdown
 +++
-title = "ドキュメントタイトル"
+title = "ページタイトル"
 author = "著者名"
-date = 2024-01-23
+date = 2026-01-26
+description = "ページの説明文"
+tags = ["universal markdown", "umd"]
+globs = ["**/api/**/*.umd"]
+priority = 2
+alwaysApply = false
 +++
 
 # コンテンツ
@@ -82,7 +92,7 @@ Markdownの標準的なフットノート構文をサポートしています：
 [^note2]: 名前付きフットノートも使えます。
 ```
 
-フットノートは本文から分離され、`ParseResult`の`footnotes`フィールドで取得できます：
+フットノートは本文から分離され、構造化データとして`ParseResult`の`footnotes`フィールドで取得できます：
 
 ```rust
 use universal_markdown::parse_with_frontmatter;
@@ -90,13 +100,45 @@ use universal_markdown::parse_with_frontmatter;
 let input = "Text with footnote[^1].\n\n[^1]: Footnote content.";
 let result = parse_with_frontmatter(input);
 
+// 本文HTML（フットノート参照のみ含む）
 println!("Body: {}", result.html);
+
+// フットノートデータ（構造化データ）
 if let Some(footnotes) = result.footnotes {
-    println!("Footnotes: {}", footnotes);
+    for footnote in footnotes {
+        println!("Footnote [^{}]: {}", footnote.id, footnote.content);
+    }
 }
 ```
 
-フットノートは`<section class="footnotes">`として生成され、適切にスタイリングできます。
+**JSON出力例**:
+
+```json
+[
+  {
+    "id": "1",
+    "content": "これが最初のフットノートです。"
+  },
+  {
+    "id": "note2",
+    "content": "名前付きフットノートも使えます。"
+  }
+]
+```
+
+フットノートはHTML化されず、Markdown形式の内容がJSON配列として取得されます。HTML化はバックエンド（Nuxt/Laravel等）側で処理することで、アプリケーションごとに柔軟なスタイリングが可能です。
+
+**ネストされたフットノートについて**:
+
+フットノートの内容内にさらにフットノート参照（`[^n]`）が含まれている場合、それはMarkdownテキストとしてそのまま保持されます。バックエンド側で再パースする際に、必要に応じて処理できます。
+
+```markdown
+[^1]: 最初のフットノート[^2]を含む
+
+[^2]: ネストされたフットノート
+```
+
+この場合、`footnotes[0].content`は`"最初のフットノート[^2]を含む"`となり、フットノート参照記号がそのまま残ります。深いネストは可読性を損なうため推奨されませんが、技術的には処理可能です。
 
 ## Bootstrap 5統合
 

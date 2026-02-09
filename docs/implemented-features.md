@@ -589,8 +589,11 @@ title: ページタイトル
 author: 著者名
 date: 2026-01-26
 description: ページの説明文
-tags: ["universal markdown", "umd"]
-globs: ["**/api/**/*.umd"]
+tags:
+  - universal markdown
+  - umd
+globs:
+  - "**/api/**/*.umd"
 priority: 2
 alwaysApply: false
 ---
@@ -623,7 +626,88 @@ Markdown標準の脚注構文:
 [^1]: 脚注の内容
 ```
 
-出力: `<section class="footnotes">...</section>`
+**出力形式**:
+
+フットノートはHTML化されず、本文と分離して構造化データとして`ParseResult.footnotes`で取得できます。
+
+```rust
+pub struct ParseResult {
+    pub html: String,
+    pub frontmatter: Option<Frontmatter>,
+    pub footnotes: Option<Vec<Footnote>>,
+}
+
+pub struct Footnote {
+    pub id: String,      // 例: "1", "note-name"
+    pub content: String, // Markdown形式の内容
+}
+```
+
+**使用例**:
+
+```rust
+let result = parse_with_frontmatter(input);
+
+// 本文HTML
+println!("HTML: {}", result.html);
+
+// フットノートデータ
+if let Some(footnotes) = result.footnotes {
+    for footnote in footnotes {
+        println!("Footnote [^{}]: {}", footnote.id, footnote.content);
+    }
+}
+```
+
+**JSON出力例**:
+
+```json
+[
+  {
+    "id": "1",
+    "content": "脚注の内容"
+  },
+  {
+    "id": "note-name",
+    "content": "名前付き脚注の内容"
+  }
+]
+```
+
+**HTML化**:
+
+フットノートのHTML化はバックエンド（Nuxt/Laravel等）側で処理します。これにより、アプリケーションごとに異なるスタイリングやレイアウトを柔軟に適用できます。
+
+**ネストされたフットノート**:
+
+フットノートの内容内にさらにフットノート参照（`[^n]`）が含まれている場合、それはMarkdownテキストとしてそのまま保持されます。
+
+```markdown
+[^1]: 最初のフットノート[^2]を含む
+
+[^2]: ネストされたフットノート
+```
+
+この場合の出力:
+
+```json
+[
+  {
+    "id": "1",
+    "content": "最初のフットノート[^2]を含む"
+  },
+  {
+    "id": "2",
+    "content": "ネストされたフットノート"
+  }
+]
+```
+
+バックエンド側で再パースする際に、フットノート参照記号を適切に処理できます。深いネストは可読性を損なうため推奨されませんが、技術的には処理可能です。
+
+**オプション設定**:
+
+将来的に、`ParserOptions.render_footnotes_inline: bool` オプションで、フットノートをHTML化して本文に含めるモードも検討中です。
 
 ### カスタムヘッダーID
 

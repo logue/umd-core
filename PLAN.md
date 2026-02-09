@@ -3,7 +3,7 @@
 **プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テストを合理的にパス(75%+目標)しつつ、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステムを提供。UMDレガシー構文との後方互換性も維持。
 
 **作成日**: 2026年1月23日
-**最終更新**: 2026年2月7日
+**最終更新**: 2026年2月9日
 **Rustバージョン**: 1.93 (最新安定版)
 **ライセンス**: MIT
 
@@ -48,6 +48,50 @@
 - 13 conflict resolution tests
 - 10 doctests
 - 1 semantic integration test
+
+---
+
+## 最近の仕様変更（2026年2月9日）
+
+以下の仕様が確定・変更されました：
+
+### ✅ URL自動リンクの方針変更
+
+- 裸のURL（`http://example.com`）は自動リンク化**しない**
+- `<URL>` 形式の明示的なマークアップのみサポート
+- **理由**: 日本語などマルチバイト文字環境での誤検出防止、文脈の保護、明示性の向上
+- **詳細**: [docs/planned-features.md#url自動リンク](docs/planned-features.md#url自動リンク)
+
+### ✅ URLスキームのブラックリスト強化
+
+- `javascript:`, `data:`, `vbscript:`, `file:` をブロック
+- ブロックされたURLはリンク化せず、プレーンテキストとして出力
+- `<URL>` 構文でも適用される
+- `file:` スキームは将来的に設定オプション（`ParserOptions.allow_file_scheme`）で許可可能にすることを検討
+- **詳細**: [docs/planned-features.md#セキュリティ設定オプション](docs/planned-features.md#セキュリティ設定オプション)
+
+### ✅ Markdown構文の推奨方針
+
+- `_斜体_` を推奨（`*斜体*` は多くのエディタで自動整形される）
+- `- リスト` を推奨（`* リスト` も同様に自動整形される）
+- 技術的には両方サポートするが、ドキュメントでは推奨構文のみを記載
+
+### ✅ セマンティック要素の構文修正
+
+パラメータを持たない装飾関数の構文を明確化：
+
+- パラメータあり: `&function(param){content};`
+- パラメータなし: `&function(content);` （`{}` ではなく `()` を使用）
+- 引数なし: `&function;`
+
+**例**: `&sup(上付き);`, `&kbd(Ctrl);`, `&cite(Title);`
+
+### ✅ フットノートの出力形式確定
+
+- HTML化せず、構造化データ（JSON配列）として `ParseResult.footnotes` で取得
+- バックエンド（Nuxt/Laravel等）側でHTML化する方針
+- ネストされたフットノートはMarkdownテキストとしてそのまま保持し、バックエンドで再パース可能
+- **詳細**: [docs/implemented-features.md#フットノート](docs/implemented-features.md#フットノート)
 
 ---
 
@@ -114,6 +158,45 @@ Discord風スポイラー表示（`||text||` 構文）。
 **実装**: [src/extensions/preprocessor.rs](src/extensions/preprocessor.rs) の `process_definition_lists`
 **詳細**: [docs/implemented-features.md#定義リスト](docs/implemented-features.md#定義リスト)
 
+#### ✅ フットノート
+
+Markdown標準の脚注構文をサポート。HTML化せず、構造化データ（JSON配列）として取得。
+
+**構文**:
+
+```markdown
+本文[^1]です。
+
+[^1]: 脚注の内容
+```
+
+**出力形式**: `ParseResult.footnotes` で `Vec<Footnote>` として取得。バックエンド（Nuxt/Laravel）側でHTML化。
+
+**実装**: comrakのフットノート機能を利用
+**詳細**: [docs/implemented-features.md#フットノート](docs/implemented-features.md#フットノート)
+
+#### ✅ インライン装飾関数（セマンティック要素）
+
+セマンティックHTML要素を生成する装飾関数。
+
+**構文規則**:
+
+- パラメータあり: `&function(param){content};`
+- パラメータなし: `&function(content);`
+- 引数なし: `&function;`
+
+**例**:
+
+```markdown
+&sup(上付き); → <sup>上付き</sup>
+&kbd(Ctrl); → <kbd>Ctrl</kbd>
+&lang(en){Hello}; → <span lang="en">Hello</span>
+&time(2026-01-26){今日}; → <time datetime="2026-01-26">今日</time>
+```
+
+**実装**: [src/extensions/inline_decorations.rs](src/extensions/inline_decorations.rs)
+**詳細**: [docs/implemented-features.md#セマンティック要素](docs/implemented-features.md#セマンティック要素)
+
 ---
 
 ### 中優先度（中期実装予定）
@@ -151,8 +234,17 @@ Bootstrapの`blockquote`クラスを自動付与:
 - **Setext見出し**: 下線形式
 - **参照スタイルリンク**: `[text][ref]`
 - **バックスラッシュエスケープ**: `\*`
-- **自動URL検出**: `http://example.com`
+- **URL自動リンク（明示的）**: `<http://example.com>` のみサポート
+  - 裸のURL（`http://example.com`）は自動リンク化**しない**
+  - 理由: マルチバイト環境での誤検出防止、文脈の保護、明示性の向上
+  - 詳細: [docs/planned-features.md#url自動リンク](docs/planned-features.md#url自動リンク)
 - **ハード改行**: 行末2スペースまたは`\`
+
+**Markdown構文の推奨**:
+
+- `_斜体_` を推奨（`*斜体*` は多くのエディタで自動整形される）
+- `- リスト` を推奨（`* リスト` も同様に自動整形される）
+- これらは技術的にはサポートされるが、ドキュメントでは推奨構文のみを記載
 
 **目標**: CommonMark準拠率75%+達成
 
@@ -1656,6 +1748,41 @@ universal-markdown/
 - プラグインが生成するHTMLは信頼されたコードとして扱う
 - プラグイン側でサニタイズ責任を負う
 - ユーザー入力をプラグインに渡す場合は、プラグイン内でエスケープ必須
+
+### URLスキームのブラックリスト
+
+**ブロック対象のスキーム**:
+
+- `javascript:` - JavaScript実行によるXSS攻撃
+- `data:` - Base64エンコードスクリプト埋め込みによるXSS攻撃
+- `vbscript:` - VBScript実行によるXSS攻撃（IEレガシー対策）
+- `file:` - ローカルファイルシステムアクセス（情報漏洩リスク、デフォルトでブロック）
+
+**ブロック時の動作**:
+
+危険なスキームを含むURLは、リンクとして処理されず、プレーンテキストとしてそのまま出力されます。
+
+```markdown
+<data:text/html,test> → data:text/html,test (リンク化されない)
+<javascript:alert(1)> → javascript:alert(1) (リンク化されない)
+<file:///etc/passwd> → file:///etc/passwd (リンク化されない)
+<https://example.com> → <a href="...">...</a> (正常にリンク化)
+```
+
+通常のリンク構文 `[text](url)` と明示的なautolink `<url>` の両方に適用されます。
+
+**許可されるスキーム**:
+
+- 標準プロトコル: `http:`, `https:`, `mailto:`, `tel:`, `ftp:`
+- カスタムアプリスキーム: `spotify:`, `discord:`, `vscode:`, `steam:` など
+- 相対パス: `/path`, `./path`, `#anchor`
+
+**file:スキームの条件付き許可（検討中）**:
+
+`file:`スキームはデフォルトでブロックされますが、スタンドアロンアプリケーション（オフラインヘルプシステム、Electron/Tauriアプリなど）での使用を想定し、将来的に `ParserOptions.allow_file_scheme: bool` オプションで許可できるようにすることを検討中です。
+
+**実装**: [src/sanitizer.rs](src/sanitizer.rs) の `sanitize_url`
+**詳細**: [docs/planned-features.md#セキュリティ設定オプション](docs/planned-features.md#セキュリティ設定オプション)
 
 ---
 
