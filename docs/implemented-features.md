@@ -526,7 +526,10 @@ SIZE(1.5): COLOR(primary): CENTER: 強調テキスト
 &bdi(Text); → <bdi>Text</bdi>
 &bdo(rtl){Text}; → <bdo dir="rtl">Text</bdo>
 &wbr; → <wbr />
+&br; → <br />
 ```
+
+**注意**: `&br;`は主にテーブルセル内での明示的な改行に使用します。通常の段落では行末に2つのスペースまたは`\`を使用してください。
 
 ---
 

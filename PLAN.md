@@ -116,6 +116,12 @@
 - `open` パラメータを指定すると初期状態で開いた状態になる
 - Bootstrapのアコーディオンと似た機能だが、標準HTMLのみで実装（JavaScriptやCSS不要）
 - **詳細**: [docs/implemented-features.md#detail---詳細情報の折りたたみ](docs/implemented-features.md#detail---詳細情報の折りたたみ)
+
+### ✅ テーブルセル内での明示的な改行
+
+- `&br;` 構文を追加し、`<br />` タグを生成
+- 主にテーブルセル内で使用（行末スペース2つや `\` は使えないため）
+- 通常の段落では従来通り行末スペースやバックスラッシュを推奨
 - **詳細**: [docs/implemented-features.md#ブロック要素を含む定義](docs/implemented-features.md#ブロック要素を含む定義)
 
 ---
