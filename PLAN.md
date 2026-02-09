@@ -132,6 +132,14 @@
 - ツールチップ表示や支援技術での追加情報提供に活用
 - **詳細**: [docs/planned-features.md#メディアファイル自動検出](docs/planned-features.md#メディアファイル自動検出)
 
+### ✅ 絵文字ショートコードの非サポート方針
+
+- GitHub風の絵文字ショートコード（`:thumbsup:`, `:smile:`など）は**サポートしない**
+- UTF-8/Unicodeエンコーディングを要求し、Unicode絵文字の直接入力を推奨
+- 変換テーブルの保守コストを避け、エンコーディングの透明性を保つ
+- モダンなエディタの絵文字ピッカー（macOS: Ctrl+Cmd+Space、Windows: Win+.）を活用
+- **詳細**: [docs/planned-features.md#絵文字ショートコード](docs/planned-features.md#絵文字ショートコード)
+
 ---
 
 ## 実装済み機能（最近完了）
