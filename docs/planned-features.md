@@ -10,7 +10,9 @@
 - [ブロック装飾の追加機能](#ブロック装飾の追加機能)
 - [テーブル拡張](#テーブル拡張)
 - [Markdown拡張機能](#markdown拡張機能)
+- [セキュリティ設定オプション](#セキュリティ設定オプション提案)
 - [高度なUMD機能](#高度なumd機能)
+  - [数式サポート](#数式サポートmath-formula-support)
 
 ---
 
@@ -496,6 +498,81 @@ PageName/FileName
 ../page
 /page
 ```
+
+### 数式サポート（Math Formula Support）
+
+#### 概要
+
+数式を表現するための明示的な構文を提供します。
+
+#### 構文
+
+```umd
+&math(\sqrt{x^2});
+&math(\frac{a}{b});
+&math(\sum_{i=1}^{n} i);
+&math(E = mc^2);
+```
+
+**設計方針**:
+
+- LaTeX/KaTeX構文を使用
+- セマンティック要素の構文規則に従い、パラメータなしの関数形式: `&math(式);`
+- `$...$` 構文は**採用しません**
+
+**理由**:
+
+1. **金銭表記との競合**: 「The cost is $5.00.」のような文章で `$5.00` が数式デリミタとして誤認される可能性
+2. **明示性の向上**: `&math(...);` で数式であることが明確
+3. **エスケープの回避**: 金銭表記のたびに `\$` とエスケープするのは非効率的
+
+#### 出力HTML
+
+```html
+<template class="umd-plugin umd-plugin-math">
+  <data type="formula">\sqrt{x^2}</data>
+</template>
+```
+
+#### 実装方針
+
+- UMDパーサーは数式の構文解析を**行いません**
+- LaTeX式をそのまま `<data>` 要素に格納
+- 実際のレンダリングはバックエンド（Nuxt/Laravel）で実行
+
+#### バックエンドでのレンダリング
+
+```javascript
+// KaTeXの例
+import katex from "katex";
+
+const formula = template.querySelector('[type="formula"]').textContent;
+const rendered = katex.renderToString(formula, {
+  throwOnError: false,
+  displayMode: false,
+});
+```
+
+```php
+// MathJaxの例（Laravel）
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<template class="umd-plugin umd-plugin-math">
+  <data type="formula">{{ $formula }}</data>
+</template>
+```
+
+#### ブロック数式（将来的な拡張）
+
+```umd
+@math{{
+\begin{align}
+  a &= b \\
+  c &= d
+\end{align}
+}}
+```
+
+ブロック型プラグインとして実装予定。`displayMode: true` でレンダリング。
 
 ---
 

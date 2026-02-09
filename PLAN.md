@@ -93,6 +93,31 @@
 - ネストされたフットノートはMarkdownテキストとしてそのまま保持し、バックエンドで再パース可能
 - **詳細**: [docs/implemented-features.md#フットノート](docs/implemented-features.md#フットノート)
 
+### ✅ 定義リストのブロック要素対応
+
+- `|` の後に改行を入れることで、定義部分にテーブルやリストなどのブロック要素を含めることが可能
+- PukiWiki/LukiWikiの類似機能にインスパイアされているが、可読性のためインデント（スペース2個）を推奨するなど一部仕様が異なる
+- 複雑な定義や階層的な情報を `<dd>` 内に配置できる
+
+### ✅ 数式サポートの構文方針
+
+- 数式表現に `&math(LaTeX式);` 構文を採用
+- `$...$` 構文は**採用しない**
+  - **理由**: 「The cost is $5.00.」のような金銭表記との競合を避けるため
+  - エスケープ（`\$5.00`）を毎回書く必要をなくす
+- UMDパーサーは数式の解析を行わず、LaTeX式をそのまま `<template class="umd-plugin umd-plugin-math"><data type="formula">...</data></template>` として出力
+- バックエンド（Nuxt/Laravel等）でKaTeXやMathJaxを使ってレンダリング
+- **詳細**: [docs/planned-features.md#数式サポート](docs/planned-features.md#数式サポートmath-formula-support)
+
+### ✅ 標準プラグイン: @detail
+
+- 標準HTML `<details>` 要素を使った折りたたみコンテンツを生成する標準プラグイン
+- 構文: `@detail(サマリー){{ 内容 }}` または `@detail(サマリー, open){{ 内容 }}`
+- `open` パラメータを指定すると初期状態で開いた状態になる
+- Bootstrapのアコーディオンと似た機能だが、標準HTMLのみで実装（JavaScriptやCSS不要）
+- **詳細**: [docs/implemented-features.md#detail---詳細情報の折りたたみ](docs/implemented-features.md#detail---詳細情報の折りたたみ)
+- **詳細**: [docs/implemented-features.md#ブロック要素を含む定義](docs/implemented-features.md#ブロック要素を含む定義)
+
 ---
 
 ## 実装済み機能（最近完了）
@@ -148,12 +173,28 @@ Discord風スポイラー表示（`||text||` 構文）。
 
 用語集やFAQで使用する定義リスト構文。
 
-**構文**:
+**基本構文**:
 
 ```markdown
 :用語1|定義1
 :用語2|定義2
 ```
+
+**ブロック要素対応**:
+
+`|` の後に改行を入れることで、テーブルやリストなどのブロック要素を `<dd>` 内に配置可能。インデント（スペース2個）を推奨。
+
+```umd
+:タイトル1|
+  | ヘッダー1 | ヘッダー2 |
+  | --------- | --------- |
+  | アイテム1 | アイテム2 |
+:タイトル2|
+  - リスト1
+  - リスト2
+```
+
+**注**: この機能はPukiWiki/LukiWikiの類似機能にインスパイアされていますが、可読性のためインデントを推奨するなど、一部仕様が異なります。
 
 **実装**: [src/extensions/preprocessor.rs](src/extensions/preprocessor.rs) の `process_definition_lists`
 **詳細**: [docs/implemented-features.md#定義リスト](docs/implemented-features.md#定義リスト)
@@ -205,13 +246,13 @@ Markdown標準の脚注構文をサポート。HTML化せず、構造化デー�
 
 プラグインシステムによるテーブルバリエーション:
 
-```markdown
+```umd
 @table(striped,hover){{
-| Header | Data |
+  | Header | Data |
 }}
 
 @table(responsive){{
-| Header | Data |
+  | Header | Data |
 }}
 ```
 
@@ -1204,7 +1245,7 @@ Bootstrapの`blockquote`クラスを自動付与:
           ```umd
           | Header1 |> | Header3 |
           | Cell1   |> | Cell3   |
-          | |^      |^ | Cell4   |
+          | ^       |^ | Cell4   |
           ```
           → `Cell1`が2x2のセル連結（`<td colspan="2" rowspan="2">Cell1</td>`）
         - 注: `|>`や`|^`の存在により、UMDテーブルと自動判別
