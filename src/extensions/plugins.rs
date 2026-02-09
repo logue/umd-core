@@ -62,6 +62,18 @@ fn render_args_as_data(args: &str) -> String {
         .join("")
 }
 
+// Standard plugins that output direct HTML instead of <template>
+// @detail plugin for <details> element
+static DETAIL_PLUGIN: Lazy<Regex> = Lazy::new(|| {
+    // Match @detail(summary) or @detail(summary, open){{ content }}
+    Regex::new(r"@detail\(([^,)]+)(?:,\s*open)?\)\{\{([\s\S]*?)\}\}").unwrap()
+});
+
+static DETAIL_PLUGIN_OPEN: Lazy<Regex> = Lazy::new(|| {
+    // Separate pattern to detect 'open' attribute
+    Regex::new(r"@detail\([^,)]+,\s*open\)").unwrap()
+});
+
 // Block plugin patterns
 static BLOCK_PLUGIN_MULTILINE: Lazy<Regex> = Lazy::new(|| {
     // Match @function(args){{ content }} using non-greedy match
@@ -183,6 +195,26 @@ static HTML_ENTITIES: Lazy<std::collections::HashSet<&'static str>> = Lazy::new(
 /// ```
 pub fn apply_plugin_syntax(html: &str) -> String {
     let mut result = html.to_string();
+
+    // Process standard plugins first - @detail(summary[, open]){{ content }}
+    // This outputs direct HTML <details> instead of <template>
+    result = DETAIL_PLUGIN
+        .replace_all(&result, |caps: &regex::Captures| {
+            let summary = caps.get(1).map_or("", |m| m.as_str().trim());
+            let content = caps.get(2).map_or("", |m| m.as_str().trim());
+
+            // Check if 'open' attribute is present in the full match
+            let full_match = caps.get(0).map_or("", |m| m.as_str());
+            let is_open = DETAIL_PLUGIN_OPEN.is_match(full_match);
+
+            let open_attr = if is_open { " open" } else { "" };
+
+            format!(
+                "\n<details{}>\n  <summary>{}</summary>\n  {}\n</details>\n",
+                open_attr, summary, content
+            )
+        })
+        .to_string();
 
     // Process block plugins (multiline) first - @function(args){{ content }}
     result = BLOCK_PLUGIN_MULTILINE
@@ -424,6 +456,26 @@ mod tests {
         let output = apply_plugin_syntax(input);
         assert!(output.contains("class=\"umd-plugin umd-plugin-toc\""));
         assert!(!output.contains("<data"));
+    }
+
+    #[test]
+    fn test_detail_plugin_basic() {
+        let input = "@detail(Click to expand){{ Hidden content }}";
+        let output = apply_plugin_syntax(input);
+        assert!(output.contains("<details>"));
+        assert!(output.contains("<summary>Click to expand</summary>"));
+        assert!(output.contains("Hidden content"));
+        assert!(output.contains("</details>"));
+        assert!(!output.contains("open")); // Should not have open attribute
+    }
+
+    #[test]
+    fn test_detail_plugin_with_open() {
+        let input = "@detail(Already visible, open){{ This is shown by default }}";
+        let output = apply_plugin_syntax(input);
+        assert!(output.contains("<details open>"));
+        assert!(output.contains("<summary>Already visible</summary>"));
+        assert!(output.contains("This is shown by default"));
     }
 
     #[test]

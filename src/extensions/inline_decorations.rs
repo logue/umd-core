@@ -13,6 +13,7 @@
 //! - &data(value){text};
 //! - &bdi(text); &bdo(dir){text};
 //! - &wbr; (word break opportunity)
+//! - &br; (manual line break)
 //! - %%text%% → <s>text</s> (strikethrough)
 //!
 //! Note: For underline, use Discord-style __text__ syntax instead
@@ -68,6 +69,9 @@ static INLINE_BDO: Lazy<Regex> =
 
 // Word break opportunity (self-closing)
 static INLINE_WBR: Lazy<Regex> = Lazy::new(|| Regex::new(r"&wbr;").unwrap());
+
+// Manual line break (self-closing) - mainly for table cells where trailing spaces don't work
+static INLINE_BR: Lazy<Regex> = Lazy::new(|| Regex::new(r"&br;").unwrap());
 
 /// Regex for LukiWiki strikethrough: %%text%% → <s>text</s>
 static LUKIWIKI_STRIKETHROUGH: Lazy<Regex> = Lazy::new(|| Regex::new(r"%%([^%]+)%%").unwrap());
@@ -334,6 +338,9 @@ pub fn apply_inline_decorations(html: &str) -> String {
     // Word break opportunity
     result = INLINE_WBR.replace_all(&result, "<wbr />").to_string();
 
+    // Manual line break (mainly for table cells)
+    result = INLINE_BR.replace_all(&result, "<br />").to_string();
+
     result
 }
 
@@ -476,6 +483,13 @@ mod tests {
         let input = "Very&wbr;Long&wbr;Word";
         let output = apply_inline_decorations(input);
         assert_eq!(output, "Very<wbr />Long<wbr />Word");
+    }
+
+    #[test]
+    fn test_br() {
+        let input = "Line 1&br;Line 2&br;Line 3";
+        let output = apply_inline_decorations(input);
+        assert_eq!(output, "Line 1<br />Line 2<br />Line 3");
     }
 
     #[test]
