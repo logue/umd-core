@@ -1,6 +1,6 @@
 # 実装予定機能リファレンス
 
-**最終更新**: 2026年2月8日
+**最終更新**: 2026年2月9日
 
 このドキュメントは実装予定だが、まだ実装されていない機能を記載しています。
 
@@ -143,7 +143,9 @@ URL sanitizationは既存のsanitizer.rsで処理。以下のスキームをブ�
 - `javascript:` - JavaScript実行
 - `data:` - Base64エンコードされたスクリプト
 - `vbscript:` - VBScript実行
-- `file:` - ローカルファイルアクセス
+- `file:` - ローカルファイルアクセス（デフォルト）
+
+**注**: `file:`スキームはセキュリティ上の理由でデフォルトでブロックされますが、スタンドアロンアプリケーション（オフラインヘルプシステムなど）のユースケースでは有用です。グローバルコンフィグで許可できる仕様を検討中（後述の「セキュリティ設定オプション」を参照）。
 
 ### 拡張オプション（将来的な検討事項）
 
@@ -151,7 +153,7 @@ URL sanitizationは既存のsanitizer.rsで処理。以下のスキームをブ�
 
 **ブロック型**:
 
-```markdown
+```umd
 @media(autoplay,loop,muted){![動画](video.mp4)}
 @media(preload=metadata){![音声](audio.mp3)}
 @media(mobile.jpg,tablet.jpg,desktop.jpg){![レスポンシブ](desktop.jpg)}
@@ -160,7 +162,7 @@ URL sanitizationは既存のsanitizer.rsで処理。以下のスキームをブ�
 
 **インライン型**:
 
-```markdown
+```umd
 テキスト&media(width=100){![アイコン](icon.png)};テキスト
 説明文&media(autoplay,muted){![デモ](demo.mp4)};説明文
 ```
@@ -173,7 +175,7 @@ URL sanitizationは既存のsanitizer.rsで処理。以下のスキームをブ�
 
 #### テキストの両端揃え
 
-```markdown
+```umd
 JUSTIFY: この文章は両端揃えで表示されます。
 ```
 
@@ -185,10 +187,10 @@ JUSTIFY: この文章は両端揃えで表示されます。
 
 UMDテーブル（区切り行なし）の前に`JUSTIFY:`がある場合、テーブル全体の幅を100%に維持:
 
-```markdown
+```umd
 JUSTIFY:
 | Header1 | Header2 |
-| Cell1 | Cell2 |
+| Cell1   | Cell2   |
 ```
 
 出力: `<table class="table umd-table">...</table>`
@@ -204,7 +206,7 @@ JUSTIFY:
 
 **例（ブロック型プラグイン）**:
 
-```markdown
+```umd
 CENTER:
 @callout(info)
 ```
@@ -215,7 +217,7 @@ CENTER:
 
 テキスト省略:
 
-```markdown
+```umd
 TRUNCATE: 長いテキストは省略されます...
 ```
 
@@ -235,7 +237,7 @@ TRUNCATE: 長いテキストは省略されます...
 
 プラグインシステムで実装予定:
 
-```markdown
+```umd
 @table(striped,hover){{
 | Header1 | Header2 |
 | Cell1   | Cell2   |
@@ -253,7 +255,7 @@ TRUNCATE: 長いテキストは省略されます...
 
 ### レスポンシブ対応
 
-```markdown
+```umd
 @table(responsive){{
 | Header1 | Header2 |
 | Cell1   | Cell2   |
@@ -271,7 +273,7 @@ TRUNCATE: 長いテキストは省略されます...
 
 **複数テーブルの扱い**:
 
-```markdown
+```umd
 @table(hover){{
 | Table 1 | A |
 
@@ -283,7 +285,7 @@ TRUNCATE: 長いテキストは省略されます...
 
 **テーブルが存在しない場合**:
 
-```markdown
+```umd
 @table(striped){{
 これはテキストです
 }}
@@ -293,14 +295,15 @@ TRUNCATE: 長いテキストは省略されます...
 
 **ネストされた@tableプラグイン**:
 
-```markdown
+```umd
 @table(hover){{
   | foo | bar |
-  | --- | --:|
-  | 1   |  2 |
+  | --- | ---:|
+  | 1   |   2 |
   @table(striped){{
-    | key | value |
-  }}
+    | key   | value |
+    | alpha | one   |
+   }}
 }}
 ```
 
@@ -308,17 +311,16 @@ TRUNCATE: 長いテキストは省略されます...
 
 **推奨される書き方**:
 
-```markdown
+```umd
 @table(hover){{
 | foo | bar |
-| --- | --:|
-| 1   |  2 |
+| --- | ---:|
+| 1   |   2 |
 }}
 
 @table(striped){{
-| key | value |
-| --- | ----- |
-| alpha | one |
+| key   | value |
+| alpha | one   |
 }}
 ```
 
@@ -358,13 +360,91 @@ Bootstrap標準の引用スタイルを自動適用。
 \*リテラルアスタリスク\*
 ```
 
-### 自動URL検出
+### URL自動リンク（明示的）
 
 ```markdown
-http://example.com
+<https://example.com>
+<mailto:user@example.com>
 ```
 
-自動的にリンク化されます。
+**方針**: 裸のURL（`http://example.com`）の自動リンク化は**行いません**。
+
+**理由**:
+
+1. **誤検出の防止**: 日本語などマルチバイト文字を含む文章では、URL直後のテキストがアドレスの一部として誤認されやすい
+2. **文脈の保護**: 「`http://`で始まる」のような説明文が意図せずリンク化されるのを防ぐ
+3. **明示性の向上**: `<URL>` 形式で明示的にマークアップすることで、意図したリンクのみが有効化される
+
+**セキュリティ制約**:
+
+危険なスキーム（`javascript:`, `data:`, `vbscript:`, `file:`）を含むURLは、リンクとして処理されず、プレーンテキストとして出力されます。
+
+```markdown
+<data:text/html,test> → data:text/html,test (リンク化されない)
+<javascript:alert(1)> → javascript:alert(1) (リンク化されない)
+<file:///etc/passwd> → file:///etc/passwd (リンク化されない)
+<https://example.com> → <a href="...">https://example.com</a> (正常にリンク化)
+```
+
+これにより、XSS攻撃やローカルファイルアクセスなどのセキュリティリスクを防ぎます。
+
+この仕様はCommonMark標準に準拠しています。
+
+---
+
+## セキュリティ設定オプション（提案）
+
+### file:スキーマの条件付き許可
+
+**背景**:
+
+`file:`スキーマは通常、情報漏洩のリスクがあるためブロックされますが、特定のユースケースでは必要になります：
+
+- スタンドアロンソフトウェアのオフラインヘルプシステム
+- ローカルドキュメント管理アプリケーション
+- Electron/Tauriアプリでのローカルリソースアクセス
+
+**実装案**:
+
+`ParserOptions`に設定オプションを追加：
+
+```rust
+pub struct ParserOptions {
+    pub gfm_extensions: bool,
+    // ... existing fields ...
+
+    /// Allow file:// scheme in URLs (default: false)
+    /// WARNING: Only enable in trusted, sandboxed environments
+    pub allow_file_scheme: bool,
+}
+```
+
+**使用例**:
+
+```rust
+// Webアプリケーション（デフォルト - file: ブロック）
+let options = ParserOptions::default();
+
+// スタンドアロンアプリ（file: 許可）
+let options = ParserOptions {
+    allow_file_scheme: true,
+    ..ParserOptions::default()
+};
+
+let html = parse_to_html(markdown, &options);
+```
+
+**セキュリティ考慮事項**:
+
+1. **デフォルトは無効**: Webアプリケーションの安全性を優先
+2. **明示的な有効化**: 開発者が意図的に有効化する必要がある
+3. **ドキュメント警告**: 有効化のリスクを明確に文書化
+4. **サンドボックス推奨**: Electron等のサンドボックス環境での使用を推奨
+
+**対象スキーム**:
+
+- `file:` - 条件付き許可可能
+- `javascript:`, `data:`, `vbscript:` - 常にブロック（設定不可）
 
 ---
 
@@ -389,7 +469,7 @@ http://example.com
 
 ### タスクリスト拡張
 
-```markdown
+```umd
 - [ ] 未完了タスク
 - [x] 完了タスク
 - [-] 不確定状態（UMD拡張）
@@ -397,7 +477,7 @@ http://example.com
 
 ### カスタムリンク属性
 
-```markdown
+```umd
 [テキスト](url){id class}
 ```
 
@@ -405,13 +485,13 @@ http://example.com
 
 ### 添付ファイル構文
 
-```markdown
+```umd
 PageName/FileName
 ```
 
 ### 相対パス
 
-```markdown
+```umd
 ./page
 ../page
 /page

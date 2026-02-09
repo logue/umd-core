@@ -1,6 +1,6 @@
 # 実装済み機能リファレンス
 
-**最終更新**: 2026年2月8日
+**最終更新**: 2026年2月9日
 
 このドキュメントはUniversal Markdownで実装済みの機能を記載しています。
 
@@ -58,37 +58,53 @@ fn main() {
 ```markdown
 - アイテム1
 - アイテム2
-
-* アイテム3
+- アイテム3
 ```
+
+**注意**: `* アイテム` 構文もCommonMark標準でサポートされていますが、多くのエディタで `- アイテム` に自動整形されるため、`-` の使用を推奨します。
 
 **順序付きリスト**:
 
 ```markdown
 1. 最初
 2. 次
-
-- UMD形式もサポート
+3. さらに
 ```
 
 ### リンクと画像
+
+**通常のリンク**:
 
 ```markdown
 [リンクテキスト](https://example.com)
 ![画像の代替テキスト](image.png)
 ```
 
+**明示的なURL自動リンク**:
+
+```markdown
+<https://example.com>
+<mailto:user@example.com>
+```
+
+出力: `<a href="https://example.com">https://example.com</a>`
+
+**注意**: 裸のURL（`http://example.com`）は自動リンク化されません。`<URL>` 形式で明示的にマークアップする必要があります。これは誤検出を防ぎ、意図したリンクのみを有効化するための仕様です。
+
 ### 強調
 
 ```markdown
-_斜体_ または _斜体_
-**太字** (Markdown標準)
+_斜体_
+**太字**
 ```
 
-**注意**: `__text__` はCommonMark標準では `<strong>` ですが、Universal Markdownでは Discord風に `<u>` (アンダーライン) に変換されます。
+**注意**:
 
-```markdown
-**アンダーライン** → <u>アンダーライン</u> (Discord風)
+- `*斜体*` 構文もCommonMark標準でサポートされていますが、多くのエディタで `_斜体_` に自動整形されるため、`_` の使用を推奨します。
+- `__text__` はCommonMark標準では `<strong>` ですが、Universal Markdownでは Discord風に `<u>` (アンダーライン) に変換されます。
+
+```umd
+__アンダーライン__ → <u>アンダーライン</u> (Discord風)
 ```
 
 ---
@@ -107,9 +123,10 @@ __アンダーライン__ → <u>アンダーライン</u> (Discord風)
 
 **注**:
 
-- Markdown形式（`*`, `**`）はセマンティックタグ（`<em>`, `<strong>`）を生成
-- UMD形式は視覚的タグを生成
+- Markdown形式の強調（`_`, `**`）はセマンティックタグ（`<em>`, `<strong>`）を生成
+- UMD形式は視覚的タグ（`<i>`, `<b>`, `<u>`）を生成
 - `__text__` は Discord風にアンダーライン（`<u>`）として扱われます（CommonMark標準の`<strong>`ではありません）
+- `*斜体*` はCommonMark標準でサポートされますが、多くのエディタで `_斜体_` に自動整形されます
 
 ### 取り消し線
 
@@ -130,7 +147,7 @@ __アンダーライン__ → <u>アンダーライン</u> (Discord風)
 
 `//` から行末までがコメントとして扱われます。
 
-```markdown
+```umd
 // この行は出力されません
 これは表示される // ここは表示されない
 ```
@@ -313,7 +330,7 @@ document.querySelectorAll(".spoiler").forEach((el) => {
 
 同じ用語に複数の定義を持たせることができます:
 
-```markdown
+```umd
 :用語1|定義1-1
 :用語1|定義1-2
 ```
@@ -341,7 +358,7 @@ document.querySelectorAll(".spoiler").forEach((el) => {
 
 **UMD形式** (開始・終了タグ):
 
-```markdown
+```umd
 > 引用文
 > 複数行の引用
 > <
@@ -360,7 +377,7 @@ document.querySelectorAll(".spoiler").forEach((el) => {
 
 #### 配置
 
-```markdown
+```umd
 LEFT: 左寄せテキスト → <p class="text-start">...</p>
 CENTER: 中央寄せテキスト → <p class="text-center">...</p>
 RIGHT: 右寄せテキスト → <p class="text-end">...</p>
@@ -423,21 +440,21 @@ SIZE(1.5): COLOR(primary): CENTER: 強調テキスト
 #### セマンティック要素
 
 ```umd
-&sup{上付き}; → <sup>上付き</sup>
-&sub{下付き}; → <sub>下付き</sub>
+&sup(上付き); → <sup>上付き</sup>
+&sub(下付き); → <sub>下付き</sub>
 &lang(en){Hello}; → <span lang="en">Hello</span>
 &abbr(HTML){HyperText Markup Language}; → <abbr title="HyperText...">HTML</abbr>
 &ruby(あした){明日}; → <ruby>明日<rp>(</rp><rt>あした</rt><rp>)</rp></ruby>
-&kbd{Ctrl}; → <kbd>Ctrl</kbd>
-&samp{output}; → <samp>output</samp>
-&var{x}; → <var>x</var>
-&cite{Book Title}; → <cite>Book Title</cite>
-&q{Quote}; → <q>Quote</q>
-&small{Small text}; → <small>Small text</small>
-&u{Underline}; → <u>Underline</u>
+&kbd(Ctrl); → <kbd>Ctrl</kbd>
+&samp(output); → <samp>output</samp>
+&var(x); → <var>x</var>
+&cite(Book Title); → <cite>Book Title</cite>
+&q(Quote); → <q>Quote</q>
+&small(Small text); → <small>Small text</small>
+&u(Underline); → <u>Underline</u>
 &time(2026-01-26){今日}; → <time datetime="2026-01-26">今日</time>
-&dfn{Definition}; → <dfn>Definition</dfn>
-&bdi{Text}; → <bdi>Text</bdi>
+&dfn(Definition); → <dfn>Definition</dfn>
+&bdi(Text); → <bdi>Text</bdi>
 &bdo(rtl){Text}; → <bdo dir="rtl">Text</bdo>
 &wbr; → <wbr />
 ```
@@ -523,8 +540,8 @@ GFM準拠のテーブル（ソート可能）:
 セル連結対応の拡張テーブル:
 
 ```umd
-| Header1 |> | Header3 |
-| Cell1      | Cell2   |
+| Header1 |>      | Header3 |
+| Cell1   | Cell2 | Cell3   |
 ```
 
 出力: `<table class="table umd-table">...</table>`
@@ -661,9 +678,28 @@ GitHub Flavored Markdown互換のアラート:
 - `javascript:` - XSS攻撃
 - `data:` - Base64エンコードスクリプト
 - `vbscript:` - VBScript実行
-- `file:` - ローカルファイルアクセス
+- `file:` - ローカルファイルアクセス（デフォルト）
 
-その他のスキーム（http, https, mailto, tel, カスタムアプリスキーム等）は許可されます。
+**注**: `file:`スキームはセキュリティ上の理由でデフォルトでブロックされますが、スタンドアロンアプリケーション（オフラインヘルプシステムなど）での使用を想定した設定オプションの追加を検討中です（[planned-features.md](planned-features.md)を参照）。
+
+**ブロック時の動作**:
+
+危険なスキームを含むURLは、リンクとして処理されず、プレーンテキストとしてそのまま出力されます。
+
+```markdown
+<data:text/html,test> → data:text/html,test (リンク化されない)
+<javascript:alert(1)> → javascript:alert(1) (リンク化されない)
+<file:///etc/passwd> → file:///etc/passwd (リンク化されない)
+<https://example.com> → <a href="https://example.com">...</a> (正常にリンク化)
+```
+
+これは通常のリンク構文 `[text](url)` と明示的なautolink `<url>` の両方に適用されます。
+
+**許可されるスキーム**:
+
+- 標準プロトコル: `http:`, `https:`, `mailto:`, `tel:`, `ftp:`
+- カスタムアプリスキーム: `spotify:`, `discord:`, `vscode:`, `steam:` など
+- 相対パス: `/path`, `./path`, `#anchor`
 
 ---
 

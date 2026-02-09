@@ -14,7 +14,7 @@ use std::borrow::Cow;
 ///
 /// # Returns
 ///
-/// A sanitized URL or an empty string if the scheme is blocked
+/// A sanitized URL or `#blocked-url` if the scheme is blocked
 ///
 /// # Blocked Schemes
 ///
@@ -22,6 +22,26 @@ use std::borrow::Cow;
 /// - `data:` - Base64 encoded script injection XSS
 /// - `vbscript:` - VBScript execution XSS (IE legacy)
 /// - `file:` - Local file system access (information leakage)
+///
+/// Note: `file:` scheme is blocked by default for security reasons, but may be
+/// useful in specific use cases such as:
+/// - Standalone software offline help systems
+/// - Local document management applications
+/// - Electron/Tauri apps with local resource access
+///
+/// Future enhancement: Consider adding a configuration option to allow `file:`
+/// scheme when explicitly enabled by the application developer (see planned-features.md).
+///
+/// # Behavior
+///
+/// When a dangerous scheme is detected:
+/// - In explicit autolinks (`<url>`): the URL is rendered as plain text (not linked)
+/// - In inline links (`[text](url)`): the link is replaced with `#blocked-url` for safety
+///
+/// Allowed schemes include:
+/// - Standard protocols: `http:`, `https:`, `mailto:`, `tel:`, `ftp:`
+/// - Custom app schemes: `spotify:`, `discord:`, `vscode:`, `steam:`, etc.
+/// - Relative paths: `/path`, `./path`, `#anchor`
 ///
 /// # Examples
 ///
@@ -37,6 +57,8 @@ pub fn sanitize_url(url: &str) -> Cow<'_, str> {
     let url_lower = url.trim().to_lowercase();
 
     // Check for dangerous schemes (case-insensitive)
+    // TODO: Consider adding ParserOptions.allow_file_scheme configuration
+    // to conditionally allow file:// in trusted environments (see planned-features.md)
     if url_lower.starts_with("javascript:")
         || url_lower.starts_with("data:")
         || url_lower.starts_with("vbscript:")

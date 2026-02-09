@@ -539,7 +539,7 @@ Bootstrapの`blockquote`クラスを自動付与:
       - **用途2: UMDテーブルの配置**
         - UMDテーブル（区切り行なし）の前に`RIGHT:`がある場合、テーブル全体を右寄せに配置
         - 例:
-          ```
+          ```umd
           RIGHT:
           | Header1 | Header2 |
           | Cell1   | Cell2   |
@@ -555,7 +555,7 @@ Bootstrapの`blockquote`クラスを自動付与:
       - **用途2: UMDテーブルの配置**
         - UMDテーブル（区切り行なし）の前に`CENTER:`がある場合、テーブル全体を中央に配置
         - 例:
-          ```
+          ```umd
           CENTER:
           | Header1 | Header2 |
           | Cell1   | Cell2   |
@@ -571,7 +571,7 @@ Bootstrapの`blockquote`クラスを自動付与:
       - **用途2: UMDテーブルの配置**
         - UMDテーブル（区切り行なし）の前に`LEFT:`がある場合、テーブル全体を左寄せに配置（明示的指定）
         - 例:
-          ```
+          ```umd
           LEFT:
           | Header1 | Header2 |
           | Cell1   | Cell2   |
@@ -588,7 +588,7 @@ Bootstrapの`blockquote`クラスを自動付与:
       - **用途2: UMDテーブルの幅指定**
         - UMDテーブル（区切り行なし）の前に`JUSTIFY:`がある場合、テーブル全体の幅を100%に維持（デフォルト動作）
         - 例:
-          ```
+          ```umd
           JUSTIFY:
           | Header1 | Header2 |
           | Cell1   | Cell2   |
@@ -1066,9 +1066,9 @@ Bootstrapの`blockquote`クラスを自動付与:
   - **テーブル**: Markdown標準形式 + UMD拡張 🚧 実装予定
     - **Markdown標準テーブル（ソート可能）**: GFM準拠、セル連結不可
 
-      ```
+      ```markdown
       | Header1 | Header2 |
-      |---------|---------|
+      | ------- | ------- |
       | Cell1   | Cell2   |
       ```
 
@@ -1080,9 +1080,9 @@ Bootstrapの`blockquote`クラスを自動付与:
 
     - **UMDテーブル（セル連結対応）**: セル連結可能な拡張テーブル
 
-      ```
-      | Header1 |> | Header3 |
-      | Cell1   | Cell2   |
+      ```umd
+      | Header1 |>      | Header3 |
+      | Cell1   | Cell2 | Cell3   |
       ```
 
       - **用途**: 複雑なレイアウトが必要なテーブル（プレゼンテーション資料等）
@@ -1099,17 +1099,17 @@ Bootstrapの`blockquote`クラスを自動付与:
       - **縦方向連結（rowspan）**: `|^` を使用
         - セル内に `|^` のみを配置すると、上のセルと連結
         - 例（UMD拡張構文）:
-          ```
+          ```umd
           | Header1 | Header2 |
           | Cell1   | Cell2   |
-          | |^      | Cell3   |
+          |^        | Cell3   |
           ```
           → `Cell1`が2行分連結（`<td rowspan="2">Cell1</td>`）
         - 連結される側のセルは `|^` のみ
         - 注: 区切り行（`|---|`）がないため、Markdown標準テーブルではなくUMD拡張テーブルとして処理
       - **複合連結**: colspan と rowspan の組み合わせ
         - 例（UMD拡張構文）:
-          ```
+          ```umd
           | Header1 |> | Header3 |
           | Cell1   |> | Cell3   |
           | |^      |^ | Cell4   |
@@ -1173,7 +1173,7 @@ Bootstrapの`blockquote`クラスを自動付与:
     - **GFMアラート**: `> [!NOTE]`などは別途`<div class="alert">`に変換（上記参照）
   - **定義リスト**: 🚧 実装予定
     - **UMD構文**: `:term|definition`
-      ```
+      ```umd
       :用語1|定義1
       :用語2|定義2の説明文
       ```
@@ -1213,7 +1213,7 @@ Bootstrapの`blockquote`クラスを自動付与:
       - 定義は複数行対応（インデントで継続行を判定）
       - Markdown拡張構文は将来的な検討事項
     - **複数定義の対応**:
-      ```
+      ```umd
       :用語1|定義1-1
       :用語1|定義1-2
       ```
@@ -1226,7 +1226,7 @@ Bootstrapの`blockquote`クラスを自動付与:
       </dl>
       ```
     - **複数用語の対応**:
-      ```
+      ```umd
       :用語1|定義
       :用語2|定義
       ```
@@ -1415,7 +1415,7 @@ Bootstrapの`blockquote`クラスを自動付与:
 
 ### アーキテクチャ
 
-```
+```plain
 Input Text
     ↓
 [HTML Sanitizer] - HTMLエスケープ、エンティティ保持
@@ -1469,7 +1469,7 @@ wasm-bindgen-test = "0.3.58" # WASM testing
 
 ### ディレクトリ構造
 
-```
+```plain
 universal-markdown/
 ├── Cargo.toml
 ├── build.sh                # WASMビルドスクリプト

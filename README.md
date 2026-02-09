@@ -776,6 +776,8 @@ Universal Markdownは、複数のセキュリティ対策を実装していま�
 - **vbscript:** - VBScript実行によるXSS攻撃（IEレガシー対策）
 - **file:** - ローカルファイルシステムアクセス（情報漏洩リスク）
 
+**注**: `file:`スキームはデフォルトでブロックされますが、スタンドアロンアプリケーション（オフラインヘルプシステムなど）での使用を想定し、将来的に設定により許可できるようにすることを検討中です。詳細は[planned-features.md](docs/planned-features.md)を参照してください。
+
 許可されるスキーム：
 
 - HTTP/HTTPS: `http:`, `https:`
