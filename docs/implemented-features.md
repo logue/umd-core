@@ -237,7 +237,7 @@ URLスキーム（`https://`等）の `//` はコメントとして扱われま�
 
 ## メディアファイル自動検出
 
-画像リンク構文 `![alt](url)` を拡張し、URLの拡張子に基づいて自動的に適切なHTML5メディアタグに変換します。
+画像リンク構文 `![alt](url)` を拡張し、URLの拡張子に基づいて自動的に適切なHTML5メディアタグまたはダウンロードリンクに変換します。
 
 ### 動画ファイル
 
@@ -255,9 +255,17 @@ URLスキーム（`https://`等）の `//` はコメントとして扱われま�
 <video controls title="製品デモ">
   <source src="video.mp4" type="video/mp4" />
   <track kind="captions" label="Product demo" />
-  お使いのブラウザは動画タグをサポートしていません。
+  <a href="video.mp4" download class="download-link video-fallback"></a>
+    🎬 Product demo
+  </a>
 </video>
 ```
+
+**特徴**:
+
+- ブラウザが`<video>`タグをサポートしていない場合、🎬アイコン付きダウンロードリンクが表示されます
+- `download`属性により、ブラウザはファイルをダウンロードダイアログで開きます
+- `class="download-link video-fallback"`でCSS/JSカスタマイズが可能
 
 ### 音声ファイル
 
@@ -274,9 +282,16 @@ URLスキーム（`https://`等）の `//` はコメントとして扱われま�
 ```html
 <audio controls title="テーマソング">
   <source src="audio.mp3" type="audio/mpeg" />
-  お使いのブラウザは音声タグをサポートしていません。
+  <a href="audio.mp3" download class="download-link audio-fallback">
+    🎵 Theme song
+  </a>
 </audio>
 ```
+
+**特徴**:
+
+- ブラウザが`<audio>`タグをサポートしていない場合、🎵アイコン付きダウンロードリンクが表示されます
+- フォールバックにより古いブラウザでもファイルにアクセス可能
 
 ### 画像ファイル
 
@@ -297,13 +312,76 @@ URLスキーム（`https://`等）の `//` はコメントとして扱われま�
 </picture>
 ```
 
-### 特徴
+**特徴**:
 
-- **自動検出**: 拡張子に基づいて適切なメディアタグを自動生成
+- `<picture>`タグで最適な画像フォーマットをブラウザが選択
+- `<img>`タグがフォールバックとして機能（HTML5標準）
+
+### ダウンロード可能ファイル
+
+メディアとして認識されないファイルは、📄アイコン付きダウンロードリンクに変換されます。
+
+**対応拡張子**:
+
+- **アーカイブ**: `.zip`, `.tar`, `.gz`, `.7z`, `.rar`, `.bz2`, `.xz`
+- **ドキュメント**: `.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`, `.odt`, `.ods`, `.odp`
+- **テキスト**: `.txt`, `.md`, `.csv`, `.json`, `.xml`, `.yaml`, `.yml`, `.toml`
+- **実行ファイル**: `.exe`, `.dmg`, `.deb`, `.rpm`, `.app`, `.apk`, `.msi`
+
+**入力**:
+
+```markdown
+![User Manual](manual.pdf "完全なユーザーガイド")
+![Source Code](project.zip)
+```
+
+**出力**:
+
+```html
+<a
+  href="manual.pdf"
+  download
+  class="download-link"
+  title="完全なユーザーガイド"
+>
+  📄 User Manual
+</a>
+
+<a href="project.zip" download class="download-link">📄 Source Code</a>
+```
+
+**特徴**:
+
+- 📄絵文字でファイルダウンロードを視覚的に表現（TwiEmoji推奨）
+- `download`属性でブラウザにダウンロード動作を指示
+- `class="download-link"`でスタイリングのカスタマイズが可能
+- altテキストが空の場合、URLをフォールバック表示
+
+**セキュリティ注意事項**:
+
+- 実行ファイル（`.exe`, `.dmg`等）もダウンロードリンクとして処理されます
+- サーバー側で適切なContent-Typeヘッダを設定することを推奨します
+- ユーザーからのファイルアップロードを許可する場合は、追加のセキュリティ対策が必要です
+
+### 絵文字アイコン
+
+各ファイルタイプに適した絵文字を使用：
+
+- 🎬 (U+1F3AC) - 動画ファイル
+- 🎵 (U+1F3B5) - 音声ファイル
+- 🖼️ (U+1F5BC) - 画像ファイル（フォールバック内では未使用）
+- 📄 (U+1F4C4) - 一般ファイル
+
+**TwiEmoji推奨**: これらの絵文字をSVGアイコンとして美しく表示するため、[TwiEmoji](https://github.com/twitter/twemoji)の使用を推奨します。
+
+### 共通機能
+
+- **自動検出**: 拡張子に基づいて適切なHTML要素を自動生成
 - **title属性対応**: CommonMark標準のタイトル属性 (`![alt](url "title")`) に対応
-- **HTML5準拠**: 最新のHTML5メディアタグを使用
+- **HTML5準拠**: 最新のHTML5標準に準拠
 - **遅延読み込み**: 画像には `loading="lazy"` 属性を自動追加
 - **アクセシビリティ**: 動画のaltテキストはキャプションラベルとして使用
+- **フォールバック**: 非対応ブラウザでもコンテンツにアクセス可能
 
 ### 使用例
 

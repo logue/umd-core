@@ -11,6 +11,7 @@ pub enum MediaType {
     Video,
     Audio,
     Image,
+    Downloadable,
 }
 
 /// Detect media type from URL
@@ -52,6 +53,19 @@ pub fn detect_media_type(url: &str) -> Option<MediaType> {
         "jpg" | "jpeg" | "png" | "gif" | "svg" | "webp" | "avif" | "bmp" | "ico" | "jxl" => {
             Some(MediaType::Image)
         }
+        // Downloadable file extensions
+        // Archive formats
+        "zip" | "tar" | "gz" | "7z" | "rar" | "bz2" | "xz" => Some(MediaType::Downloadable),
+        // Document formats
+        "pdf" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "odt" | "ods" | "odp" => {
+            Some(MediaType::Downloadable)
+        }
+        // Text formats
+        "txt" | "md" | "csv" | "json" | "xml" | "yaml" | "yml" | "toml" => {
+            Some(MediaType::Downloadable)
+        }
+        // Executable formats
+        "exe" | "dmg" | "deb" | "rpm" | "app" | "apk" | "msi" => Some(MediaType::Downloadable),
         _ => None,
     }
 }
@@ -114,6 +128,15 @@ fn get_mime_type(url: &str, media_type: &MediaType) -> String {
             "jxl" => "image/jxl",
             _ => "image/png",
         },
+        MediaType::Downloadable => match ext.as_str() {
+            "pdf" => "application/pdf",
+            "zip" => "application/zip",
+            "tar" => "application/x-tar",
+            "gz" => "application/gzip",
+            "json" => "application/json",
+            "xml" => "application/xml",
+            _ => "application/octet-stream",
+        },
     }
     .to_string()
 }
@@ -154,20 +177,26 @@ pub fn generate_media_html(
     match media_type {
         MediaType::Video => {
             let track_label = escape_html(alt);
+            let display_text = if alt.is_empty() { url } else { alt };
             format!(
-                "<video controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  <track kind=\"captions\" label=\"{}\" />\n  お使いのブラウザは動画タグをサポートしていません。\n</video>",
+                "<video controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  <track kind=\"captions\" label=\"{}\" />\n  <a href=\"{}\" download class=\"download-link video-fallback\">🎬 {}</a>\n</video>",
                 title_attr,
                 escape_html(url),
                 mime_type,
-                track_label
+                track_label,
+                escape_html(url),
+                escape_html(display_text)
             )
         }
         MediaType::Audio => {
+            let display_text = if alt.is_empty() { url } else { alt };
             format!(
-                "<audio controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  お使いのブラウザは音声タグをサポートしていません。\n</audio>",
+                "<audio controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  <a href=\"{}\" download class=\"download-link audio-fallback\">🎵 {}</a>\n</audio>",
                 title_attr,
                 escape_html(url),
-                mime_type
+                mime_type,
+                escape_html(url),
+                escape_html(display_text)
             )
         }
         MediaType::Image => {
@@ -182,6 +211,17 @@ pub fn generate_media_html(
                 escape_html(url),
                 escape_html(alt),
                 img_title
+            )
+        }
+        MediaType::Downloadable => {
+            let display_text = if alt.is_empty() { url } else { alt };
+            format!(
+                "<a href=\"{}\" download class=\"download-link\"{}>
+  📄 {}
+</a>",
+                escape_html(url),
+                title_attr,
+                escape_html(display_text)
             )
         }
     }
@@ -295,9 +335,84 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_downloadable_archives() {
+        assert_eq!(detect_media_type("file.zip"), Some(MediaType::Downloadable));
+        assert_eq!(detect_media_type("file.tar"), Some(MediaType::Downloadable));
+        assert_eq!(detect_media_type("file.gz"), Some(MediaType::Downloadable));
+        assert_eq!(detect_media_type("file.7z"), Some(MediaType::Downloadable));
+        assert_eq!(detect_media_type("file.rar"), Some(MediaType::Downloadable));
+    }
+
+    #[test]
+    fn test_detect_downloadable_documents() {
+        assert_eq!(
+            detect_media_type("document.pdf"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("document.doc"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("document.docx"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("spreadsheet.xls"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("spreadsheet.xlsx"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("presentation.ppt"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("presentation.pptx"),
+            Some(MediaType::Downloadable)
+        );
+    }
+
+    #[test]
+    fn test_detect_downloadable_text() {
+        assert_eq!(detect_media_type("file.txt"), Some(MediaType::Downloadable));
+        assert_eq!(detect_media_type("data.csv"), Some(MediaType::Downloadable));
+        assert_eq!(
+            detect_media_type("config.json"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(detect_media_type("data.xml"), Some(MediaType::Downloadable));
+        assert_eq!(
+            detect_media_type("config.yaml"),
+            Some(MediaType::Downloadable)
+        );
+    }
+
+    #[test]
+    fn test_detect_downloadable_executables() {
+        assert_eq!(
+            detect_media_type("installer.exe"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("installer.dmg"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("package.deb"),
+            Some(MediaType::Downloadable)
+        );
+        assert_eq!(
+            detect_media_type("package.rpm"),
+            Some(MediaType::Downloadable)
+        );
+    }
+
+    #[test]
     fn test_detect_unknown() {
-        assert_eq!(detect_media_type("file.txt"), None);
-        assert_eq!(detect_media_type("file.doc"), None);
+        assert_eq!(detect_media_type("file.unknown"), None);
         assert_eq!(detect_media_type("noextension"), None);
     }
 
@@ -314,6 +429,11 @@ mod tests {
         assert!(html.contains("src=\"video.mp4\""));
         assert!(html.contains("type=\"video/mp4\""));
         assert!(html.contains("<track kind=\"captions\" label=\"Demo video\""));
+        // Check for download fallback
+        assert!(
+            html.contains("<a href=\"video.mp4\" download class=\"download-link video-fallback\">")
+        );
+        assert!(html.contains("🎬 Demo video"));
     }
 
     #[test]
@@ -328,6 +448,11 @@ mod tests {
         assert!(html.contains("title=\"Theme song\""));
         assert!(html.contains("src=\"audio.mp3\""));
         assert!(html.contains("type=\"audio/mpeg\""));
+        // Check for download fallback
+        assert!(
+            html.contains("<a href=\"audio.mp3\" download class=\"download-link audio-fallback\">")
+        );
+        assert!(html.contains("🎵 Background music"));
     }
 
     #[test]
@@ -360,5 +485,49 @@ mod tests {
         assert!(html.contains("&amp;"));
         assert!(html.contains("&lt;"));
         assert!(html.contains("&quot;"));
+    }
+
+    #[test]
+    fn test_generate_downloadable_html() {
+        let html = generate_media_html(
+            "document.pdf",
+            "Research Report",
+            Some("Annual Research"),
+            &MediaType::Downloadable,
+        );
+        assert!(html.contains("<a href=\"document.pdf\" download class=\"download-link\""));
+        assert!(html.contains("title=\"Annual Research\""));
+        assert!(html.contains("📄 Research Report"));
+    }
+
+    #[test]
+    fn test_downloadable_empty_alt() {
+        let html = generate_media_html("archive.zip", "", None, &MediaType::Downloadable);
+        assert!(html.contains("<a href=\"archive.zip\" download"));
+        assert!(html.contains("📄 archive.zip")); // URL as fallback
+    }
+
+    #[test]
+    fn test_video_empty_alt_fallback() {
+        let html = generate_media_html("video.mp4", "", None, &MediaType::Video);
+        assert!(html.contains("🎬 video.mp4")); // URL as fallback in download link
+    }
+
+    #[test]
+    fn test_audio_empty_alt_fallback() {
+        let html = generate_media_html("audio.mp3", "", None, &MediaType::Audio);
+        assert!(html.contains("🎵 audio.mp3")); // URL as fallback in download link
+    }
+
+    #[test]
+    fn test_downloadable_with_query_params() {
+        let html = generate_media_html(
+            "document.pdf?version=2",
+            "User Guide",
+            None,
+            &MediaType::Downloadable,
+        );
+        assert!(html.contains("href=\"document.pdf?version=2\""));
+        assert!(html.contains("📄 User Guide"));
     }
 }

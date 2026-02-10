@@ -1,7 +1,8 @@
 //! Example: Media embedding with auto-detection
 //!
 //! This example demonstrates the media file auto-detection feature
-//! that converts image syntax to appropriate HTML5 media tags.
+//! that converts image syntax to appropriate HTML5 media tags and
+//! generates download links for non-media files.
 
 use universal_markdown::parse;
 
@@ -26,6 +27,24 @@ fn main() {
     println!("Image Input:\n{}\n", image_input);
     println!("Image Output:\n{}\n", image_html);
 
+    // Downloadable file examples
+    println!("=== Downloadable File Examples ===\n");
+
+    let pdf_input = "![User Manual](manual.pdf \"Complete documentation\")";
+    let pdf_html = parse(pdf_input);
+    println!("PDF Input:\n{}\n", pdf_input);
+    println!("PDF Output:\n{}\n", pdf_html);
+
+    let zip_input = "![Source Code](project.zip)";
+    let zip_html = parse(zip_input);
+    println!("ZIP Input:\n{}\n", zip_input);
+    println!("ZIP Output:\n{}\n", zip_html);
+
+    let docx_input = "![Report](annual-report.docx \"Annual Report 2026\")";
+    let docx_html = parse(docx_input);
+    println!("DOCX Input:\n{}\n", docx_input);
+    println!("DOCX Output:\n{}\n", docx_html);
+
     // Multiple media in one document
     let mixed_input = r#"# Project Showcase
 
@@ -40,6 +59,14 @@ Listen to our theme song:
 And here's our logo:
 
 ![Company Logo](logo.png "High-res logo")
+
+Download our documentation:
+
+![User Guide](user-guide.pdf "Complete user guide")
+
+Get the source code:
+
+![Source Archive](source.zip "Project source code")
 "#;
     let mixed_html = parse(mixed_input);
     println!("Mixed Content Input:\n{}\n", mixed_input);
