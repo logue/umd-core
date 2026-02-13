@@ -251,10 +251,29 @@ TRUNCATE: 長いテキストは省略されます...
 
 ```umd
 @table(striped,hover){{
-| Header1 | Header2 |
-| Cell1   | Cell2   |
+  | Header1 | Header2 |
+  | Cell1   | Cell2   |
 }}
 ```
+
+**インデントの推奨**:
+
+プラグインの `{{}}` 内のコンテンツは、可読性を向上させるため**2スペースのインデント**を推奨します：
+
+```umd
+@table(striped){{
+  | Header1 | Header2 | Header3 |
+  |---------|---------|---------|
+  | Cell1   | Cell2   | Cell3   |
+  | Data1   | Data2   | Data3   |
+}}
+```
+
+インデントは構文上必須ではありませんが、以下の利点があります：
+
+- プラグインの範囲が視覚的に明確になる
+- ネストされたコンテンツの構造が理解しやすい
+- コードレビューやメンテナンスが容易になる
 
 **サポート予定のオプション**:
 
@@ -269,8 +288,8 @@ TRUNCATE: 長いテキストは省略されます...
 
 ```umd
 @table(responsive){{
-| Header1 | Header2 |
-| Cell1   | Cell2   |
+  | Header1 | Header2 |
+  | Cell1   | Cell2   |
 }}
 ```
 
@@ -287,9 +306,9 @@ TRUNCATE: 長いテキストは省略されます...
 
 ```umd
 @table(hover){{
-| Table 1 | A |
+  | Table 1 | A |
 
-| Table 2 | B |
+  | Table 2 | B |
 }}
 ```
 
@@ -299,7 +318,7 @@ TRUNCATE: 長いテキストは省略されます...
 
 ```umd
 @table(striped){{
-これはテキストです
+  これはテキストです
 }}
 ```
 
@@ -325,14 +344,14 @@ TRUNCATE: 長いテキストは省略されます...
 
 ```umd
 @table(hover){{
-| foo | bar |
-| --- | ---:|
-| 1   |   2 |
+  | foo | bar |
+  | --- | ---:|
+  | 1   |   2 |
 }}
 
 @table(striped){{
-| key   | value |
-| alpha | one   |
+  | key   | value |
+  | alpha | one   |
 }}
 ```
 
@@ -474,9 +493,32 @@ let html = parse_to_html(markdown, &options);
   | Cell   |
 ```
 
+**出力HTML**:
+
+```html
+<ul>
+  <li>
+    <p>リスト項目</p>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Header</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cell</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+</ul>
+```
+
 **実装方針**:
 
 - インデント解析による親子関係判定
+- 子要素は `<li>` タグ内に配置される
 - CommonMark違反だが互換性のため必須
 
 ### タスクリスト拡張
@@ -575,14 +617,144 @@ const rendered = katex.renderToString(formula, {
 
 ```umd
 @math{{
-\begin{align}
-  a &= b \\
-  c &= d
-\end{align}
+  \begin{align}
+    a &= b \\
+    c &= d
+  \end{align}
 }}
 ```
 
 ブロック型プラグインとして実装予定。`displayMode: true` でレンダリング。
+
+### ポップオーバー（Popover）
+
+#### 概要
+
+HTML Popover APIを利用した軽量なポップアップコンテンツを提供します。トリガーとなるボタンをクリックすると、関連するコンテンツがポップオーバーとして表示されます。
+
+#### 構文
+
+```umd
+@popover(text){contents};
+```
+
+**パラメータ**:
+
+- `text`: ポップオーバーを開くボタンのラベル
+- `contents`: ポップオーバー内に表示されるコンテンツ（Markdown記法可）
+
+**使用例**:
+
+```umd
+テキスト@popover(詳細を表示){
+  ここにポップオーバーの内容を記述します。
+
+  - リスト項目1
+  - リスト項目2
+};テキスト
+```
+
+#### 出力HTML
+
+```html
+<button command="show-popover" commandfor="umd-popover-a1b2c3d4">text</button>
+
+<div id="umd-popover-a1b2c3d4" popover>contents</div>
+```
+
+**HTML要素の説明**:
+
+- `<button>`: ポップオーバーを開くトリガー
+  - `command="show-popover"`: Popover APIの標準コマンド
+  - `commandfor="<id>"`: 関連するポップオーバー要素のIDを指定
+- `<div popover>`: ポップオーバーコンテンツ
+  - `id`: 一意な識別子（動的生成）
+  - `popover`: ブラウザネイティブのPopover API属性
+
+#### ID生成の仕組み
+
+**ユニークID**:
+
+ポップオーバー要素のIDは、`umd-popover-{UUID}`の形式で動的に生成されます：
+
+- **プレフィックス**: `umd-popover-`（用途の明示）
+- **UUID部分**: UUIDv4またはランダムな英数字（8文字以上）
+- **例**: `umd-popover-a1b2c3d4`, `umd-popover-f9e8d7c6b5a4`
+
+**生成タイミング**:
+
+- パース時にRustのUUID生成ライブラリ（`uuid` crate）を使用
+- 同一ドキュメント内で複数のポップオーバーが存在しても衝突しない
+
+**実装例**:
+
+```rust
+use uuid::Uuid;
+
+let popover_id = format!("umd-popover-{}", Uuid::new_v4().simple());
+// => "umd-popover-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+```
+
+#### 今後の展開
+
+この仕組みは、他のインタラクティブ要素でも共通して使用されます：
+
+**ダイアログ（Dialog）**:
+
+```umd
+@dialog(開く){ダイアログの内容};
+```
+
+複数行のコンテンツを含める場合（インデント推奨）:
+
+```umd
+@dialog(開く){
+  # ダイアログタイトル
+
+  ダイアログの本文コンテンツです。
+
+  - リスト項目1
+  - リスト項目2
+};
+```
+
+出力HTML:
+
+```html
+<button command="show-modal" commandfor="umd-dialog-x1y2z3">開く</button>
+
+<dialog id="umd-dialog-x1y2z3">ダイアログの内容</dialog>
+```
+
+**ホバーツールチップ（Hover）**:
+
+```umd
+&hover(ツールチップの内容){ホバー対象テキスト};
+```
+
+出力HTML（提案）:
+
+```html
+<span aria-describedby="umd-hover-m1n2o3">ホバー対象テキスト</span>
+<div role="tooltip" id="umd-hover-m1n2o3" hidden>ツールチップの内容</div>
+```
+
+**共通の設計方針**:
+
+- HTML標準APIの活用（`popover`, `dialog`, ARIA属性）
+- ID生成の統一（`umd-{type}-{uuid}`）
+- JavaScriptフレームワーク非依存
+- アクセシビリティの考慮（`aria-*`, `role`属性）
+
+#### ブラウザ対応
+
+**Popover API**は以下のブラウザでサポートされています（2026年2月時点）:
+
+- Chrome/Edge 114+
+- Safari 17+
+- Firefox 125+
+
+古いブラウザでは、ポルフィル（polyfill）の使用が推奨されます。
 
 ---
 
