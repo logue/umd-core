@@ -1,4 +1,4 @@
-use universal_markdown::parse;
+use umd::parse;
 
 fn main() {
     // LukiWiki形式のテーブル

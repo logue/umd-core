@@ -1,4 +1,4 @@
-use universal_markdown::parse;
+use umd::parse;
 
 fn main() {
     let output = parse("COLOR(success): This is a success message");

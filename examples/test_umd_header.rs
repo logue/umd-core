@@ -1,4 +1,4 @@
-use universal_markdown::parse;
+use umd::parse;
 
 fn main() {
     // Test 1: Table without 'h' suffix - no <thead>

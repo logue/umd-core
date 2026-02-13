@@ -1,7 +1,7 @@
 //! Integration tests for syntax conflict resolution
 
-use universal_markdown::extensions::conflict_resolver::detect_ambiguous_syntax;
-use universal_markdown::parse;
+use umd::extensions::conflict_resolver::detect_ambiguous_syntax;
+use umd::parse;
 
 #[test]
 fn test_umd_blockquote() {

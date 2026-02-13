@@ -178,7 +178,7 @@ static HTML_ENTITIES: Lazy<std::collections::HashSet<&'static str>> = Lazy::new(
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::extensions::plugins::apply_plugin_syntax;
+/// use umd::extensions::plugins::apply_plugin_syntax;
 ///
 /// // Block plugin
 /// let input = "@toc(2){{ }}";

@@ -2,7 +2,7 @@
 //!
 //! Tests for Bootstrap class generation and styling features
 
-use universal_markdown::parse;
+use umd::parse;
 
 #[test]
 fn test_bootstrap_table_default_class() {

@@ -1,4 +1,4 @@
-use universal_markdown::parse;
+use umd::parse;
 
 #[test]
 fn test_semantic_html_integration() {

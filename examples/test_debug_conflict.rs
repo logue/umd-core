@@ -1,4 +1,4 @@
-use universal_markdown::parse_with_frontmatter;
+use umd::parse_with_frontmatter;
 
 fn main() {
     let tests = vec![

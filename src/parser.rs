@@ -41,7 +41,7 @@ impl Default for ParserOptions {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::parser::{parse_to_html, ParserOptions};
+/// use umd::parser::{parse_to_html, ParserOptions};
 ///
 /// let input = "# Hello World\n\nThis is **bold** text.";
 /// let html = parse_to_html(input, &ParserOptions::default());

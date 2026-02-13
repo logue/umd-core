@@ -66,7 +66,7 @@ alwaysApply = false
 フロントマターはHTML出力から除外され、`parse_with_frontmatter()`関数を使用することで別途取得できます。
 
 ```rust
-use universal_markdown::parse_with_frontmatter;
+use umd::parse_with_frontmatter;
 
 let input = "---\ntitle: Test\n---\n\n# Content";
 let result = parse_with_frontmatter(input);
@@ -95,7 +95,7 @@ Markdownの標準的なフットノート構文をサポートしています：
 フットノートは本文から分離され、構造化データとして`ParseResult`の`footnotes`フィールドで取得できます：
 
 ```rust
-use universal_markdown::parse_with_frontmatter;
+use umd::parse_with_frontmatter;
 
 let input = "Text with footnote[^1].\n\n[^1]: Footnote content.";
 let result = parse_with_frontmatter(input);

@@ -1,4 +1,4 @@
-use universal_markdown::parse_with_frontmatter;
+use umd::parse_with_frontmatter;
 
 fn main() {
     println!("=== Test 1: Simple Footnote ===");
@@ -11,7 +11,7 @@ Another paragraph with another footnote[^2].
 [^1]: This is the first footnote.
 [^2]: This is the second footnote with **bold** text.
 "#;
-    
+
     let result = parse_with_frontmatter(input1);
     println!("Body HTML:");
     println!("{}", result.html);
@@ -39,7 +39,7 @@ We used the approach described by Smith[^smith2020].
 [^study1]: Johnson et al. (2023). "New Findings in Rust Development"
 [^smith2020]: Smith, J. (2020). *Research Methods*
 "#;
-    
+
     let result = parse_with_frontmatter(input2);
     println!("Frontmatter present: {}", result.frontmatter.is_some());
     if let Some(fm) = &result.frontmatter {

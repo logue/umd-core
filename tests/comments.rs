@@ -1,6 +1,6 @@
 //! Tests for comment syntax
 
-use universal_markdown::parse_with_frontmatter;
+use umd::parse_with_frontmatter;
 
 #[test]
 fn test_single_line_comment_whole_line() {

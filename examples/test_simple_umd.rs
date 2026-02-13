@@ -1,4 +1,4 @@
-use universal_markdown::parse;
+use umd::parse;
 
 fn main() {
     let lukiwiki_table = "| head1 | head2 | head3 |\n\

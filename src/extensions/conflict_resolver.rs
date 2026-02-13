@@ -180,7 +180,7 @@ impl HeaderIdMap {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::extensions::conflict_resolver::preprocess_conflicts;
+/// use umd::extensions::conflict_resolver::preprocess_conflicts;
 ///
 /// let input = "> quote <";
 /// let (output, _) = preprocess_conflicts(input);

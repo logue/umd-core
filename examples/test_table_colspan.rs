@@ -1,4 +1,4 @@
-use universal_markdown::parse;
+use umd::parse;
 
 fn main() {
     println!("=== Table Cell Spanning Examples ===\n");

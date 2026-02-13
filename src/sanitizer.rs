@@ -46,7 +46,7 @@ use std::borrow::Cow;
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::sanitizer::sanitize_url;
+/// use umd::sanitizer::sanitize_url;
 ///
 /// assert_eq!(sanitize_url("https://example.com"), "https://example.com");
 /// assert_eq!(sanitize_url("javascript:alert(1)"), "#blocked-url");
@@ -83,7 +83,7 @@ pub fn sanitize_url(url: &str) -> Cow<'_, str> {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::sanitizer::sanitize;
+/// use umd::sanitizer::sanitize;
 ///
 /// let input = "<script>alert('xss')</script>";
 /// let output = sanitize(input);

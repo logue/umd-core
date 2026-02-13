@@ -34,7 +34,7 @@ static UMD_ITALIC: Lazy<Regex> = Lazy::new(|| {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::extensions::emphasis::apply_umd_emphasis;
+/// use umd::extensions::emphasis::apply_umd_emphasis;
 ///
 /// let input = "This is ''bold'' and '''italic'''";
 /// let output = apply_umd_emphasis(input);

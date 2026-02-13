@@ -3,7 +3,7 @@
 //! This test suite verifies that the parser reasonably complies with CommonMark specification.
 //! Target: 75%+ pass rate
 
-use universal_markdown::parser::{ParserOptions, parse_to_html};
+use umd::parser::{ParserOptions, parse_to_html};
 
 /// Test CommonMark heading levels
 #[test]

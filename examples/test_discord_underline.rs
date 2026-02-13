@@ -5,7 +5,7 @@
 //! - **text** → <strong>text</strong> (remains standard Markdown)
 //! - &u(text); → <u>text</u> (UMD legacy syntax)
 
-use universal_markdown::parse;
+use umd::parse;
 
 fn main() {
     // Test Discord-style underline

@@ -23,7 +23,7 @@
 //! # Example
 //!
 //! ```
-//! use universal_markdown::parse;
+//! use umd::parse;
 //!
 //! let input = "# Hello World\n\nThis is **bold** text.";
 //! let html = parse(input);
@@ -34,7 +34,7 @@
 //! This library can be compiled to WebAssembly for use in browsers:
 //!
 //! ```javascript
-//! import init, { parse_markdown } from './universal_markdown.js';
+//! import init, { parse_markdown } from './umd.js';
 //!
 //! await init();
 //! const html = parse_markdown('# Hello World');
@@ -73,7 +73,7 @@ pub struct ParseResult {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::parse;
+/// use umd::parse;
 ///
 /// let input = "# Heading\n\n**Bold** and *italic*";
 /// let html = parse(input);
@@ -100,7 +100,7 @@ pub fn parse(input: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::parse_with_frontmatter;
+/// use umd::parse_with_frontmatter;
 ///
 /// let input = "---\ntitle: Test\n---\n\n# Content";
 /// let result = parse_with_frontmatter(input);
@@ -183,7 +183,7 @@ fn extract_footnotes(html: &str) -> (String, Option<String>) {
 /// # JavaScript Example
 ///
 /// ```javascript
-/// import init, { parse_markdown } from './universal_markdown.js';
+/// import init, { parse_markdown } from './umd.js';
 ///
 /// await init();
 /// const html = parse_markdown('# Hello World\n\nThis is **bold** text.');

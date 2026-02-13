@@ -1,10 +1,10 @@
-# Universal Markdown実装プラン
+# Universal Markdown (UMD) 実装プラン
 
-**プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テストを合理的にパス(75%+目標)しつつ、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステムを提供。UMDレガシー構文との後方互換性も維持。
+**プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テストを合理的にパス(75%+目標)しつつ、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステムを提供。レガシー構文との後方互換性も維持。
 
 **作成日**: 2026年1月23日
 **最終更新**: 2026年2月9日
-**Rustバージョン**: 1.93 (最新安定版)
+**Rustバージョン**: 1.93.1 (最新安定版)
 **ライセンス**: MIT
 
 ---
@@ -1612,10 +1612,10 @@ Output HTML
 
 ```toml
 [package]
-name = "universal-markdown"
+name = "umd"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.93"
+rust-version = "1.93.1"
 
 [dependencies]
 wasm-bindgen = "0.2.108"        # WASM bindings
@@ -1635,13 +1635,13 @@ criterion = "0.8.1"          # Benchmarking
 wasm-bindgen-test = "0.3.58" # WASM testing
 ```
 
-**注1**: Rust 1.93 + Edition 2024の最新機能（改善された型推論、パターンマッチング拡張等）を活用します。
+**注1**: Rust 1.93.1 + Edition 2024の最新機能（改善された型推論、パターンマッチング拡張等）を活用します。
 **注2**: シンタックスハイライトはJavaScript側（Codemirror）で動的に実装するため、Rust側では言語情報のみをHTML属性として出力します。
 
 ### ディレクトリ構造
 
 ```plain
-universal-markdown/
+umd/
 ├── Cargo.toml
 ├── build.sh                # WASMビルドスクリプト
 ├── README.md

@@ -1,12 +1,12 @@
 [package]
-name = "universal-markdown"
+name = "umd"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.93"
+rust-version = "1.93.1"
 license = "MIT"
 authors = ["logue"]
 description = "Universal Markdown - A post-Markdown superset with Bootstrap 5 integration and extensible syntax"
-repository = "https://github.com/logue/UniversalMarkdown"
+repository = "https://github.com/logue/umd-core"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

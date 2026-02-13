@@ -4,7 +4,7 @@
 //! that converts image syntax to appropriate HTML5 media tags and
 //! generates download links for non-media files.
 
-use universal_markdown::parse;
+use umd::parse;
 
 fn main() {
     println!("=== Media Embedding Examples ===\n");

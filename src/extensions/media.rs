@@ -27,8 +27,8 @@ pub enum MediaType {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::extensions::media::detect_media_type;
-/// use universal_markdown::extensions::media::MediaType;
+/// use umd::extensions::media::detect_media_type;
+/// use umd::extensions::media::MediaType;
 ///
 /// assert_eq!(detect_media_type("video.mp4"), Some(MediaType::Video));
 /// assert_eq!(detect_media_type("audio.mp3"), Some(MediaType::Audio));
@@ -157,7 +157,7 @@ fn get_mime_type(url: &str, media_type: &MediaType) -> String {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::extensions::media::{generate_media_html, MediaType};
+/// use umd::extensions::media::{generate_media_html, MediaType};
 ///
 /// let html = generate_media_html("video.mp4", "Demo", Some("Product demo"), &MediaType::Video);
 /// assert!(html.contains("<video"));
@@ -253,7 +253,7 @@ fn escape_html(input: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use universal_markdown::extensions::media::transform_images_to_media;
+/// use umd::extensions::media::transform_images_to_media;
 ///
 /// let html = r#"<img src="video.mp4" alt="Demo" />"#;
 /// let result = transform_images_to_media(html);
