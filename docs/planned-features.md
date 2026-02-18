@@ -711,6 +711,71 @@ let html = parse_to_html(markdown, &options);
 <a href="https://github.com" class="external target-blank">GitHub</a>
 ```
 
+### パス基準URL設定
+
+パーサーオプションで `base_url` を指定することで、絶対パスをシステムの文脈に応じて動的に解決できます。
+
+**設計背景**:
+
+システムの絶対パス（例: `/path`）は、必ずしも独自ドメインのルートを指すわけではありません：
+
+- **サブパスホスティング**: `https://example.com/umd-core/path`
+- **複数アプリケーション**: `/app1/path` vs `/app2/path`
+- **開発/本番環境の差異**: 開発時は `/dev` プレフィックス、本番時は `/prod` プレフィックス
+
+**構文**:
+
+パーサー初期化時にオプションで指定：
+
+```rust
+let options = ParserOptions {
+    base_url: Some("/umd-core".to_string()),
+    ..Default::default()
+};
+
+let result = parse_markdown(&input, &options);
+```
+
+**動作**:
+
+- `base_url` が指定されている場合、Markdown内の絶対パス（`/` で始まるパス）を `base_url + path` に解決
+- `base_url` が未指定の場合、パスはそのまま出力（従来動作）
+
+**例**:
+
+入力：
+
+```markdown
+[ドキュメント](/docs)
+[API](/api/v1)
+```
+
+`base_url: "/umd-core"` の場合の出力：
+
+```html
+<a href="/umd-core/docs">ドキュメント</a> <a href="/umd-core/api/v1">API</a>
+```
+
+`base_url: "https://example.com/app"` の場合の出力：
+
+```html
+<a href="https://example.com/app/docs">ドキュメント</a>
+<a href="https://example.com/app/api/v1">API</a>
+```
+
+**実装方針**:
+
+- [src/lib.rs](../src/lib.rs) の `ParserOptions` に `base_url: Option<String>` フィールドを追加
+- AST後処理時にリンク（`Node::Link`）とリソース（画像、動画等）の `url` フィールドを検査
+- `/` で始まるパスに対して `base_url` を前置
+
+**注意**:
+
+- `base_url` の末尾に `/` がある場合は自動削除（`/umd-core/` → `/umd-core`）
+- 相対パス（`./, ../path` など）への対応は検討の対象外（バックエンド側で処理推奨）
+- プロトコル相対URL（`//example.com`）はそのまま出力
+- 外部URL（`http://`, `https://` で始まる）はそのまま出力
+
 ### 数式サポート（Math Formula Support）
 
 #### 概要
@@ -751,12 +816,11 @@ let html = parse_to_html(markdown, &options);
 
 #### 実装方針
 
-- UMDパーサーがLaTeX式をMathMLに変換
-- MathMLは標準的なXMLベースの数式表現形式
-- ブラウザネイティブでサポートされており、追加ライブラリ不要
-- LaTeX書式が標準化されているため、変換が可能
-
-ブロック型プラグインとして実装予定。`displayMode: true` でレンダリング。
+- パーサーがLaTeX式をMathMLに直接変換
+- MathMLは標準的なXMLベースの数式表現形式（W3C仕様）
+- ブラウザネイティブでサポートされており、追加ライブラリやバックエンド処理は不要
+- LaTeX書式が標準化されているため、正確な変換が可能
+- セマンティック要素の仕様により、インライン型 (`&math(...)`) とブロック型（プラグイン）の両方をサポート予定
 
 ### ポップオーバー（Popover）
 

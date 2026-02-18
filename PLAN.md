@@ -107,8 +107,8 @@
 - `$...$` 構文は**採用しない**
   - **理由**: 「The cost is $5.00.」のような金銭表記との競合を避けるため
   - エスケープ（`\$5.00`）を毎回書く必要をなくす
-- UMDパーサーは数式の解析を行わず、LaTeX式をそのまま `<template class="umd-plugin umd-plugin-math"><data type="formula">...</data></template>` として出力
-- バックエンド（Nuxt/Laravel等）でKaTeXやMathJaxを使ってレンダリング
+- UMDパーサーがLaTeX式をMathMLに直接変換し、`<math>...</math>` タグで出力
+- バックエンド側での追加処理は不要（ネイティブ表示可能）
 - **詳細**: [docs/planned-features.md#数式サポート](docs/planned-features.md#数式サポートmath-formula-support)
 
 ### ✅ 標準プラグイン: @detail
@@ -200,7 +200,7 @@ Discord風スポイラー表示（`||text||` 構文）。
 
 **構文**:
 
-```markdown
+```umd
 ||ネタバレ注意||
 &spoiler{ネタバレ}; <!-- UMD形式 -->
 ```
@@ -339,8 +339,7 @@ Bootstrapの`blockquote`クラスを自動付与:
 - ✅ **リスト内ブロック要素** (2026年2月18日実装): リスト項目内にテーブル、コードブロック等を配置
 - ✅ **タスクリスト拡張** (2026年2月18日実装): `[ ]`, `[x]`, `[-]` (不確定状態)
 - ✅ **カスタムリンク属性** (2026年2月18日実装): `[text](url){id class}`
-- **添付ファイル構文**: `PageName/FileName` (未実装)
-- **相対パス**: `./page`, `../page`, `/page` (未実装)
+- **パス基準URL設定** (未実装): パーサーオプションでベースURLを指定
 
 **詳細**: [docs/planned-features.md#高度なumd機能](docs/planned-features.md#高度なumd機能)
 
@@ -977,6 +976,17 @@ Bootstrapの`blockquote`クラスを自動付与:
             });
           });
           ```
+      - **TODO: スポイラー内メディアタグの処理**:
+        - スポイラー内に `<video>`, `<audio>`, `<picture>` タグが含まれる場合の動作確認
+        - 要件: スポイラーが隠れている間、メディアの自動再生を防止し、ユーザーメディアコントロールを無効化
+        - **課題**: JavaScript なしでは実装不可（メディアの再生制御が CSS のみでは不可能）
+        - **実装方針**: スポイラー開閉時にJavaScriptでメディアの `pause()`, `play()` メソッドを呼び出す
+        - **優先度**: 低（メディア内のスポイラーはユースケースが限定的）
+        - **推奨案**: 以下の構文を使用してメディアを折りたたむ：
+          - `@detail(ネタバレ){{![動画](video.mp4)}}` - HTML5 `<details>` タグで折りたたみ可能
+          - `@popover(動画を表示){{![動画](video.mp4)}}` - Popover APIで非表示
+          - これらを使うことで JavaScript による再生制御が不要になり、メディアも自動的に非表示
+        - **代替案**: ドキュメントで「スポイラー内メディアは非推奨。代わりに @detail や @popover の使用を推奨」と明記
     - **セマンティックHTML要素**:
       - `&dfn(text);` - 定義される用語 → `<dfn>text</dfn>`
       - `&kbd(text);` - キーボード入力 → `<kbd>text</kbd>`
@@ -1544,8 +1554,7 @@ Bootstrapの`blockquote`クラスを自動付与:
 - その他高度機能:
   - **タスクリスト拡張**: `[ ]`, `[x]`, `[-]` (不確定状態)
   - **カスタムリンク属性**: `[text](url){id class}`
-  - **添付ファイル構文**: `PageName/FileName`
-  - **相対パス**: `./page`, `../page`, `/page`
+  - **パス基準URL設定**: パーサーオプションで `base_url` を指定し、相対パスの解決をサポート
 
 **成果物**:
 
