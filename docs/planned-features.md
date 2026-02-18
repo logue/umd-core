@@ -1,6 +1,6 @@
 # 実装予定機能リファレンス
 
-**最終更新**: 2026年2月9日
+**最終更新**: 2026年2月18日
 
 このドキュメントは実装予定だが、まだ実装されていない機能を記載しています。
 
@@ -713,6 +713,8 @@ let html = parse_to_html(markdown, &options);
 
 ### パス基準URL設定
 
+✅ **実装済み** (2026年2月18日)
+
 パーサーオプションで `base_url` を指定することで、絶対パスをシステムの文脈に応じて動的に解決できます。
 
 **設計背景**:
@@ -765,9 +767,24 @@ let result = parse_markdown(&input, &options);
 
 **実装方針**:
 
-- [src/lib.rs](../src/lib.rs) の `ParserOptions` に `base_url: Option<String>` フィールドを追加
-- AST後処理時にリンク（`Node::Link`）とリソース（画像、動画等）の `url` フィールドを検査
-- `/` で始まるパスに対して `base_url` を前置
+- [src/parser.rs](../src/parser.rs) の `ParserOptions` に `base_url: Option<String>` フィールドを追加
+- [src/lib.rs](../src/lib.rs) に `parse_with_frontmatter_opts()` 関数を追加（カスタムオプション対応）
+- [src/extensions/conflict_resolver.rs](../src/extensions/conflict_resolver.rs) に `apply_base_url_to_links()` 関数を実装
+- HTML 後処理時に、`href`, `src`, `srcset` 属性の絶対パス（`/` で始まるパス）に対して `base_url` を前置
+- 外部URL和プロトコル相対URLは変更しない
+
+**使用例**:
+
+```rust
+use umd::{parse_with_frontmatter_opts, parser::ParserOptions};
+
+let input = "[docs](/docs)\n[api](/api/v1)";
+let mut opts = ParserOptions::default();
+opts.base_url = Some("/app".to_string());
+
+let result = parse_with_frontmatter_opts(input, &opts);
+// 出力：<a href="/app/docs">docs</a>, <a href="/app/api/v1">api</a>
+```
 
 **注意**:
 

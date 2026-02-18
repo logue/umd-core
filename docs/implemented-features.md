@@ -1,6 +1,6 @@
 # 実装済み機能リファレンス
 
-**最終更新**: 2026年2月9日
+**最終更新**: 2026年2月18日
 
 このドキュメントはUniversal Markdownで実装済みの機能を記載しています。
 
@@ -1086,12 +1086,112 @@ GitHub Flavored Markdown互換のアラート:
 
 ---
 
+## Step 6: 高度なUMD機能
+
+このステップでは、リスト内のブロック要素対応、タスクリスト拡張、カスタムリンク属性、パス基準URL設定を実装しました（2026年2月18日実装完了）。
+
+### リスト内ブロック要素
+
+リスト項目内にテーブル、コードブロック、ブロック引用など、通常はブロックレベルの要素を配置できます：
+
+````markdown
+- リスト項目
+  | Header |
+  | ------ |
+  | Cell |
+
+- 別のリスト項目
+
+  ```code
+  コードブロック
+  ```
+````
+
+````
+
+**実装詳細**:
+- [src/extensions/nested_blocks.rs](../src/extensions/nested_blocks.rs) で実装
+- インデント解析による親子関係判定
+- リスト直後のブロック要素を自動インデント
+- CommonMark違反だが既存UMDコンテンツとの後方互換性を重視
+
+### タスクリスト拡張
+
+comrak標準のタスクリスト（`[ ]`, `[x]`）に加え、不確定状態（`[-]`）をサポート：
+
+```markdown
+- [ ] 未完了タスク
+- [x] 完了タスク
+- [-] 不確定状態
+````
+
+**実装詳細**:
+
+- [src/extensions/preprocessor.rs](../src/extensions/preprocessor.rs): プレプロセス時に `[-]` をマーカーに変換
+- [src/extensions/conflict_resolver.rs](../src/extensions/conflict_resolver.rs): ポストプロセス時に `<input>` 要素に `data-task="indeterminate"` と `aria-checked="mixed"` 属性を追加
+- フロントエンドJavaScriptで動的に処理可能
+
+### カスタムリンク属性
+
+リンク直後に `{...}` を記述してIDとクラスを指定：
+
+```markdown
+[テキスト](url){id-name class1 class2}
+[テキスト](url){#id-name .class1 .class2}
+```
+
+**実装詳細**:
+
+- [src/extensions/conflict_resolver.rs](../src/extensions/conflict_resolver.rs) のポストプロセスで実装
+- 正規表現でリンク直後の `{...}` を検出
+- 第一トークン（`#` プレフィックスなし）をIDとして優先
+- `.class` 形式でクラスを明示的に指定可能
+- 既存クラス属性とマージして重複を回避
+
+### パス基準URL設定
+
+パーサーオプションで `base_url` を指定すると、絶対パスを自動解決：
+
+```rust
+let mut opts = ParserOptions::default();
+opts.base_url = Some("/app".to_string());
+let result = parse_with_frontmatter_opts(input, &opts);
+
+// 入力: [docs](/docs)
+// 出力: <a href="/app/docs">docs</a>
+```
+
+**実装詳細**:
+
+- [src/parser.rs](../src/parser.rs): `ParserOptions` に `base_url: Option<String>` フィールド追加
+- [src/lib.rs](../src/lib.rs): `parse_with_frontmatter_opts()` 関数で対応
+- [src/extensions/conflict_resolver.rs](../src/extensions/conflict_resolver.rs): `apply_base_url_to_links()` で HTML 後処理
+- 絶対パス（`/` で始まる）に `base_url` を前置
+- 外部URL（`http://`, `https://`）やプロトコル相対URL（`//`）は変更しない
+- `base_url` の末尾スラッシュは自動削除
+
+### テスト結果
+
+**Step 6 関連テスト**: 8 tests passing
+
+- 基本的なパス基準URL適用
+- 複数パスでの適用
+- 末尾スラッシュ処理
+- 完全URL（スキーム付き）対応
+- 外部URL保護
+- シングルクォート対応
+- 複合ケース
+
+---
+
 ## テスト結果
 
-**総テスト数**: 184 tests passing
+**総テスト数**: 275 tests passing
 
-- 121 unit tests
+- 184 unit tests
 - 22 bootstrap integration tests
 - 18 CommonMark compliance tests
 - 13 conflict resolution tests
-- 10 other tests
+- 8 base_url tests
+- 15 doctests
+- 15 other tests
