@@ -1,19 +1,19 @@
-//! Parser module for LukiWiki markup
+//! Parser module for Universal Markdown
 //!
 //! This module provides the core parsing functionality using comrak as the base
-//! Markdown parser, with extensions for LukiWiki-specific syntax.
+//! Markdown parser, with extensions for Universal Markdown-specific syntax.
 
 use comrak::options::{ListStyleType, Plugins};
 use comrak::{Arena, Options, format_html_with_plugins, parse_document};
 
-/// Parser configuration for LukiWiki markup
+/// Parser configuration for Universal Markdown
 #[derive(Debug, Clone)]
 pub struct ParserOptions {
     /// Enable GitHub Flavored Markdown extensions
     pub gfm_extensions: bool,
-    /// Enable LukiWiki-specific extensions
-    pub lukiwiki_extensions: bool,
-    /// Maximum heading level (1-5 for LukiWiki, 1-6 for standard Markdown)
+    /// Enable Universal Markdown-specific extensions
+    pub umd_extensions: bool,
+    /// Maximum heading level (1-5 for Universal Markdown, 1-6 for standard Markdown)
     pub max_heading_level: u8,
 }
 
@@ -21,17 +21,17 @@ impl Default for ParserOptions {
     fn default() -> Self {
         Self {
             gfm_extensions: true,
-            lukiwiki_extensions: true,
+            umd_extensions: true,
             max_heading_level: 5,
         }
     }
 }
 
-/// Parse LukiWiki markup and convert to HTML
+/// Parse Universal Markdown and convert to HTML
 ///
 /// # Arguments
 ///
-/// * `input` - The sanitized LukiWiki markup source text
+/// * `input` - The sanitized Universal Markdown source text
 /// * `options` - Parser configuration options
 ///
 /// # Returns

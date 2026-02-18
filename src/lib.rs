@@ -58,31 +58,37 @@ pub struct ParseResult {
     pub footnotes: Option<String>,
 }
 
-/// Parse LukiWiki markup and convert to HTML
+/// Parse Universal Markdown and convert to HTML
 ///
 /// This function extracts frontmatter (if present) and parses the content.
+/// Returns merged HTML of body and footnotes (if any).
 ///
 /// # Arguments
 ///
-/// * `input` - The LukiWiki markup source text
+/// * `input` - The Universal Markdown source text
 ///
 /// # Returns
 ///
-/// HTML string (frontmatter is removed from output)
+/// HTML string (frontmatter is removed from output, footnotes are appended)
 ///
 /// # Examples
 ///
 /// ```
 /// use umd::parse;
 ///
-/// let input = "# Heading\n\n**Bold** and *italic*";
+/// let input = "# Heading\n\n**Bold** and *italic*[^1]\n\n[^1]: Footnote";
 /// let html = parse(input);
 /// assert!(html.contains("<h1>"));
 /// assert!(html.contains("<strong>"));
+/// assert!(html.contains("Footnote"));
 /// ```
 pub fn parse(input: &str) -> String {
     let result = parse_with_frontmatter(input);
-    result.html
+    if let Some(footnotes) = result.footnotes {
+        format!("{}\n{}", result.html, footnotes)
+    } else {
+        result.html
+    }
 }
 
 /// Parse Universal Markdown and return HTML with frontmatter

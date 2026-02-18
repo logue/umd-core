@@ -446,7 +446,7 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
         ];
 
         let mut result = input.to_string();
-        for (pattern, marker_start) in marker_patterns {
+        for (pattern, _marker_start) in marker_patterns {
             let re = Regex::new(pattern).unwrap();
             result = re
                 .replace_all(&result, |caps: &Captures| {
