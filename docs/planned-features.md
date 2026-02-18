@@ -182,6 +182,56 @@ URL sanitizationは既存のsanitizer.rsで処理。以下のスキームをブ�
 説明文&media(autoplay,muted){![デモ](demo.mp4)};説明文
 ```
 
+#### 行の先頭メディアの自動ブロック化
+
+行の先頭に配置されたメディアタグ（`![alt](url)`）を自動的にブロック要素として扱う拡張を検討。
+
+**設計方針**:
+
+- 段落の先頭または独立した行にある画像をブロックとして扱う
+- `<figure>`タグで囲んでセマンティックな構造を提供
+- `<figcaption>`でaltテキストをキャプションとして表示
+- インライン使用時は従来通り`<picture>`タグを使用
+
+**出力HTML例**:
+
+```html
+<figure class="umd-media-block">
+  <picture title="title">
+    <source srcset="url" type="image/ext" />
+    <img src="url" alt="alt" title="title" loading="lazy" />
+  </picture>
+  <figcaption>alt</figcaption>
+</figure>
+```
+
+**使用例**:
+
+```markdown
+# ドキュメント
+
+![メイン画像](hero.jpg "サイトのヒーロー画像")
+
+本文テキスト...
+
+CENTER:
+![中央寄せ画像](centered.png "中央に配置される画像")
+
+![スクリーンショット](screenshot.png)
+```
+
+**利点**:
+
+- `CENTER:`プレフィックスとの組み合わせで、画像の中央寄せが可能
+- ブロック要素として扱われるため、他の配置プレフィックス（`LEFT:`, `RIGHT:`, `JUSTIFY:`）も適用可能
+- セマンティックな`<figure>`構造でアクセシビリティ向上
+
+**実装検討**:
+
+- AST解析で画像ノードの位置を検出
+- ブロック先頭判定: 段落の最初の子、または空行後の独立行
+- 既存のインライン動作を維持しつつ、ブロック時のみ拡張適用
+
 ---
 
 ## ブロック装飾の追加機能
@@ -337,7 +387,7 @@ TRUNCATE: 長いテキストは省略されます...
   @table(striped){{
     | key   | value |
     | alpha | one   |
-   }}
+  }}
 }}
 ```
 
