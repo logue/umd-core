@@ -408,6 +408,93 @@ fn convert_inline_decoration_noargs_to_html(function: &str) -> Option<String> {
     }
 }
 
+fn is_valid_link_attr_token(token: &str) -> bool {
+    !token.is_empty()
+        && token
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
+}
+
+fn parse_link_attribute_spec(spec: &str) -> (Option<String>, Vec<String>) {
+    let mut id = None;
+    let mut classes = Vec::new();
+
+    for raw_token in spec.split_whitespace() {
+        let token = raw_token.trim();
+        if token.is_empty() {
+            continue;
+        }
+
+        if let Some(stripped) = token.strip_prefix('#') {
+            if is_valid_link_attr_token(stripped) {
+                id = Some(stripped.to_string());
+            }
+            continue;
+        }
+
+        if let Some(stripped) = token.strip_prefix('.') {
+            if is_valid_link_attr_token(stripped) {
+                classes.push(stripped.to_string());
+            }
+            continue;
+        }
+
+        if id.is_none() {
+            if is_valid_link_attr_token(token) {
+                id = Some(token.to_string());
+            }
+        } else if is_valid_link_attr_token(token) {
+            classes.push(token.to_string());
+        }
+    }
+
+    (id, classes)
+}
+
+fn apply_custom_link_attributes(html: &str) -> String {
+    let link_pattern =
+        Regex::new(r#"(?s)<a\s+([^>]*\bhref=\"[^\"]+\"[^>]*)>(.*?)</a>\s*\{([^}]+)\}"#).unwrap();
+    let class_pattern = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
+    let id_pattern = Regex::new(r#"\bid=\"[^\"]*\""#).unwrap();
+
+    link_pattern
+        .replace_all(html, |caps: &Captures| {
+            let mut attrs = caps[1].to_string();
+            let content = &caps[2];
+            let spec = &caps[3];
+
+            let (id, classes) = parse_link_attribute_spec(spec);
+
+            if let Some(id_value) = id {
+                if !id_pattern.is_match(&attrs) {
+                    attrs.push_str(&format!(" id=\"{}\"", id_value));
+                }
+            }
+
+            if !classes.is_empty() {
+                if let Some(class_caps) = class_pattern.captures(&attrs) {
+                    let existing = class_caps.get(1).map_or("", |m| m.as_str());
+                    let mut class_list: Vec<String> =
+                        existing.split_whitespace().map(|s| s.to_string()).collect();
+                    for class_name in classes {
+                        if !class_list.iter().any(|c| c == &class_name) {
+                            class_list.push(class_name);
+                        }
+                    }
+                    let merged = class_list.join(" ");
+                    attrs = class_pattern
+                        .replace(&attrs, format!("class=\"{}\"", merged))
+                        .to_string();
+                } else {
+                    attrs.push_str(&format!(" class=\"{}\"", classes.join(" ")));
+                }
+            }
+
+            format!("<a {}>{}</a>", attrs, content)
+        })
+        .to_string()
+}
+
 pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
     use crate::extensions::block_decorations;
 
@@ -685,6 +772,9 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
     let wrapped_dl = Regex::new(r"<p>\s*(<dl>.*?</dl>)\s*</p>").unwrap();
     result = wrapped_dl.replace_all(&result, "$1").to_string();
 
+    // Apply custom link attributes: [text](url){id class}
+    result = apply_custom_link_attributes(&result);
+
     // Apply indeterminate task list markers before other HTML transforms
     result = apply_tasklist_indeterminate(&result);
 
@@ -758,7 +848,7 @@ fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String 
             };
 
             format!(
-                r#"<div class="alert {}" role="alert"><strong>{}:</strong> {}</div>"#,
+                "<div class=\"alert {}\" role=\"alert\"><strong>{}:</strong> {}</div>",
                 alert_class, icon_text, content
             )
         })
@@ -773,7 +863,7 @@ fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String 
     }
 
     // Process table cell vertical alignment prefixes (for GFM tables only)
-    result = process_table_cell_alignment(&result, header_map);
+    result = process_table_cell_alignment(&result);
 
     result
 }
@@ -783,7 +873,7 @@ fn apply_bootstrap_enhancements(html: &str, header_map: &HeaderIdMap) -> String 
 /// Detects alignment prefixes in table cells and adds Bootstrap alignment classes.
 /// Note: GFM tables are handled by comrak without extensions.
 /// UMD tables have their own cell spanning and decoration support.
-fn process_table_cell_alignment(html: &str, _header_map: &HeaderIdMap) -> String {
+fn process_table_cell_alignment(html: &str) -> String {
     let mut result = html.to_string();
 
     // Process <td> tags
@@ -838,7 +928,7 @@ fn process_cell_content(tag: &str, existing_attrs: &str, content: &str) -> Strin
         } else {
             // Add new class attribute
             format!(
-                r#"<{} class="{}"{}>{}</{}>"#,
+                "<{} class=\"{}\"{}>{}</{}>",
                 tag, align_class, existing_attrs, remaining_content, tag
             )
         }
@@ -1078,5 +1168,27 @@ mod tests {
         assert!(output.contains(r#"data-task="indeterminate""#));
         assert!(output.contains(r#"aria-checked="mixed""#));
         assert!(!output.contains("{{TASK_INDETERMINATE}}"));
+    }
+
+    #[test]
+    fn test_custom_link_attributes_id_and_class() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<p><a href="/docs">Docs</a>{docs-link btn btn-primary}</p>"#;
+        let output = postprocess_conflicts(input, &header_map);
+
+        assert!(
+            output.contains(r#"<a href="/docs" id="docs-link" class="btn btn-primary">Docs</a>"#)
+        );
+        assert!(!output.contains("{docs-link btn btn-primary}"));
+    }
+
+    #[test]
+    fn test_custom_link_attributes_merge_class() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<a href="/home" class="existing">Home</a>{home-link new}"#;
+        let output = postprocess_conflicts(input, &header_map);
+
+        assert!(output.contains(r#"id="home-link""#));
+        assert!(output.contains(r#"class="existing new""#));
     }
 }

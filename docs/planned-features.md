@@ -613,6 +613,8 @@ let html = parse_to_html(markdown, &options);
 
 ### リスト内ブロック要素
 
+✅ **実装済み** (2026年2月18日)
+
 リスト項目内にテーブル、コードブロック等を配置:
 
 ```markdown
@@ -644,13 +646,17 @@ let html = parse_to_html(markdown, &options);
 </ul>
 ```
 
-**実装方針**:
+**実装詳細**:
 
+- [src/extensions/nested_blocks.rs](../src/extensions/nested_blocks.rs)で実装
 - インデント解析による親子関係判定
+- リスト項目直後のブロック要素（テーブル、コードブロック、ブロック引用、プラグイン、配置プレフィックス）を自動インデント
 - 子要素は `<li>` タグ内に配置される
-- CommonMark違反だが互換性のため必須
+- CommonMark違反だが既存UMDコンテンツとの互換性のため必須
 
 ### タスクリスト拡張
+
+✅ **実装済み** (2026年2月18日)
 
 ```umd
 - [ ] 未完了タスク
@@ -658,15 +664,52 @@ let html = parse_to_html(markdown, &options);
 - [-] 不確定状態（UMD拡張）
 ```
 
+**実装詳細**:
+
+- [src/extensions/preprocessor.rs](../src/extensions/preprocessor.rs)でプレプロセス時に`[-]`をプレースホルダーに変換
+- [src/extensions/conflict_resolver.rs](../src/extensions/conflict_resolver.rs)でポストプロセス時に`<input>`要素に`data-task="indeterminate"`と`aria-checked="mixed"`属性を追加
+- comrak標準のタスクリスト（`[ ]`/`[x]`）を拡張
+- 不確定状態はデータ属性とARIA属性で表現し、フロントエンドJavaScriptで動的に処理可能
+
 ### カスタムリンク属性
 
-標準のMarkdown構文 `[Link text](URL "title")` でtitle属性にtitleが入ります。
+✅ **実装済み** (2026年2月18日)
+
+リンクに`id`と`class`属性を追加できます。標準のMarkdown構文 `[Link text](URL "title")` でtitle属性にtitleが入ります。
+
+**構文**:
 
 ```umd
-[テキスト](url){id class}
+[テキスト](url){id-name class1 class2}
+[テキスト](url){#id-name}
+[テキスト](url){.class1 .class2}
 ```
 
-リンクに任意の属性を追加（予定機能ですが、現時点では実装しません）。
+**実装詳細**:
+
+- [src/extensions/conflict_resolver.rs](../src/extensions/conflict_resolver.rs)でポストプロセス時に実装
+- 正規表現でリンク直後の`{...}`を検出
+- 第一トークン（`#`プレフィックスなし）をIDとして優先的に設定
+- `#id`形式で明示的にIDを指定可能
+- `.class`形式で明示的にクラスを指定可能
+- スペース区切りで複数クラスを指定可能
+- 既存の`class`属性とマージして重複を回避
+
+**使用例**:
+
+```umd
+[ドキュメント](docs){docs-link btn btn-primary}
+[ホーム](/){\.nav-link active}
+[GitHub](https://github.com){\.external target-blank}
+```
+
+**出力例**:
+
+```html
+<a href="docs" id="docs-link" class="btn btn-primary">ドキュメント</a>
+<a href="/" class="nav-link active">ホーム</a>
+<a href="https://github.com" class="external target-blank">GitHub</a>
+```
 
 ### 数式サポート（Math Formula Support）
 
