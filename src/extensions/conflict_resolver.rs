@@ -685,10 +685,33 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
     let wrapped_dl = Regex::new(r"<p>\s*(<dl>.*?</dl>)\s*</p>").unwrap();
     result = wrapped_dl.replace_all(&result, "$1").to_string();
 
+    // Apply indeterminate task list markers before other HTML transforms
+    result = apply_tasklist_indeterminate(&result);
+
     // Apply Bootstrap default classes, GFM alerts, and table cell alignment
     result = apply_bootstrap_enhancements(&result, &header_map);
 
     result
+}
+
+/// Apply indeterminate task list state to rendered checkboxes.
+fn apply_tasklist_indeterminate(html: &str) -> String {
+    let pattern =
+        Regex::new(r#"<input([^>]*\btype=\"checkbox\"[^>]*)/?>\s*\{\{TASK_INDETERMINATE\}\}"#)
+            .unwrap();
+
+    pattern
+        .replace_all(html, |caps: &Captures| {
+            let mut attrs = caps[1].to_string();
+            if !attrs.contains("data-task=") {
+                attrs.push_str(" data-task=\"indeterminate\"");
+            }
+            if !attrs.contains("aria-checked=") {
+                attrs.push_str(" aria-checked=\"mixed\"");
+            }
+            format!("<input{} />", attrs)
+        })
+        .to_string()
 }
 
 /// Apply Bootstrap 5 enhancements to HTML
@@ -1045,5 +1068,15 @@ mod tests {
         let output = postprocess_conflicts(input, &header_map);
         assert!(output.contains(r#"class="align-baseline""#));
         assert!(output.contains(r#"class="align-bottom""#));
+    }
+
+    #[test]
+    fn test_tasklist_indeterminate_marker() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<li><input type="checkbox" disabled="" /> {{TASK_INDETERMINATE}}Item</li>"#;
+        let output = postprocess_conflicts(input, &header_map);
+        assert!(output.contains(r#"data-task="indeterminate""#));
+        assert!(output.contains(r#"aria-checked="mixed""#));
+        assert!(!output.contains("{{TASK_INDETERMINATE}}"));
     }
 }

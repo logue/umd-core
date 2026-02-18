@@ -7,6 +7,8 @@ use regex::Regex;
 
 // Discord-style underline pattern: __text__
 static DISCORD_UNDERLINE: Lazy<Regex> = Lazy::new(|| Regex::new(r"__([^_]+)__").unwrap());
+static TASKLIST_INDETERMINATE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^([ \t]*(?:[-+*]|\d+\.)\s+)\[-\](\s|$)").unwrap());
 
 /// Remove comment syntax from input
 ///
@@ -123,6 +125,51 @@ pub fn remove_comments(input: &str) -> String {
     result
 }
 
+/// Convert indeterminate task list marker `[-]` to a placeholder.
+///
+/// The placeholder is later converted to an indeterminate checkbox in HTML.
+pub fn preprocess_tasklist_indeterminate(input: &str) -> String {
+    let ends_with_newline = input.ends_with('\n');
+    let mut result = String::new();
+    let mut in_code_block = false;
+    let mut code_fence_marker = "";
+
+    for line in input.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            if !in_code_block {
+                in_code_block = true;
+                code_fence_marker = if trimmed.starts_with("```") {
+                    "```"
+                } else {
+                    "~~~"
+                };
+            } else if trimmed.contains(code_fence_marker) {
+                in_code_block = false;
+            }
+            result.push_str(line);
+            result.push('\n');
+            continue;
+        }
+
+        if in_code_block {
+            result.push_str(line);
+            result.push('\n');
+            continue;
+        }
+
+        let processed = TASKLIST_INDETERMINATE.replace(line, "$1[ ]{{TASK_INDETERMINATE}}$2");
+        result.push_str(&processed);
+        result.push('\n');
+    }
+
+    if !ends_with_newline && result.ends_with('\n') {
+        result.pop();
+    }
+
+    result
+}
+
 /// Process definition lists (:term|definition syntax)
 ///
 /// Converts consecutive lines starting with `:term|definition` into
@@ -232,6 +279,20 @@ mod tests {
         assert!(output.contains("{{DEFINITION_LIST:"));
         assert!(output.contains("DEFINITION_LIST}}"));
         assert!(output.contains("regular text"));
+    }
+
+    #[test]
+    fn test_tasklist_indeterminate() {
+        let input = "- [-] Maybe";
+        let output = preprocess_tasklist_indeterminate(input);
+        assert!(output.contains("- [ ]{{TASK_INDETERMINATE}} Maybe"));
+    }
+
+    #[test]
+    fn test_tasklist_indeterminate_ignores_code_block() {
+        let input = "```\n- [-] Maybe\n```";
+        let output = preprocess_tasklist_indeterminate(input);
+        assert!(output.contains("- [-] Maybe"));
     }
 
     #[test]
