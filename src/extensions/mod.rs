@@ -8,6 +8,7 @@ pub mod conflict_resolver;
 pub mod emphasis;
 pub mod inline_decorations;
 pub mod media;
+pub mod nested_blocks;
 pub mod plugin_markers;
 pub mod plugins;
 pub mod preprocessor;
