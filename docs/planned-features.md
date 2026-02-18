@@ -474,6 +474,83 @@ Bootstrap標準の引用スタイルを自動適用。
 
 この仕様はCommonMark標準に準拠しています。
 
+### コメント構文
+
+Markdown文書内にコメントを記載するための構文を提供します。コメントはレンダリング結果に影響を与えません。
+
+#### HTMLコメント形式 (`<!-- -->`)
+
+オリジナルのMarkdownと同じように、HTMLコメントとして出力されます。
+
+```markdown
+これは表示される <!-- この部分はHTMLコメントとして出力される -->
+```
+
+**出力HTML**:
+
+```html
+<p>
+  これは表示される
+  <!-- この部分はHTMLコメントとして出力される -->
+</p>
+```
+
+**特徴**:
+
+- HTMLコメントとしてブラウザに残る
+- 開発者ツールなどで確認可能
+- ソースコードの可読性を保ちつつ、追加情報を記載
+
+#### 処理しないコメント形式 (`/* ~ */`)
+
+完全に処理されず、出力に含まれないコメントです。
+
+```umd
+これは表示される /* この部分は完全に除去される */
+```
+
+**出力HTML**:
+
+```html
+<p>これは表示される</p>
+```
+
+**特徴**:
+
+- 出力HTMLから完全に除去
+- 開発用メモや一時的な無効化に適する
+- 最終出力のサイズを小さく保つ
+
+#### コードブロック内での扱い
+
+コードブロック（` ``` `）内の `/* ~ */` はそのまま出力され、コメントとして処理されません。
+
+````markdown
+```javascript
+function example() {
+  /* このコメントはコードの一部として保持される */
+  return true;
+}
+```
+````
+
+````
+
+**出力HTML**:
+
+```html
+<pre><code class="language-javascript">function example() {
+  /* このコメントはコードの一部として保持される */
+  return true;
+}
+</code></pre>
+````
+
+**意味の区別**:
+
+- `<!-- -->`: HTMLソースに残るコメント（ドキュメントのメタ情報）
+- `/* ~ */`: 完全に処理しないコメント（開発メモや無効化）
+
 ---
 
 ## セキュリティ設定オプション（提案）
@@ -540,10 +617,9 @@ let html = parse_to_html(markdown, &options);
 
 ```markdown
 - リスト項目
-
   | Header |
   | ------ |
-  | Cell   |
+  | Cell |
 ```
 
 **出力HTML**:
@@ -584,19 +660,13 @@ let html = parse_to_html(markdown, &options);
 
 ### カスタムリンク属性
 
+標準のMarkdown構文 `[Link text](URL "title")` でtitle属性にtitleが入ります。
+
 ```umd
 [テキスト](url){id class}
 ```
 
-リンクに任意の属性を追加。
-
-### 相対パス
-
-```umd
-./page
-../page
-/page
-```
+リンクに任意の属性を追加（予定機能ですが、現時点では実装しません）。
 
 ### 数式サポート（Math Formula Support）
 
@@ -628,48 +698,20 @@ let html = parse_to_html(markdown, &options);
 #### 出力HTML
 
 ```html
-<template class="umd-plugin umd-plugin-math">
-  <data type="formula">\sqrt{x^2}</data>
-</template>
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+  <msqrt>
+    <mi>x</mi>
+    <mn>2</mn>
+  </msqrt>
+</math>
 ```
 
 #### 実装方針
 
-- UMDパーサーは数式の構文解析を**行いません**
-- LaTeX式をそのまま `<data>` 要素に格納
-- 実際のレンダリングはバックエンド（Nuxt/Laravel）で実行
-
-#### バックエンドでのレンダリング
-
-```javascript
-// KaTeXの例
-import katex from "katex";
-
-const formula = template.querySelector('[type="formula"]').textContent;
-const rendered = katex.renderToString(formula, {
-  throwOnError: false,
-  displayMode: false,
-});
-```
-
-```php
-// MathJaxの例（Laravel）
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-<template class="umd-plugin umd-plugin-math">
-  <data type="formula">{{ $formula }}</data>
-</template>
-```
-
-#### ブロック数式（将来的な拡張）
-
-```umd
-@math{{
-  \begin{align}
-    a &= b \\
-    c &= d
-  \end{align}
-}}
-```
+- UMDパーサーがLaTeX式をMathMLに変換
+- MathMLは標準的なXMLベースの数式表現形式
+- ブラウザネイティブでサポートされており、追加ライブラリ不要
+- LaTeX書式が標準化されているため、変換が可能
 
 ブロック型プラグインとして実装予定。`displayMode: true` でレンダリング。
 
@@ -679,26 +721,50 @@ const rendered = katex.renderToString(formula, {
 
 HTML Popover APIを利用した軽量なポップアップコンテンツを提供します。トリガーとなるボタンをクリックすると、関連するコンテンツがポップオーバーとして表示されます。
 
+**設計思想**:
+
+- **インライン型** (`&`): テキスト中に埋め込み可能、単一行コンテンツのみ
+- **ブロック型** (`@`): 独立したブロックとして配置、複数行コンテンツをサポート
+
+この両方のバリエーションを提供することで、シンプルなケースから複雑なケースまで対応できます。
+
 #### 構文
 
+**インライン型**（単一行のみ）:
+
 ```umd
-@popover(text){contents};
+&popover(text){content};
+```
+
+**ブロック型**（複数行可能）:
+
+```umd
+@popover(text){{ content }}
+@popover(text){content}
 ```
 
 **パラメータ**:
 
 - `text`: ポップオーバーを開くボタンのラベル
-- `contents`: ポップオーバー内に表示されるコンテンツ（Markdown記法可）
+- `content`: ポップオーバー内に表示されるコンテンツ（Markdown記法可）
 
 **使用例**:
 
+インライン型（簡潔な説明）:
+
 ```umd
-テキスト@popover(詳細を表示){
+テキスト&popover(詳細){ 短い補足説明です };テキスト
+```
+
+ブロック型（複数行のコンテンツ）:
+
+```umd
+@popover(詳細を表示){{
   ここにポップオーバーの内容を記述します。
 
   - リスト項目1
   - リスト項目2
-};テキスト
+}}
 ```
 
 #### 出力HTML
@@ -748,21 +814,23 @@ let popover_id = format!("umd-popover-{}", Uuid::new_v4().simple());
 
 **ダイアログ（Dialog）**:
 
-```umd
-@dialog(開く){ダイアログの内容};
-```
-
-複数行のコンテンツを含める場合（インデント推奨）:
+ブロック型（複数行可能）:
 
 ```umd
-@dialog(開く){
+@dialog(開く){{
   # ダイアログタイトル
 
   ダイアログの本文コンテンツです。
 
   - リスト項目1
   - リスト項目2
-};
+}}
+```
+
+インライン型（単一行のみ）:
+
+```umd
+&dialog(開く){ ダイアログの内容 };
 ```
 
 出力HTML:
@@ -775,8 +843,20 @@ let popover_id = format!("umd-popover-{}", Uuid::new_v4().simple());
 
 **ホバーツールチップ（Hover）**:
 
+インライン型（単一行のみ）:
+
 ```umd
 &hover(ツールチップの内容){ホバー対象テキスト};
+```
+
+ブロック型（複数行可能）:
+
+```umd
+@hover(ホバー対象テキスト){{
+  **ツールチップタイトル**
+
+  詳細な説明文
+}}
 ```
 
 出力HTML（提案）:
@@ -788,6 +868,9 @@ let popover_id = format!("umd-popover-{}", Uuid::new_v4().simple());
 
 **共通の設計方針**:
 
+- **インライン型とブロック型の両方をサポート**
+  - インライン型 (`&`): テキスト中に埋め込み、単一行コンテンツ
+  - ブロック型 (`@`): 独立配置、複数行コンテンツ（`{{ }}` または `{}`）
 - HTML標準APIの活用（`popover`, `dialog`, ARIA属性）
 - ID生成の統一（`umd-{type}-{uuid}`）
 - JavaScriptフレームワーク非依存
@@ -830,6 +913,7 @@ let popover_id = format!("umd-popover-{}", Uuid::new_v4().simple());
 title: "ページタイトル"
 author: "著者名"
 date: 2026-02-13
+is_template: true  # テンプレートエンジン機能を有効化
 config:
   theme: "dark"
   version: "1.0.0"
@@ -845,6 +929,11 @@ items:
 日付: {{ date }}
 ```
 
+**テンプレートモードの有効化**:
+
+- `is_template: true` を設定することで、if文やfor文などの制御構造のサポートを有効化します。
+- このフラグがない場合、基本的な変数展開のみが機能し、制御構造は無視されます。
+
 ### 変数展開構文
 
 #### 基本的な変数展開
@@ -858,14 +947,26 @@ items:
 **UMDパーサー出力**:
 
 ```html
-<template class="umd-var" data-var="variable">{{ variable }}</template>
+<data class="umd-var" value="variable">{{ variable }}</data>
+```
+
+または、フロントマターで定義された全変数を一覧として出力する場合：
+
+```html
+<datalist id="umd-frontmatter-vars">
+  <option value="title">ページタイトル</option>
+  <option value="author">著者名</option>
+  <option value="date">2026-02-13</option>
+</datalist>
 ```
 
 **特徴**:
 
+- 各変数展開箇所は `<data>` 要素で表現
+- `value` 属性に変数名を格納
+- 元の構文をテキストとして保持（バックエンドでの処理を想定）
 - フロントマターのトップレベル変数を参照
 - ドット記法でネストされた値にアクセス: `{{ config.theme }}`
-- 元の構文をテキストとして保持（バックエンドでの処理を想定）
 
 #### 配列・オブジェクトのアクセス
 
