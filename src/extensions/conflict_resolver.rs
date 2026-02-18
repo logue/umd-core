@@ -1192,3 +1192,62 @@ mod tests {
         assert!(output.contains(r#"class="existing new""#));
     }
 }
+
+/// Apply base URL to absolute paths in links and media
+///
+/// Resolves absolute paths (starting with "/") by prefixing them with the base_url.
+/// Relative URLs (http://, https://, //, etc.) are left unchanged.
+///
+/// # Arguments
+///
+/// * `html` - The HTML to process
+/// * `base_url` - The base URL to prepend (e.g., "/app", "https://example.com/app")
+///
+/// # Returns
+///
+/// HTML with absolute paths resolved to base_url + path
+///
+/// # Examples
+///
+/// ```
+/// use umd::extensions::conflict_resolver::apply_base_url_to_links;
+///
+/// let html = r#"<a href="/docs">Docs</a><img src="/image.png" />"#;
+/// let result = apply_base_url_to_links(html, "/app");
+/// assert!(result.contains(r#"href="/app/docs""#));
+/// assert!(result.contains(r#"src="/app/image.png""#));
+/// ```
+pub fn apply_base_url_to_links(html: &str, base_url: &str) -> String {
+    // Normalize base_url: remove trailing slash
+    let normalized_base = if base_url.ends_with('/') && base_url.len() > 1 {
+        &base_url[..base_url.len() - 1]
+    } else {
+        base_url
+    };
+
+    let mut result = html.to_string();
+
+    // Replace href="/path" with href="/base_url/path"
+    let href_double = Regex::new(r#"((?:href|src|srcset)\s*=\s*)"(/[^"]*)""#).unwrap();
+    result = href_double
+        .replace_all(&result, |caps: &Captures| {
+            let attr = &caps[1];
+            let path = &caps[2];
+            let new_url = format!("{}{}", normalized_base, path);
+            format!("{}\"{}\"", attr, new_url)
+        })
+        .to_string();
+
+    // Replace href='/path' with href='/base_url/path' (single quotes)
+    let href_single = Regex::new(r"((?:href|src|srcset)\s*=\s*)'(/[^']*)'").unwrap();
+    result = href_single
+        .replace_all(&result, |caps: &Captures| {
+            let attr = &caps[1];
+            let path = &caps[2];
+            let new_url = format!("{}{}", normalized_base, path);
+            format!("{}'{}'", attr, new_url)
+        })
+        .to_string();
+
+    result
+}

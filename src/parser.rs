@@ -15,6 +15,9 @@ pub struct ParserOptions {
     pub umd_extensions: bool,
     /// Maximum heading level (1-5 for Universal Markdown, 1-6 for standard Markdown)
     pub max_heading_level: u8,
+    /// Base URL for resolving absolute paths (e.g., "/umd-core", "https://example.com/app")
+    /// If set, absolute paths (starting with "/") will be prefixed with this base URL
+    pub base_url: Option<String>,
 }
 
 impl Default for ParserOptions {
@@ -23,6 +26,7 @@ impl Default for ParserOptions {
             gfm_extensions: true,
             umd_extensions: true,
             max_heading_level: 5,
+            base_url: None,
         }
     }
 }

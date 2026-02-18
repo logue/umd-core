@@ -114,6 +114,36 @@ pub fn parse(input: &str) -> String {
 /// assert!(result.html.contains("<h1>"));
 /// ```
 pub fn parse_with_frontmatter(input: &str) -> ParseResult {
+    let options = parser::ParserOptions::default();
+    parse_with_frontmatter_opts(input, &options)
+}
+
+/// Parse Universal Markdown and return HTML with frontmatter and custom options
+///
+/// This function extracts frontmatter and returns it separately from the HTML content,
+/// with support for custom parser options (e.g., base_url for URL resolution).
+///
+/// # Arguments
+///
+/// * `input` - The Universal Markdown source text
+/// * `options` - Parser configuration options
+///
+/// # Returns
+///
+/// ParseResult containing HTML and optional frontmatter
+///
+/// # Examples
+///
+/// ```
+/// use umd::{parse_with_frontmatter_opts, parser::ParserOptions};
+///
+/// let input = "[link](/docs)";
+/// let mut opts = ParserOptions::default();
+/// opts.base_url = Some("/app".to_string());
+/// let result = parse_with_frontmatter_opts(input, &opts);
+/// assert!(result.html.contains(r#"href="/app/docs""#));
+/// ```
+pub fn parse_with_frontmatter_opts(input: &str, options: &parser::ParserOptions) -> ParseResult {
     // Step 0: Extract frontmatter
     let (frontmatter_data, content) = frontmatter::extract_frontmatter(input);
 
@@ -133,14 +163,13 @@ pub fn parse_with_frontmatter(input: &str) -> ParseResult {
     let sanitized = sanitizer::sanitize(&preprocessed);
 
     // Step 6: Parse with comrak-based parser
-    let options = parser::ParserOptions::default();
-    let html = parser::parse_to_html(&sanitized, &options);
+    let html = parser::parse_to_html(&sanitized, options);
 
     // Step 7: Restore Discord-style underline placeholders to <u> tags
     let html = extensions::preprocessor::postprocess_discord_underline(&html);
 
     // Step 8: Apply extended syntax and custom header IDs (includes post-processing)
-    let final_html = extensions::apply_extensions_with_headers(&html, &header_map);
+    let final_html = extensions::apply_extensions_with_headers(&html, &header_map, options);
 
     // Step 9: Extract footnotes from HTML
     let (body_html, footnotes_html) = extract_footnotes(&final_html);

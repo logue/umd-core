@@ -28,7 +28,8 @@ pub mod table;
 /// Transformed HTML with extended syntax applied
 pub fn apply_extensions(html: &str) -> String {
     let header_map = conflict_resolver::HeaderIdMap::new();
-    apply_extensions_with_headers(html, &header_map)
+    let options = crate::parser::ParserOptions::default();
+    apply_extensions_with_headers(html, &header_map, &options)
 }
 
 /// Apply extended syntax transformations with custom header IDs
@@ -44,6 +45,7 @@ pub fn apply_extensions(html: &str) -> String {
 pub fn apply_extensions_with_headers(
     html: &str,
     header_map: &conflict_resolver::HeaderIdMap,
+    options: &crate::parser::ParserOptions,
 ) -> String {
     let mut result = html.to_string();
 
@@ -59,6 +61,11 @@ pub fn apply_extensions_with_headers(
     result = block_decorations::apply_block_placement(&result); // Apply block placement first
     result = block_decorations::apply_block_decorations(&result);
     result = inline_decorations::apply_inline_decorations(&result);
+
+    // Apply base URL resolution to links
+    if let Some(base_url) = &options.base_url {
+        result = conflict_resolver::apply_base_url_to_links(&result, base_url);
+    }
 
     // Restore protected code sections
     restore_code_sections(&result, &placeholders)
