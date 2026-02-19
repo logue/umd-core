@@ -4,6 +4,7 @@
 //! semantic HTML elements, definition lists, and LukiWiki legacy compatibility.
 
 pub mod block_decorations;
+pub mod code_block;
 pub mod conflict_resolver;
 pub mod emphasis;
 pub mod inline_decorations;
@@ -118,6 +119,9 @@ fn restore_code_sections(html: &str, placeholders: &[String]) -> String {
             placeholders.get(index).map(|s| s.as_str()).unwrap_or("")
         })
         .to_string();
+
+    // Apply code block enhancements (syntax highlighting, Mermaid, filenames)
+    result = code_block::process_code_blocks(&result);
 
     result
 }
