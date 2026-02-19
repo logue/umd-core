@@ -3,7 +3,7 @@
 **プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テストを合理的にパス(75%+目標)しつつ、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステムを提供。レガシー構文との後方互換性も維持。
 
 **作成日**: 2026年1月23日
-**最終更新**: 2026年2月18日
+**最終更新**: 2026年2月19日
 **Rustバージョン**: 1.93.1 (最新安定版)
 **ライセンス**: MIT
 
@@ -299,15 +299,90 @@ Markdown標準の脚注構文をサポート。HTML化せず、構造化デー�
 
 **詳細**: [docs/planned-features.md#テーブル拡張](docs/planned-features.md#テーブル拡張)
 
-#### 6. ブロック引用のデフォルトクラス 🚧
+#### 6. Mermaid図のレンダリング 🔮
+
+コードブロック（` ```mermaid `）をSVGに変換してバックエンドで処理。SEO最適化と初期表示高速化を実現。
+
+**構文**:
+
+````umd
+```mermaid
+graph TD
+    A[開始] --> B[処理]
+    B --> C[終了]
+````
+
+````
+
+**実装方針**:
+
+- `mermaid-rs-renderer`を使用してSVG生成（軽量でRustネイティブ）
+- バックエンド処理により検索エンジンが図を直接インデックス化可能
+- JavaScript実行を待たず即座に表示（アクセシビリティ向上）
+- SVG出力は通常5-20KB程度、gzip圧縮で1/3-1/5に削減可能
+- **技術的課題**: mermaid-rs-rendererがCSS変数を直接サポートしない可能性
+  - 解決策: 後処理で固定色をCSS変数に置換する
+  - 例: `fill="#0d6efd"` → `fill="var(--bs-blue)"`
+
+**利点**:
+
+- ✅ SEO最適化（検索エンジンがSVGコンテンツをインデックス化）
+- ✅ 初期表示高速（JavaScript実行不要）
+- ✅ アクセシビリティ（JavaScript無効環境でも利用可能）
+- ✅ サーバーキャッシュで性能確保
+
+**Bootstrap統合**:
+
+- ⚠️ **重要**: BootstrapのCSS変数（`--bs-blue`, `--bs-body-color`等）を使用してカラーリング
+- ダークモード対応：テキストが読めなくなる問題を回避（Growi等で確認された問題）
+- デザインの一貫性：Bootstrapテーマと自動連動
+- **注**: システムカラー（`--bs-primary`等）ではなく純粋な色変数を使用
+- 🔴 **最重要課題**: SVG生成時に色を直接埋め込む必要がある
+  - ノード背景: `var(--bs-blue)`
+  - ノードテキスト: `white`（固定値でコントラスト確保）
+  - エッジラベル: `var(--bs-body-color)`
+  - 後付けCSSでは`!important`が必要になり保守性が低下
+
+**詳細**: [docs/planned-features.md#mermaid図のレンダリング](docs/planned-features.md#mermaid図のレンダリング)
+
+#### 7. シンタックスハイライト 🔮
+
+コードブロックのシンタックスハイライトをハイブリッド方式で実装。
+
+**実装方針**:
+
+- **バックエンド**: 基本的な言語情報をHTML属性として付与（`<code class="language-rust">`）
+- **フロントエンド**: オプションでハイライト適用（progressive enhancement方式）
+- 両方の利点を活用：SEO対策とインタラクティブ機能の両立
+- **ファイル名指定**: ` ```javascript:test.js ` 構文で`<figure>`+`<figcaption>`に変換
+
+**ハイブリッド方式の利点**:
+
+- ✅ SEOフレンドリー（検索エンジンがコード内容を認識）
+- ✅ JavaScript無効環境でも基本表示可能
+- ✅ フロントエンドでインタラクティブ機能追加可能（コピーボタン、行選択等）
+- ✅ サーバー負荷を最小限に抑制
+- ✅ セマンティックHTML（`<figure>`でファイル名を`<figcaption>`に表示）
+
+**Bootstrap統合**:
+
+- ⚠️ **重要**: BootstrapのCSS変数を使用したカスタムテーマを提供
+- デフォルトテーマ（Prism.js等）がBootstrapから浮く問題を回避
+- ダークモード自動対応：`data-bs-theme`属性と連動
+- カラーマッピング：キーワード→`--bs-blue`、文字列→`--bs-green`等
+- **注**: システムカラー（`--bs-primary`等）ではなく純粋な色値を使用
+
+**詳細**: [docs/planned-features.md#シンタックスハイライト](docs/planned-features.md#シンタックスハイライト)
+
+#### 8. ブロック引用のデフォルトクラス 🚧
 
 Bootstrapの`blockquote`クラスを自動付与:
 
 ```html
 <blockquote class="blockquote">...</blockquote>
-```
+````
 
-#### 7. Markdown拡張機能 🔮
+#### 9. Markdown拡張機能 🔮
 
 **Step 5として実装予定**:
 
@@ -332,7 +407,7 @@ Bootstrapの`blockquote`クラスを自動付与:
 
 ### 低優先度（長期実装予定）
 
-#### 8. 高度なUMD機能 🔮
+#### 10. 高度なUMD機能 🔮
 
 **Step 6実装状況**:
 

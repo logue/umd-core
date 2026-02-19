@@ -1,6 +1,6 @@
 # 実装予定機能リファレンス
 
-**最終更新**: 2026年2月18日
+**最終更新**: 2026年2月19日
 
 このドキュメントは実装予定だが、まだ実装されていない機能を記載しています。
 
@@ -9,6 +9,9 @@
 - [~~メディアファイル自動検出~~](#メディアファイル自動検出) ✅ **実装済み** (2026/02/09)
 - [ブロック装飾の追加機能](#ブロック装飾の追加機能)
 - [テーブル拡張](#テーブル拡張)
+- [コードブロック](#コードブロック)
+  - [Mermaid図のレンダリング](#mermaid図のレンダリング)
+  - [シンタックスハイライト](#シンタックスハイライト)
 - [Markdown拡張機能](#markdown拡張機能)
 - [セキュリティ設定オプション](#セキュリティ設定オプション提案)
 - [高度なUMD機能](#高度なumd機能)
@@ -418,6 +421,1090 @@ Bootstrap標準の引用スタイルを自動適用。
 
 ---
 
+## コードブロック
+
+フェンスコードブロック（` ``` `）に対する追加機能を提供します。
+
+### Mermaid図のレンダリング
+
+**実装状態**: 🔮 実装予定
+
+Markdownのコードブロック構文を使って記述されたMermaid図を、バックエンドでSVGに変換して出力します。
+
+#### 基本構文
+
+````umd
+```mermaid
+graph TD
+    A[開始] --> B[処理]
+    B --> C[終了]
+````
+
+````
+
+#### 実装方針
+
+**バックエンド処理を採用する理由**:
+
+1. **SEO最適化**: 検索エンジンがSVG内のテキストコンテンツを直接インデックス化できる
+2. **初期表示高速化**: JavaScript実行を待たずに即座に図が表示される
+3. **アクセシビリティ向上**: JavaScript無効環境やスクリーンリーダーでも利用可能
+4. **サーバーキャッシュ**: 一度レンダリングすればキャッシュで再利用可能
+
+**フロントエンド処理との比較**:
+
+| 項目 | バックエンド処理 | フロントエンド処理 |
+|------|------------------|--------------------|
+| SEO | ✅ 検索可能 | ❌ JavaScriptレンダリングに依存 |
+| 初期表示速度 | ✅ 即座に表示 | ⚠️ JS実行後に表示 |
+| アクセシビリティ | ✅ 常に利用可能 | ⚠️ JS必須 |
+| HTMLサイズ | ⚠️ やや増加（5-20KB/図） | ✅ 軽量 |
+| サーバー負荷 | ⚠️ 処理が必要 | ✅ なし |
+| キャッシュ効果 | ✅ 高い | ⚠️ ブラウザのみ |
+
+**注**: SVG出力は通常5-20KB程度で、gzip圧縮により1/3-1/5に削減されます。現代のネットワーク環境では問題になりません。
+
+#### 技術的詳細
+
+**使用ライブラリ**: `mermaid-rs-renderer`
+- Rust製の軽量Mermaidレンダラー
+- UMDのRustコードベースとネイティブに統合可能
+- JavaScript版より限定的だが、基本的な図はサポート
+
+**⚠️ 技術的課題と代替案**:
+
+`mermaid-rs-renderer`がCSS変数を直接サポートしていない可能性があるため、以下の代替アプローチを検討：
+
+1. **後処理でCSS変数を注入** (推奨):
+   ```rust
+   fn inject_bootstrap_colors(svg: &str) -> String {
+       svg
+           .replace("fill=\"#0d6efd\"", "fill=\"var(--bs-blue)\"")
+           .replace("fill=\"#000000\"", "fill=\"white\"")
+           .replace("stroke=\"#333333\"", "stroke=\"var(--bs-border-color)\"")
+           // ... 他の色変換
+   }
+   ```
+
+2. **パーサーオプションで色を計算して固定値で出力**:
+   - Bootstrapのデフォルト色をハードコード
+   - ライトモード/ダークモード別にSVGを生成
+   - `data-bs-theme`属性に応じてSVGを切り替え（JavaScript側）
+   - デメリット: カスタムテーマに対応できない
+
+3. **JavaScript版Mermaidにフォールバック**:
+   - Rust側で処理できない場合、フロントエンドでレンダリング
+   - SEOは犠牲になるが、確実に動作する
+
+**推奨アプローチ**: 上記1の「後処理でCSS変数を注入」が最もバランスが良いです。
+
+**サポート予定の図の種類**:
+
+- フローチャート（`graph`, `flowchart`）
+- シーケンス図（`sequenceDiagram`）
+- クラス図（`classDiagram`）
+- 状態図（`stateDiagram`）
+- ER図（`erDiagram`）
+- ガントチャート（`gantt`）
+- パイチャート（`pie`）
+
+**出力HTML例**:
+
+```html
+<div class="mermaid-diagram" data-mermaid-source="graph TD...">
+  <svg>...</svg>
+</div>
+````
+
+- `data-mermaid-source`属性に元のMermaidコードを保持（デバッグ用）
+- SVGには適切な`aria-label`や`role`属性を付与（アクセシビリティ対応）
+
+#### パフォーマンス考慮事項
+
+**キャッシュ戦略**:
+
+- Mermaidコードのハッシュ値をキーとしてSVG出力をキャッシュ
+- 同じ図が複数ページで使用される場合、レンダリングは1回のみ
+
+**エラーハンドリング**:
+
+- 構文エラー時はコードブロックとしてフォールバック表示
+- エラーメッセージをHTML属性に含める（開発時のデバッグ用）
+
+```html
+<!-- エラー時の出力例 -->
+<pre class="mermaid-error" data-error="Syntax error at line 2">
+<code class="language-mermaid">
+graph TD
+    A[開始] -> B[処理]  <!-- 構文エラー -->
+</code>
+</pre>
+```
+
+#### Bootstrap統合とカラーリング
+
+**重要**: MermaidのSVG出力はBootstrapのデザインシステムと完全に統合する必要があります。
+
+**問題点**:
+
+1. **ダークモード非対応**: デフォルトのMermaidテーマは黒い文字を使用するため、ダークモード時に背景も暗くなると文字が読めなくなる（Growi等で実際に発生した問題）
+2. **デザインの不統一**: MermaidデフォルトのカラースキームがBootstrapのデザインから浮いてしまう
+3. **テーマ切り替えへの非対応**: ライト/ダーク切り替え時に図の色が連動しない
+
+**解決策: BootstrapのCSS変数を使用**
+
+Mermaid SVGの色指定をBootstrapのCSS変数（`--bs-*`）から取得する必要があります：
+
+```css
+/* Mermaid SVG内の色指定例 */
+.mermaid-diagram svg {
+  /* テキスト色: Bootstrapの本文色 */
+  color: var(--bs-body-color);
+  fill: var(--bs-body-color);
+}
+
+.mermaid-diagram svg .node rect {
+  /* ノード背景: 青系の色 */
+  fill: var(--bs-blue);
+  stroke: var(--bs-blue);
+}
+
+.mermaid-diagram svg .node text {
+  /* ノードテキスト: 白色または高コントラスト色 */
+  fill: white;
+}
+
+.mermaid-diagram svg .edgeLabel {
+  /* ラベル背景: カードと同じ */
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+.mermaid-diagram svg .relation {
+  /* 矢印/線: ボーダーカラー */
+  stroke: var(--bs-border-color);
+}
+```
+
+**実装方針の詳細**:
+
+#### アプローチ1: SVG要素に直接CSS変数を埋め込む（推奨）
+
+Mermaidが生成するSVG要素のstyle属性やfill/stroke属性に、直接BootstrapのCSS変数を指定します。これにより、SVG内の色がBootstrapのテーマと自動的に同期します。
+
+```rust
+// Rust側での実装イメージ
+fn generate_mermaid_svg(mermaid_code: &str) -> String {
+    let theme_config = MermaidTheme {
+        // SVGに直接CSS変数を埋め込む
+        primary_color: "var(--bs-blue)".to_string(),
+        text_color: "var(--bs-body-color)".to_string(),
+        background: "var(--bs-body-bg)".to_string(),
+        main_bkg: "var(--bs-blue)".to_string(),
+        secondary_bkg: "var(--bs-gray-200)".to_string(),
+        line_color: "var(--bs-border-color)".to_string(),
+        border1: "var(--bs-border-color)".to_string(),
+        // ダークモード対応：テキストは常に読める色に
+        node_text_color: "white".to_string(), // または var(--bs-body-bg) で背景色の反転
+        label_background: "var(--bs-body-bg)".to_string(),
+    };
+
+    // mermaid-rs-rendererにテーマ設定を渡してSVG生成
+    render_mermaid_with_theme(mermaid_code, theme_config)
+}
+```
+
+**生成されるSVG例**:
+
+```html
+<svg xmlns="http://www.w3.org/2000/svg" style="max-width: 100%;">
+  <!-- グループ全体にデフォルトの色を設定 -->
+  <g style="color: var(--bs-body-color); fill: var(--bs-body-color);">
+    <!-- ノード -->
+    <rect
+      class="node"
+      style="fill: var(--bs-blue); stroke: var(--bs-blue);"
+      x="10"
+      y="10"
+      width="100"
+      height="50"
+    />
+    <text x="60" y="35" style="fill: white; text-anchor: middle;">開始</text>
+
+    <!-- エッジ（矢印） -->
+    <path
+      class="relation"
+      style="stroke: var(--bs-border-color); fill: none;"
+      d="M110,35 L200,35"
+    />
+
+    <!-- エッジラベル -->
+    <g class="edgeLabel">
+      <rect
+        style="fill: var(--bs-body-bg); stroke: var(--bs-border-color);"
+        x="150"
+        y="30"
+        width="50"
+        height="20"
+      />
+      <text
+        x="175"
+        y="42"
+        style="fill: var(--bs-body-color); text-anchor: middle;"
+      >
+        処理
+      </text>
+    </g>
+  </g>
+</svg>
+```
+
+**クリティカルポイント**:
+
+🔴 **最重要**: ノード内のテキスト色は**固定値**（`white`や`black`）または**計算された色**を使用する必要があります。`var(--bs-body-color)`を使うと、ノードの背景が青でテキストも青（ダークモード時）になり読めなくなります。
+
+```css
+/* ❌ 間違った実装 - ダークモードで読めない */
+.node rect {
+  fill: var(--bs-blue);
+}
+.node text {
+  fill: var(--bs-body-color);
+} /* 青背景に青文字 */
+
+/* ✅ 正しい実装 - 常に読める */
+.node rect {
+  fill: var(--bs-blue);
+}
+.node text {
+  fill: white;
+} /* 青背景に白文字 */
+```
+
+#### アプローチ2: CSSでの後付けスタイリング（補完的）
+
+SVG生成後、追加のCSSでスタイルを上書きすることも可能ですが、これは補完的な手段です：
+
+```css
+/* 追加のCSSファイル（umd-mermaid-bootstrap.css） */
+.mermaid-diagram svg {
+  color: var(--bs-body-color);
+}
+
+.mermaid-diagram svg .node rect {
+  fill: var(--bs-blue) !important;
+  stroke: var(--bs-blue) !important;
+}
+
+.mermaid-diagram svg .node text {
+  fill: white !important;
+}
+
+.mermaid-diagram svg .edgeLabel rect {
+  fill: var(--bs-body-bg) !important;
+}
+
+.mermaid-diagram svg .edgeLabel text {
+  fill: var(--bs-body-color) !important;
+}
+```
+
+**注意**: この方法は`!important`が必要で、mermaid-rs-rendererが生成する元のstyle属性を上書きするため、メンテナンスが困難になる可能性があります。**アプローチ1が推奨**されます。
+
+#### 実装手順
+
+1. **Rust側での実装**: `mermaid-rs-renderer`のテーマAPIを使用して、Bootstrap CSS変数を含むテーマ設定を渡す
+2. **SVG生成**: テーマに基づいてSVGを生成（CSS変数がstyle属性に含まれる）
+3. **HTMLラッピング**: 生成されたSVGを`<div class="mermaid-diagram">`で包む
+4. **検証**: ライトモード・ダークモードの両方でレンダリングをテスト
+
+#### ダークモード対応の保証
+
+以下のルールに従うことで、ダークモードでのテキスト判読性を保証します：
+
+| 要素           | 背景色              | テキスト色             | 理由                               |
+| -------------- | ------------------- | ---------------------- | ---------------------------------- |
+| ノード         | `var(--bs-blue)`    | `white`                | コントラスト確保（青背景に白文字） |
+| エッジラベル   | `var(--bs-body-bg)` | `var(--bs-body-color)` | ページと同じ色スキーム             |
+| フリーテキスト | なし                | `var(--bs-body-color)` | ページテキストと同じ               |
+| 背景           | `transparent`       | -                      | ページ背景を透過                   |
+
+**使用する主なBootstrapカラー変数**:
+
+| 用途       | CSS変数             | 説明                               |
+| ---------- | ------------------- | ---------------------------------- |
+| テキスト   | `--bs-body-color`   | 本文テキスト色（ダークモード対応） |
+| 背景       | `--bs-body-bg`      | ページ背景色                       |
+| 主要ノード | `--bs-blue`         | 青系の色（純粋な色値）             |
+| 副次ノード | `--bs-gray-600`     | グレー系の色                       |
+| 成功状態   | `--bs-green`        | 緑系の色                           |
+| エラー状態 | `--bs-red`          | 赤系の色                           |
+| 警告       | `--bs-orange`       | オレンジ系の色                     |
+| 情報       | `--bs-cyan`         | 水色系の色                         |
+| ボーダー   | `--bs-border-color` | 境界線色                           |
+
+**注**: システムカラー（`--bs-primary`, `--bs-success`等）ではなく、**純粋な色値**（`--bs-blue`, `--bs-green`等）を使用します。図のノードは「プライマリーなアクション」を表すわけではないため、意味的に中立な色変数を使用するのが適切です。
+
+**出力SVG例**:
+
+```html
+<div class="mermaid-diagram" data-mermaid-source="...">
+  <svg style="color: var(--bs-body-color);">
+    <rect fill="var(--bs-blue)" />
+    <text fill="white">テキスト</text>
+  </svg>
+</div>
+```
+
+**テスト要件**:
+
+**基本表示テスト**:
+
+- ✅ ライトモードで適切に表示される（すべての要素が視認可能）
+- ✅ ダークモードで適切に表示される（すべての要素が視認可能）
+- ✅ Bootstrapのカスタムテーマに追従する（`--bs-blue`を赤に変更した場合など）
+- ✅ `prefers-color-scheme`メディアクエリに対応
+
+**🔴 ダークモード特化テスト（最重要）**:
+
+- ✅ ノード内のテキストが確実に読める（背景色とのコントラスト比4.5:1以上）
+- ✅ エッジラベルのテキストが読める
+- ✅ 矢印・線が視認できる（背景に埋もれない）
+- ✅ 黒背景に黒文字になっていない（Growiで発生した問題の再現チェック）
+- ✅ `data-bs-theme="dark"`切り替え時に即座に色が変更される
+
+**カラーコントラストテスト**:
+| テストケース | 背景色 | テキスト色 | コントラスト比 | 合格基準 |
+|------------|--------|-----------|--------------|---------|
+| ライトモード・ノード | `--bs-blue` (#0d6efd) | `white` | 8.6:1 | ✅ WCAG AAA |
+| ダークモード・ノード | `--bs-blue` (#0d6efd) | `white` | 8.6:1 | ✅ WCAG AAA |
+| ライトモード・ラベル | `--bs-body-bg` (#ffffff) | `--bs-body-color` (#212529) | 16.1:1 | ✅ WCAG AAA |
+| ダークモード・ラベル | `--bs-body-bg` (#212529) | `--bs-body-color` (#dee2e6) | 12.6:1 | ✅ WCAG AAA |
+
+**実装検証項目**:
+
+```javascript
+// 検証スクリプト例
+function validateMermaidColors() {
+  const svg = document.querySelector(".mermaid-diagram svg");
+  const nodeText = svg.querySelector(".node text");
+  const nodeRect = svg.querySelector(".node rect");
+
+  // ノードテキストが固定色であることを確認
+  const textFill = window.getComputedStyle(nodeText).fill;
+  const rectFill = window.getComputedStyle(nodeRect).fill;
+
+  console.log("Node text color:", textFill);
+  console.log("Node background:", rectFill);
+
+  // コントラスト比を計算
+  const contrastRatio = calculateContrast(textFill, rectFill);
+  console.log("Contrast ratio:", contrastRatio);
+
+  // WCAG AA基準（4.5:1）を満たすことを確認
+  if (contrastRatio < 4.5) {
+    console.error("❌ Insufficient contrast!");
+  } else {
+    console.log("✅ Contrast OK");
+  }
+}
+```
+
+#### 将来的な拡張
+
+- インタラクティブな要素のサポート（クリックイベント等）
+- プレビュー機能との統合
+- カスタムMermaid変数マッピングの設定オプション
+
+---
+
+### シンタックスハイライト
+
+**実装状態**: 🔮 実装予定
+
+コードブロックのシンタックスハイライトをハイブリッド方式で実装します。
+
+#### 基本構文
+
+````umd
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+````
+
+#### ファイル名付きコードブロック
+
+コードブロックにファイル名を指定する構文をサポートします。これにより、セマンティックな`<figure>`タグでコードを括り、`<figcaption>`にファイル名を表示できます。
+
+**構文**:
+
+````umd
+```javascript:test.js
+function hello() {
+    console.log("Hello, world!");
+}
+```
+
+```python:main.py
+def hello():
+    print("Hello, world!")
+```
+````
+
+**出力HTML**:
+
+```html
+<figure class="code-block">
+  <figcaption class="code-filename">
+    <span class="filename">test.js</span>
+  </figcaption>
+  <pre><code class="language-javascript">function hello() {
+    console.log("Hello, world!");
+}</code></pre>
+</figure>
+
+<figure class="code-block">
+  <figcaption class="code-filename">
+    <span class="filename">main.py</span>
+  </figcaption>
+  <pre><code class="language-python">def hello():
+    print("Hello, world!")
+</code></pre>
+</figure>
+```
+
+**セマンティックHTMLの利点**:
+
+- `<figure>`: コードブロック全体を意味的にまとまった単位として表現
+- `<figcaption>`: 図（コード）に対するキャプション（ファイル名）を明示
+- SEO: 検索エンジンがコードとファイル名の関係を理解できる
+- アクセシビリティ: スクリーンリーダーがファイル名を適切に読み上げ
+
+**Bootstrapスタイリング例**:
+
+```css
+/* コードブロックのスタイル */
+figure.code-block {
+  margin: 1rem 0;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  overflow: hidden;
+}
+
+figcaption.code-filename {
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  font-family: var(--bs-font-monospace);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+figcaption.code-filename .filename {
+  color: var(--bs-emphasis-color);
+}
+
+figure.code-block pre {
+  margin: 0;
+  border-radius: 0;
+  border: none;
+}
+
+figure.code-block code {
+  display: block;
+  padding: 1rem;
+}
+
+/* ダークモード対応 */
+[data-bs-theme="dark"] figcaption.code-filename {
+  background: var(--bs-dark);
+  border-bottom-color: var(--bs-border-color-translucent);
+}
+```
+
+**インタラクティブ機能との統合**:
+
+ファイル名付きコードブロックにコピーボタンなどを追加する場合：
+
+```html
+<figure class="code-block">
+  <figcaption class="code-filename">
+    <span class="filename">test.js</span>
+    <button
+      class="btn btn-sm btn-outline-secondary copy-btn"
+      aria-label="コードをコピー"
+    >
+      📋 Copy
+    </button>
+  </figcaption>
+  <pre><code class="language-javascript">...code...</code></pre>
+</figure>
+```
+
+```css
+/* コピーボタンのスタイル */
+figcaption.code-filename {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+figcaption.code-filename .copy-btn {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: auto;
+}
+```
+
+```javascript
+// コピー機能の実装
+document.querySelectorAll(".code-block").forEach((figure) => {
+  const button = figure.querySelector(".copy-btn");
+  const code = figure.querySelector("code");
+
+  if (button && code) {
+    button.addEventListener("click", () => {
+      navigator.clipboard.writeText(code.textContent);
+      button.textContent = "✓ Copied!";
+      setTimeout(() => (button.textContent = "📋 Copy"), 2000);
+    });
+  }
+});
+```
+
+**ファイル名なしの場合**:
+
+通常のコードブロック（` ```rust `）は`<figure>`で括らず、従来通りの`<pre><code>`のみを出力：
+
+```html
+<pre><code class="language-rust">fn main() {
+    println!("Hello, world!");
+}</code></pre>
+```
+
+**Info Stringのパース方法**:
+
+コードブロックの開始行（` ```rust:file.rs `）の情報を以下のように解釈します：
+
+```rust
+// Rust側での実装イメージ
+fn parse_info_string(info: &str) -> CodeBlockInfo {
+    // ":" で分割
+    let parts: Vec<&str> = info.splitn(2, ':').collect();
+
+    match parts.len() {
+        // "rust" のように言語のみ
+        1 => CodeBlockInfo {
+            language: Some(parts[0].to_string()),
+            filename: None,
+        },
+        // "rust:main.rs" のように言語:ファイル名
+        2 => CodeBlockInfo {
+            language: Some(parts[0].to_string()),
+            filename: Some(parts[1].to_string()),
+        },
+        _ => CodeBlockInfo::default(),
+    }
+}
+```
+
+**エッジケース**:
+
+| Info String    | 言語   | ファイル名   | 出力                                |
+| -------------- | ------ | ------------ | ----------------------------------- |
+| `rust`         | `rust` | なし         | `<pre><code class="language-rust">` |
+| `rust:main.rs` | `rust` | `main.rs`    | `<figure>`で`<figcaption>`          |
+| `:config.yml`  | なし   | `config.yml` | `<figure>`で言語なし                |
+| (空白)         | なし   | なし         | `<pre><code>`                       |
+
+**注意**: ファイル名にパス区切り文字（`/`, `\`）が含まれる場合もそのまま表示します（例：`src/main.rs`）。セキュリティ上、ファイル名のサニタイゼーション（パストラバーサル攻撃対策）は不要です（静的な表示のみ）。
+
+#### ハイブリッド方式の設計
+
+**バックエンド処理（UMD層）**:
+
+- 言語情報をHTML属性として付与
+- CommonMark標準の`info string`を`class`属性に変換
+- SEO対策として基本構造を提供
+
+**出力HTML**:
+
+```html
+<pre><code class="language-rust">fn main() {
+    println!("Hello, world!");
+}</code></pre>
+```
+
+**フロントエンド処理（オプション）**:
+
+- JavaScript側でプログレッシブエンハンスメントとして実装
+- 例: Prism.js, highlight.js, Shiki等のライブラリを使用
+- インタラクティブ機能の追加が可能
+
+#### ハイブリッド方式の利点
+
+| 利点                 | 説明                                                   |
+| -------------------- | ------------------------------------------------------ |
+| **SEO最適化**        | 検索エンジンがコードブロックを認識・インデックス化可能 |
+| **段階的な機能向上** | JavaScript無効環境でも基本表示が可能                   |
+| **柔軟性**           | フロントエンド側で好みのハイライトエンジンを選択可能   |
+| **軽量**             | バックエンドでの処理は最小限（class属性のみ）          |
+| **パフォーマンス**   | 初期表示はJavaScript不要、ハイライトは非同期で適用可能 |
+
+#### 技術的詳細
+
+**Rust側での実装**:
+
+現在、comrakは自動的に言語情報を`class`属性に変換しています：
+
+```rust
+// comrakが既に実装している機能
+// `info string`から`language-xxx`クラスを生成
+```
+
+UMD側では追加処理は不要。既存の動作を維持します。
+
+**サポートされる言語**:
+
+- 言語名は自由に指定可能
+- HTML属性として`class="language-{info_string}"`の形式で出力
+- フロントエンド側のハイライトエンジンが対応している言語に依存
+
+#### フロントエンド統合例
+
+**Prism.js を使用する場合**:
+
+```html
+<!-- ページに追加 -->
+<link rel="stylesheet" href="prism.css" />
+<script src="prism.js"></script>
+```
+
+UMDが出力した`<code class="language-xxx">`要素を自動的に検出してハイライト適用。
+
+**highlight.js を使用する場合**:
+
+```html
+<link rel="stylesheet" href="highlight.css" />
+<script src="highlight.js"></script>
+<script>
+  hljs.highlightAll();
+</script>
+```
+
+**Shiki を使用する場合** (より高度な選択肢):
+
+```javascript
+import { getHighlighter } from "shiki";
+
+const highlighter = await getHighlighter({ theme: "nord" });
+document.querySelectorAll('pre code[class^="language-"]').forEach((el) => {
+  const lang = el.className.replace("language-", "");
+  el.innerHTML = highlighter.codeToHtml(el.textContent, { lang });
+});
+```
+
+#### インタラクティブ機能の追加例
+
+**コピーボタン**:
+
+```javascript
+document.querySelectorAll("pre").forEach((pre) => {
+  const button = document.createElement("button");
+  button.textContent = "Copy";
+  button.onclick = () => navigator.clipboard.writeText(pre.textContent);
+  pre.appendChild(button);
+});
+```
+
+**行番号の表示**:
+
+```javascript
+// Prism.jsのプラグインを使用
+<script src="prism-line-numbers.js"></script>
+```
+
+**行のハイライト**:
+
+````umd
+```rust{1,3-5}
+fn main() {              // ハイライト行
+    let x = 5;
+    println!("{}", x);    // ハイライト行
+    let y = 10;           // ハイライト行
+    println!("{}", y);    // ハイライト行
+}
+````
+
+`````
+
+この構文サポートは将来的な拡張として検討（現時点では未実装）。
+
+#### 代替アプローチ: 完全バックエンド処理
+
+技術ブログなどSEOを最重視する場合、Rust側で完全にハイライトを生成する選択肢もあります：
+
+**使用可能なRustライブラリ**:
+- `syntect`: 高機能、多言語対応、Sublime Textシンタックス定義を使用
+- `tree-sitter`: 構文解析ベース、正確だが設定が複雑
+
+**完全バックエンド処理のトレードオフ**:
+
+| 項目 | ハイブリッド方式 | 完全バックエンド処理 |
+|------|------------------|-----------------------|
+| 実装の複雑さ | ✅ シンプル | ⚠️ 複雑 |
+| サーバー負荷 | ✅ 最小限 | ⚠️ 増加 |
+| HTMLサイズ | ✅ 軽量 | ⚠️ 大幅増加 |
+| SEO | ✅ 十分 | ✅ 最適 |
+| カスタマイズ性 | ✅ フロントエンドで自由 | ⚠️ Rust側で固定 |
+| 初期表示速度 | ✅ 高速 | ⚠️ HTMLサイズに依存 |
+
+**推奨**: ほとんどのユースケースでは**ハイブリッド方式を推奨**します。完全バックエンド処理は特殊な要件（JavaScript完全無効環境など）がある場合のみ検討してください。
+
+#### 実装優先度
+
+**Phase 1** (現状):
+- ✅ 基本的な`class`属性付与（comrakがすでに実装済み）
+
+**Phase 2** (次期):
+- 📝 ドキュメント整備（本セクション）
+- 📝 フロントエンド統合ガイドの作成
+- 🔮 **ファイル名付きコードブロック**（```` ```lang:file.ext ````）
+  - Info stringのパース処理を実装
+  - `<figure>`+`<figcaption>`構造の生成
+  - comrakのカスタムレンダラーとして実装
+
+**Phase 3** (将来):
+- 🔮 行番号指定構文のサポート（```` ```rust{1,3-5} ````）
+- 🔮 行ハイライト指定構文のサポート
+- 🔮 完全バックエンド処理のオプション実装（要望に応じて）
+
+**実装メモ（ファイル名機能）**:
+
+```rust
+// comrakのカスタムレンダラーで実装
+impl NodeCodeBlockExt for Adapter {
+    fn code_block(&mut self, code_block: &NodeCodeBlock) -> io::Result<()> {
+        let info = &code_block.info;
+
+        // Info stringをパース
+        let (lang, filename) = parse_info_string(info);
+
+        if let Some(file) = filename {
+            // ファイル名がある場合は<figure>で括る
+            self.output.write_all(b"<figure class=\"code-block\">\n")?;
+            write!(self.output, "<figcaption class=\"code-filename\"><span class=\"filename\">{}</span></figcaption>\n", file)?;
+        }
+
+        // <pre><code>を出力
+        write!(self.output, "<pre><code class=\"language-{}\">", lang.unwrap_or("plaintext"))?;
+        // ... コード本体
+        self.output.write_all(b"</code></pre>\n")?;
+
+        if filename.is_some() {
+            self.output.write_all(b"</figure>\n")?;
+        }
+
+        Ok(())
+    }
+}
+```
+
+#### Bootstrap統合とカラーリング
+
+**重要**: シンタックスハイライトのカラースキームはBootstrapのデザインシステムと統合する必要があります。
+
+**問題点**:
+
+1. **デザインの不統一**: Prism.jsやhighlight.jsのデフォルトテーマはBootstrapのデザインから浮いてしまう
+2. **ダークモード非対応**: 多くのハイライトテーマはライトモード専用で、ダークモードでコントラストが不適切
+3. **カラーコンセプトの不一致**: Bootstrap（例: `--bs-primary`が青）とハイライトテーマ（例: キーワードが紫）で色の意味が異なる
+
+**解決策: Bootstrapカラー変数ベースのテーマ**
+
+シンタックスハイライトテーマをBootstrapのCSS変数（`--bs-*`）を使用してカスタマイズします。
+
+**実装アプローチ**:
+
+##### 1. カスタムPrism.jsテーマ（推奨）
+
+```css
+/* custom-prism-bootstrap.css */
+
+/* コードブロック全体 */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: var(--bs-body-color);
+  background: var(--bs-secondary-bg);
+  text-shadow: none;
+}
+
+/* トークンごとの色指定 */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--bs-gray-600);
+  font-style: italic;
+}
+
+.token.namespace {
+  opacity: 0.7;
+}
+
+.token.string,
+.token.attr-value {
+  color: var(--bs-green);
+}
+
+.token.punctuation,
+.token.operator {
+  color: var(--bs-body-color);
+}
+
+.token.entity,
+.token.url,
+.token.symbol,
+.token.number,
+.token.boolean,
+.token.variable,
+.token.constant,
+.token.property,
+.token.regex,
+.token.inserted {
+  color: var(--bs-cyan);
+}
+
+.token.atrule,
+.token.keyword,
+.token.attr-name,
+.language-autohotkey .token.selector {
+  color: var(--bs-blue);
+}
+
+.token.function,
+.token.deleted,
+.language-autohotkey .token.tag {
+  color: var(--bs-red);
+}
+
+.token.tag,
+.token.selector,
+.language-autohotkey .token.keyword {
+  color: var(--bs-orange);
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+  color: var(--bs-emphasis-color);
+}
+
+.token.italic {
+  font-style: italic;
+}
+```
+
+##### 2. カスタムhighlight.jsテーマ
+
+```css
+/* custom-hljs-bootstrap.css */
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  color: var(--bs-body-color);
+  background: var(--bs-secondary-bg);
+}
+
+/* コメント */
+.hljs-comment,
+.hljs-quote {
+  color: var(--bs-gray-600);
+  font-style: italic;
+}
+
+/* キーワード */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: var(--bs-blue);
+  font-weight: bold;
+}
+
+/* 文字列 */
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-attribute,
+.hljs-literal,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type {
+  color: var(--bs-green);
+}
+
+/* 数値・定数 */
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--bs-cyan);
+}
+
+/* 関数名 */
+.hljs-function,
+.hljs-params {
+  color: var(--bs-orange);
+}
+
+/* 削除・エラー */
+.hljs-deletion,
+.hljs-error {
+  color: var(--bs-red);
+}
+
+/* 強調 */
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+```
+
+##### 3. Shikiでのカスタムテーマ
+
+ShikiはJSON形式のテーマをサポートしているため、JavaScriptでBootstrapの変数を読み取って動的生成：
+
+```javascript
+function generateBootstrapTheme() {
+  const styles = getComputedStyle(document.documentElement);
+
+  return {
+    name: "bootstrap-dynamic",
+    type: "dark", // or "light" based on current mode
+    colors: {
+      "editor.background": styles.getPropertyValue("--bs-body-bg").trim(),
+      "editor.foreground": styles.getPropertyValue("--bs-body-color").trim(),
+    },
+    tokenColors: [
+      {
+        scope: ["comment", "punctuation.definition.comment"],
+        settings: {
+          foreground: styles.getPropertyValue("--bs-gray-600").trim(),
+          fontStyle: "italic",
+        },
+      },
+      {
+        scope: ["keyword", "storage.type", "storage.modifier"],
+        settings: {
+          foreground: styles.getPropertyValue("--bs-blue").trim(),
+        },
+      },
+      {
+        scope: ["string", "string.quoted"],
+        settings: {
+          foreground: styles.getPropertyValue("--bs-green").trim(),
+        },
+      },
+      {
+        scope: ["constant.numeric", "constant.language"],
+        settings: {
+          foreground: styles.getPropertyValue("--bs-cyan").trim(),
+        },
+      },
+      {
+        scope: ["entity.name.function"],
+        settings: {
+          foreground: styles.getPropertyValue("--bs-orange").trim(),
+        },
+      },
+      // ... 他のトークン
+    ],
+  };
+}
+
+const highlighter = await getHighlighter({
+  themes: [generateBootstrapTheme()],
+});
+```
+
+**推奨されるカラーマッピング**:
+
+| トークンタイプ | Bootstrapカラー | 理由 |
+|-------------|---------------|------|
+| コメント | `--bs-gray-600` | 目立たせない副次的な情報 |
+| キーワード | `--bs-blue` | 言語の予約語（青は落ち着きと信頼性を表す） |
+| 文字列 | `--bs-green` | データとして「正常」な値（緑は安全性を示す） |
+| 数値/定数 | `--bs-cyan` | 値としての情報（水色は情報性を示す） |
+| 関数名 | `--bs-orange` | 実行される箇所（オレンジは注意を引く） |
+| エラー/削除 | `--bs-red` | 問題のある箇所（赤は危険を示す） |
+
+**注**: システムカラー（`--bs-primary`, `--bs-success`等）ではなく、**純粋な色値**（`--bs-blue`, `--bs-green`等）を使用します。これにより、コードのキーワードが「プライマリーなアクション」という誤った意味づけを避け、純粋に色として青を使用していることが明確になります。
+
+**ダークモード対応**:
+
+BootstrapのCSS変数を使用すると、`data-bs-theme="dark"`属性でテーマが変更された際、シンタックスハイライトの色も自動的に追従します：
+
+```html
+<!-- ライトモード -->
+<html data-bs-theme="light">
+  <pre><code class="language-rust">...</code></pre>
+</html>
+
+<!-- ダークモード -->
+<html data-bs-theme="dark">
+  <pre><code class="language-rust">...</code></pre>
+</html>
+```
+
+**配布方法**:
+
+UMDプロジェクトの一部として、Bootstrapベースのカスタムシンタックスハイライトテーマを配布：
+
+```
+pkg/
+├── themes/
+│   ├── prism-bootstrap.css
+│   ├── hljs-bootstrap.css
+│   └── shiki-bootstrap.json
+└── README.md
+```
+
+**使用例**:
+
+```html
+<!-- Bootstrap本体 -->
+<link rel="stylesheet" href="bootstrap.css" />
+
+<!-- UMD提供のカスタムハイライトテーマ -->
+<link rel="stylesheet" href="prism-bootstrap.css" />
+<script src="prism.js"></script>
+
+<!-- または -->
+<link rel="stylesheet" href="hljs-bootstrap.css" />
+<script src="highlight.js"></script>
+```
+
+**テスト要件**:
+
+- ✅ ライトモードで可読性が高い
+- ✅ ダークモードで可読性が高い
+- ✅ Bootstrapの各カラーテーマバリアント（primary=赤、primary=緑など）に対応
+- ✅ コントラスト比がWCAG AA基準（4.5:1以上）を満たす
+- ✅ Bootstrapのカスタムビルドでも動作する
+
+---
+
 ## Markdown拡張機能
 
 ### Setext見出し
@@ -428,7 +1515,7 @@ Bootstrap標準の引用スタイルを自動適用。
 # 見出し1
 
 ## 見出し2
-```
+`````
 
 ### 参照スタイルリンク
 
