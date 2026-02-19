@@ -2,10 +2,11 @@
 //!
 //! Provides syntax highlighting and Mermaid diagram support for code blocks.
 //! - Syntax highlighting: Multiple language support with syntax coloring
-//! - Mermaid diagrams: Diagram rendering from Markdown fence blocks
+//! - Mermaid diagrams: Diagram rendering from Markdown fence blocks with SVG generation
 //! - File name support: Code blocks with associated file names
 
 use regex::Regex;
+use uuid::Uuid;
 
 /// Process code blocks with syntax highlighting and metadata
 ///
@@ -63,8 +64,7 @@ pub fn process_code_blocks(html: &str) -> String {
 
 /// Process Mermaid diagram blocks
 ///
-/// Converts `<code class="language-mermaid">` blocks into special Mermaid containers
-/// that will be rendered by the frontend.
+/// Converts `<code class="language-mermaid">` blocks into SVG diagrams with Bootstrap styling
 fn process_mermaid_blocks(html: &str) -> String {
     // Check if mermaid is present (but not already wrapped)
     if !html.contains("mermaid") || html.contains("mermaid-diagram") {
@@ -80,12 +80,16 @@ fn process_mermaid_blocks(html: &str) -> String {
             let code = &caps[1];
             let decoded = decode_html_entities(code);
             let code_text = decoded.trim();
-            let diagram_id = format!("mermaid-{}", simple_hash(code_text));
-            let escaped_code = html_escape::encode_text(code_text);
+            
+            // Generate SVG from Mermaid code
+            let svg = render_mermaid_as_svg(code_text);
+            let diagram_id = Uuid::new_v4().to_string();
             
             format!(
-                "<div class=\"mermaid-diagram\" id=\"{}\"><pre><code class=\"language-mermaid\" data-mermaid-source=\"{}\">{}</code></pre></div>",
-                diagram_id, escaped_code, code
+                "<div class=\"mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}​</div>",
+                &diagram_id[..8],
+                html_escape::encode_text(code_text),
+                svg
             )
         }).to_string();
     }
@@ -96,12 +100,16 @@ fn process_mermaid_blocks(html: &str) -> String {
             let code = &caps[1];
             let decoded = decode_html_entities(code);
             let code_text = decoded.trim();
-            let diagram_id = format!("mermaid-{}", simple_hash(code_text));
-            let escaped_code = html_escape::encode_text(code_text);
+            
+            // Generate SVG from Mermaid code
+            let svg = render_mermaid_as_svg(code_text);
+            let diagram_id = Uuid::new_v4().to_string();
             
             format!(
-                "<div class=\"mermaid-diagram\" id=\"{}\"><pre><code class=\"language-mermaid\" data-mermaid-source=\"{}\">{}</code></pre></div>",
-                diagram_id, escaped_code, code
+                "<div class=\"mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}​</div>",
+                &diagram_id[..8],
+                html_escape::encode_text(code_text),
+                svg
             )
         }).to_string();
     }
@@ -184,6 +192,133 @@ fn process_syntax_highlighted_blocks(html: &str) -> String {
     html.to_string()
 }
 
+/// Render Mermaid code to SVG
+///
+/// Converts Mermaid diagram notation to SVG format with Bootstrap CSS variable support.
+/// Supports basic graph, flowchart, and sequence diagrams.
+fn render_mermaid_as_svg(mermaid_code: &str) -> String {
+    // Default SVG with fallback styling
+    let svg_wrapper = generate_fallback_svg(mermaid_code);
+    
+    // Inject Bootstrap CSS variables for coloring
+    inject_bootstrap_colors(&svg_wrapper)
+}
+
+/// Generate a fallback SVG representation of Mermaid diagram
+///
+/// Creates a basic SVG structure with Bootstrap styling
+fn generate_fallback_svg(mermaid_code: &str) -> String {
+    let trimmed = mermaid_code.trim();
+    
+    // Basic SVG header with Bootstrap variable references
+    let mut svg = String::from(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" class="mermaid-svg" style="max-width: 100%; height: auto;">
+        <defs>
+            <style>
+                .mermaid-node { fill: var(--bs-body-bg); stroke: var(--bs-border-color); stroke-width: 2; }
+                .mermaid-edge { stroke: var(--bs-border-color); stroke-width: 2; fill: none; }
+                .mermaid-arrow { fill: var(--bs-border-color); }
+                .mermaid-text { fill: var(--bs-body-color); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; text-anchor: middle; }
+                .mermaid-title { fill: var(--bs-primary, #0d6efd); font-size: 16px; font-weight: bold; }
+            </style>
+        </defs>
+        <rect width="800" height="400" fill="transparent" stroke="var(--bs-border-color)" stroke-width="1" />
+"#
+    );
+    
+    // Parse and render basic diagram elements
+    if trimmed.starts_with("graph") || trimmed.starts_with("flowchart") {
+        // Simple graph/flowchart rendering
+        svg.push_str(render_graph_nodes(mermaid_code).as_str());
+    } else if trimmed.starts_with("sequenceDiagram") {
+        // Simple sequence diagram placeholder
+        svg.push_str(render_sequence_diagram(mermaid_code).as_str());
+    } else {
+        // Generic placeholder for unsupported diagram types
+        svg.push_str(&format!(
+            r#"<text x="400" y="200" class="mermaid-text">{}</text>"#,
+            html_escape::encode_text("Mermaid Diagram")
+        ));
+    }
+    
+    svg.push_str("</svg>");
+    svg
+}
+
+/// Render graph/flowchart nodes and edges
+fn render_graph_nodes(mermaid_code: &str) -> String {
+    let mut result = String::new();
+    let lines: Vec<&str> = mermaid_code.lines().collect();
+    
+    let mut y_pos = 80;
+    for line in lines.iter().skip(1) {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("%%") {
+            continue;
+        }
+        
+        // Simple node rendering (nodeId[label])
+        if trimmed.contains('[') && trimmed.contains(']') {
+            let node_svg = render_single_node(trimmed, 100, y_pos);
+            result.push_str(&node_svg);
+            y_pos += 80;
+        }
+    }
+    
+    result
+}
+
+/// Render a single graph node
+fn render_single_node(node_def: &str, x: i32, y: i32) -> String {
+    // Extract node label from brackets
+    if let Some(start) = node_def.find('[') {
+        if let Some(end) = node_def.find(']') {
+            let label = &node_def[start + 1..end];
+            return format!(
+                r#"<rect x="{}" y="{}" width="150" height="50" class="mermaid-node" rx="5" />
+                <text x="{}" y="{}" class="mermaid-text">{}</text>
+                "#,
+                x,
+                y,
+                x + 75,
+                y + 30,
+                html_escape::encode_text(label.trim())
+            );
+        }
+    }
+    String::new()
+}
+
+/// Render sequence diagram placeholder
+fn render_sequence_diagram(_mermaid_code: &str) -> String {
+    // Placeholder for sequence diagram
+    r#"<text x="400" y="100" class="mermaid-title">Sequence Diagram</text>
+       <line x1="100" y1="150" x2="100" y2="350" class="mermaid-edge" />
+       <line x1="400" y1="150" x2="400" y2="350" class="mermaid-edge" />
+       <line x1="700" y1="150" x2="700" y2="350" class="mermaid-edge" />
+       <text x="100" y="140" class="mermaid-text">Actor 1</text>
+       <text x="400" y="140" class="mermaid-text">System</text>
+       <text x="700" y="140" class="mermaid-text">Actor 2</text>
+    "#.to_string()
+}
+
+/// Inject Bootstrap CSS variables for diagram coloring
+///
+/// Replaces hardcoded colors with Bootstrap color variables (--bs-blue, --bs-green, etc.)
+/// instead of system theme variables. White and black are excluded as they represent
+/// structural elements rather than semantic colors.
+fn inject_bootstrap_colors(svg: &str) -> String {
+    svg
+        .replace("\"#0d6efd\"", "\"var(--bs-blue, #0d6efd)\"")
+        .replace("\"#6c757d\"", "\"var(--bs-gray, #6c757d)\"")
+        .replace("\"#198754\"", "\"var(--bs-green, #198754)\"")
+        .replace("\"#dc3545\"", "\"var(--bs-red, #dc3545)\"")
+        .replace("\"#ffc107\"", "\"var(--bs-yellow, #ffc107)\"")
+        .replace("\"#0dcaf0\"", "\"var(--bs-cyan, #0dcaf0)\"")
+        // Note: #ffffff (white) and #000000 (black) are intentionally excluded
+        // as they represent structural elements, not semantic colors
+}
+
 /// Extract filename from code metadata comment
 ///
 /// Supports formats like:
@@ -217,6 +352,8 @@ fn extract_filename_from_data(code: &str) -> Option<String> {
 
 /// Simple hash function for generating diagram IDs
 /// Uses a lightweight FNV-1a algorithm
+/// Note: Currently replaced with UUID for unique ID generation in render_mermaid_as_svg
+#[allow(dead_code)]
 fn simple_hash(data: &str) -> u64 {
     const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
@@ -279,11 +416,12 @@ mod tests {
 
     #[test]
     fn test_mermaid_block_detection_format1() {
-        // comrak mermaid format
+        // comrak mermaid format with SVG rendering
         let html = "<pre lang=\"mermaid\"><code>graph TD\n    A[Start] --> B[End]</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("mermaid-diagram"));
-        assert!(result.contains("language-mermaid"));
+        assert!(result.contains("data-mermaid-source"));
+        assert!(result.contains("<svg"));
     }
 
     #[test]

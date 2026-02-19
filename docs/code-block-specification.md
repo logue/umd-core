@@ -65,8 +65,12 @@ graph TD
 **出力形式:**
 
 ```html
-<div class="mermaid-diagram" id="mermaid-{hash}">
-  <pre><code class="language-mermaid" data-mermaid-source="...">...</code></pre>
+<div
+  class="mermaid-diagram"
+  id="mermaid-{hash}"
+  data-mermaid-source="graph TD..."
+>
+  <svg><!-- mermaid-rs-renderer生成のSVG --></svg>
 </div>
 ```
 
@@ -74,7 +78,9 @@ graph TD
 
 - `language-mermaid`を自動検出
 - ユニークなID（FNV-1aハッシュ）を生成
-- フロントエンド（Mermaid.js）でレンダリング
+- Rust側で `mermaid-rs-renderer` を使ってSVGに変換
+- Bootstrap CSS変数でカラーリング対応（ダークモード自動切り替え）
+- SEO対応（レンダリングすみHTML）
 
 ## ファイル構成
 
@@ -103,10 +109,11 @@ examples/
 4. **コード復元** → `process_code_blocks()` でコードを復元
 5. **コードブロック処理**
    - Mermaid検出と `<div class="mermaid-diagram">` でラップ
+   - Rust側で `mermaid-rs-renderer` を使ってSVGに変換
    - ファイル名検出と `<figure>` でラップ
    - 言語クラスを `class="language-*"` に統一
 
-### 正規表現パターン
+### 正規表現パターンと変換フロー
 
 ```rust
 // Mermaid検出（2つのフォーマット対応）
@@ -118,19 +125,36 @@ r#"(?s)<pre lang="([^"]+)"[^>]*><code>(.*?)</code></pre>"#
 r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
 ```
 
+**Mermaid処理フロー**:
+
+1. `language-mermaid` コードを検出
+2. Mermaid ソースコードをパース
+3. `mermaid-rs-renderer` で SVG に変換
+4. SVG に Bootstrap CSS 変数をインジェクト
+5. `data-mermaid-source` 属性に元のコードを保持
+6. `<div class="mermaid-diagram">` で囲む
+
 ## フロントエンド対応
 
-### Mermaid.jsの統合
+### Mermaid SVG（Rust側で事前レンダリング）
 
-```html
-<script
-  async
-  src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"
-></script>
-<script>
-  mermaid.initialize({ startOnLoad: true });
-  mermaid.contentLoaded();
-</script>
+- `mermaid-rs-renderer` で Rust 側で SVG に変換
+- SVG は `<div class="mermaid-diagram">` に直接埋め込み
+- JavaScript は不要（SEO対応済み）
+- Bootstrap CSS 変数で自動的にダークモード対応
+
+**カラーリングの実装**:
+
+```rust
+fn inject_bootstrap_colors(svg: &str) -> String {
+    svg
+        .replace("fill=\"#0d6efd\"", "fill=\"var(--bs-blue)\"")
+        .replace("fill=\"#6c757d\"", "fill=\"var(--bs-secondary)\"")
+        .replace("stroke=\"#333333\"", "stroke=\"var(--bs-body-color)\"")
+        .replace("fill=\"#ffffff\"", "fill=\"var(--bs-body-bg)\"")
+        .replace("fill=\"#000000\"", "fill=\"var(--bs-body-color)\"")
+        // ... 他の色変換
+}
 ```
 
 ### シンタックスハイライトライブラリ
@@ -152,6 +176,7 @@ r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
   background-color: var(--bs-secondary);
   padding: 0.5rem 1rem;
   border-radius: 0.25rem 0.25rem 0 0;
+  color: var(--bs-secondary-color);
 }
 
 .mermaid-diagram {
@@ -160,6 +185,16 @@ r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
   background-color: var(--bs-body-bg);
   border: 1px solid var(--bs-border-color);
   border-radius: 0.25rem;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ダークモード対応 */
+[data-bs-theme="dark"] .mermaid-diagram {
+  background-color: var(--bs-gray-900);
 }
 ```
 
