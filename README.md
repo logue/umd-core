@@ -140,6 +140,107 @@ if let Some(footnotes) = result.footnotes {
 
 この場合、`footnotes[0].content`は`"最初のフットノート[^2]を含む"`となり、フットノート参照記号がそのまま残ります。深いネストは可読性を損なうため推奨されませんが、技術的には処理可能です。
 
+## コードブロックと構文ハイライティング
+
+UMDはコードブロック、プレーンテキストブロック、Mermaid図表の3つの異なる処理パターンをサポートしています。
+
+### プレーンテキストブロック
+
+言語指定なしのフェンスでプレーンテキストブロックが生成されます。ディレクトリリスト、プレーンテキスト出力、設定例などに使用します。
+
+```markdown
+
+```
+
+/usr/local/bin
+/usr/local/lib
+/usr/local/share
+
+```
+
+```
+
+出力されるHTMLは`<code>`タグを含まず、セマンティック正確性を保つプレーン`<pre>`要素となります：
+
+```html
+<pre>
+/usr/local/bin
+/usr/local/lib
+/usr/local/share
+</pre>
+```
+
+### 言語指定コードブロック
+
+言語を指定したコードブロックは、ブラウザ側の構文ハイライティング（Codemirror、Prismなど）と互換性のあるHTMLが生成されます。
+
+````markdown
+```rust
+fn main() {
+    println!("Hello, UMD!");
+}
+```
+````
+
+````
+
+出力：
+
+```html
+<pre><code class="language-rust">fn main() {
+    println!("Hello, UMD!");
+}
+</code></pre>
+````
+
+サポートされる言語はCommonMarkとcomrakeのデフォルトセットに準拠します：
+
+- **Web**: html, css, javascript, typescript, jsx, tsx
+- **動的言語**: python, ruby, php, perl
+- **静的型言語**: rust, go, java, kotlin, c, cpp, csharp
+- **その他**: sql, json, yaml, xml, bash, shell, etc.
+
+### Mermaidダイアグラム
+
+Mermaidダイアグラムはサーバー側でSVG形式にレンダリングされます。Bootstrap 5のCSS変数を使用した自動カラリングにより、ライトモード/ダークモードに自動対応します。
+
+````markdown
+```mermaid
+graph TD
+    A[入力] --> B[処理]
+    B --> C[出力]
+```
+````
+
+````
+
+出力：
+
+```html
+<div class="mermaid-diagram" id="mermaid-12345678-1234-1234-1234-123456789012" data-mermaid-source="graph TD...">
+    <svg><!-- レンダリング済みダイアグラム --></svg>
+</div>
+````
+
+**特徴**：
+
+- サーバー側レンダリング（クライアント側スクリプト不要）
+- Bootstrap CSS変数による自動カラリング：
+  - `--bs-primary`: フローチャートのノード背景
+  - `--bs-secondary`: エッジの色
+  - `--bs-success`, `--bs-danger`など: 状態表現
+- `data-mermaid-source`属性: 元の図表定義を保持
+- ユニークなID: ページ内で複数のダイアグラムをサポート
+
+**サポートされるダイアグラムタイプ**：
+
+- フローチャート（graph, flowchart）
+- シーケンス図（sequenceDiagram）
+- ガントチャート（gantt）
+- クラス図（classDiagram）
+- 状態図（stateDiagram）
+- その他: pie, bar, など
+
 ## Bootstrap 5統合
 
 Universal Markdownは、デフォルトでBootstrap 5のクラスを生成します。これにより、CoreUIなどのBootstrapベースのフレームワークとシームレスに統合できます。

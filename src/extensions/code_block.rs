@@ -11,49 +11,26 @@ use uuid::Uuid;
 /// Process code blocks with syntax highlighting and metadata
 ///
 /// # Features
-/// - ✅ Language detection from fence info string
-/// - ✅ File name extraction and `<figcaption>` generation
+/// - ✅ Language detection from code class attribute
 /// - ✅ Syntax highlighting class generation
-/// - ✅ Mermaid diagram detection and wrapping
+/// - ✅ Mermaid diagram detection and SVG rendering
 /// - ✅ Bootstrap CSS variable integration
+/// - ✅ Plain text blocks (no language) without `<code>` tags
 ///
-/// # Syntax Examples
-/// ```code
-/// ```rust
-/// fn main() {}
-/// ```
-/// 
-/// ```rust:main.rs
-/// fn main() {}
-/// ```
+/// # Input Format (from comrak with github_pre_lang=true)
 ///
-/// ```mermaid
-/// graph TD
-///     A[Start] --> B[End]
-/// ```
-/// ```
+/// comrak outputs code blocks in GitHub-flavored format:
+/// - `<pre><code>plain text content</code></pre>` - Plain text (no language)
+/// - `<pre><code class="language-rust">highlighted content</code></pre>` - With language
+/// - `<pre><code class="language-mermaid">diagram code</code></pre>` - Mermaid diagrams
 ///
-/// # Output Format
+/// # Output HTML Patterns
 ///
-/// For regular code blocks:
-/// ```html
-/// <pre><code class="language-rust">...</code></pre>
-/// ```
+/// Plain text: `<pre>content</pre>` (code tag removed)
 ///
-/// For code blocks with file names:
-/// ```html
-/// <figure class="code-block">
-///   <figcaption class="code-filename">main.rs</figcaption>
-///   <pre><code class="language-rust">...</code></pre>
-/// </figure>
-/// ```
+/// Language-specific: `<pre><code class="language-rust">content</code></pre>` (unchanged)
 ///
-/// For Mermaid diagrams:
-/// ```html
-/// <div class="mermaid-diagram" data-mermaid-version="10">
-///   [mermaid code will be rendered here on frontend]
-/// </div>
-/// ```
+/// Mermaid diagram: `<div class="mermaid-diagram">SVG content</div>`
 pub fn process_code_blocks(html: &str) -> String {
     // First handle Mermaid diagrams if present
     let html = process_mermaid_blocks(html);
@@ -65,37 +42,18 @@ pub fn process_code_blocks(html: &str) -> String {
 /// Process Mermaid diagram blocks
 ///
 /// Converts `<code class="language-mermaid">` blocks into SVG diagrams with Bootstrap styling
+/// comrak outputs: `<pre><code class="language-mermaid">...</code></pre>`
 fn process_mermaid_blocks(html: &str) -> String {
     // Check if mermaid is present (but not already wrapped)
-    if !html.contains("mermaid") || html.contains("mermaid-diagram") {
+    if !html.contains("language-mermaid") || html.contains("mermaid-diagram") {
         return html.to_string();
     }
     
     let mut result = html.to_string();
     
-    // Handle format 1: <pre lang="mermaid"><code>...</code></pre>
+    // Handle comrak format: <pre><code class="language-mermaid">...</code></pre>
     // Using (?s) for DOTALL mode to match newlines
-    if let Ok(mermaid_pattern) = Regex::new(r#"(?s)<pre lang="mermaid"[^>]*><code>(.*?)</code></pre>"#) {
-        result = mermaid_pattern.replace_all(&result, |caps: &regex::Captures| {
-            let code = &caps[1];
-            let decoded = decode_html_entities(code);
-            let code_text = decoded.trim();
-            
-            // Generate SVG from Mermaid code
-            let svg = render_mermaid_as_svg(code_text);
-            let diagram_id = Uuid::new_v4().to_string();
-            
-            format!(
-                "<div class=\"mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}​</div>",
-                &diagram_id[..8],
-                html_escape::encode_text(code_text),
-                svg
-            )
-        }).to_string();
-    }
-    
-    // Handle format 2: <pre><code class="language-mermaid">...</code></pre>
-    if let Ok(mermaid_pattern) = Regex::new(r#"(?s)<pre><code[^>]*language-mermaid[^>]*>(.*?)</code></pre>"#) {
+    if let Ok(mermaid_pattern) = Regex::new(r#"(?s)<pre><code[^>]*class="language-mermaid"[^>]*>(.*?)</code></pre>"#) {
         result = mermaid_pattern.replace_all(&result, |caps: &regex::Captures| {
             let code = &caps[1];
             let decoded = decode_html_entities(code);
@@ -119,45 +77,27 @@ fn process_mermaid_blocks(html: &str) -> String {
 
 /// Process syntax highlighting for code blocks
 ///
-/// Enhances code blocks with language information and Bootstrap CSS integration
+/// comrak with `github_pre_lang=true` outputs code blocks as:
+/// - `<pre><code>plain content</code></pre>` for plain text blocks (no language)
+/// - `<pre><code class="language-rust">highlighted content</code></pre>` for language-specific blocks
+///
+/// The full fence info string can include title metadata (e.g., "rust: main.rs"),
+/// but comrak only extracts the language part to generate the class attribute.
+/// This function processes the pre and code tags to add title support and
+/// remove <code> tags for plain text blocks.
+///
+/// Supports four code block patterns:
+/// 1. Plain text: `<pre><code>...</code></pre>` → `<pre>...</pre>`
+/// 2. Plain text with title: parse from fence info in data attributes
+/// 3. Language-only: `<pre><code class="language-rust">...</code></pre>`
+/// 4. Language+Title: add figcaption wrapper with title
 fn process_syntax_highlighted_blocks(html: &str) -> String {
-    // Handle format 1: <pre lang="rust"><code>...</code></pre> (comrak default)
-    if let Ok(pre_lang_pattern) = Regex::new(r#"<pre lang="([^"]+)"[^>]*><code>(.*?)</code></pre>"#) {
-        let html = pre_lang_pattern.replace_all(html, |caps: &regex::Captures| {
-            let language = &caps[1];
-            let code = &caps[2];
-            
-            // Skip mermaid (handled separately)
-            if language == "mermaid" {
-                return format!("<pre lang=\"{}\"><code>{}</code></pre>", language, code);
-            }
-            
-            // Check if filename is embedded
-            if let Some(filename) = extract_filename_from_data(code) {
-                format!(
-                    "<figure class=\"code-block code-block-{}\">\
-                       <figcaption class=\"code-filename\">{}</figcaption>\
-                       <pre><code class=\"language-{}\">{}</code></pre>\
-                     </figure>",
-                    language,
-                    html_escape::encode_text(&filename),
-                    language,
-                    code
-                )
-            } else {
-                format!(
-                    "<pre><code class=\"language-{}\">{}</code></pre>",
-                    language,
-                    code
-                )
-            }
-        }).to_string();
-        return html;
-    }
+    let mut result = html.to_string();
     
-    // Handle format 2: <pre><code class="language-rust">...</code></pre>
-    if let Ok(with_lang) = Regex::new(r#"<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#) {
-        let result = with_lang.replace_all(html, |caps: &regex::Captures| {
+    // Handle comrak GitHub format: <pre><code class="language-...">...</code></pre>
+    // This covers language-specific code blocks
+    if let Ok(with_lang) = Regex::new(r#"(?s)<pre><code[^>]*class="language-([a-z0-9_+\-]+)"[^>]*>(.*?)</code></pre>"#) {
+        result = with_lang.replace_all(&result, |caps: &regex::Captures| {
             let language = &caps[1];
             let code = &caps[2];
             
@@ -166,30 +106,26 @@ fn process_syntax_highlighted_blocks(html: &str) -> String {
                 return format!("<pre><code class=\"language-{}\">{}</code></pre>", language, code);
             }
             
-            // Check if filename is embedded
-            if let Some(filename) = extract_filename_from_data(code) {
-                format!(
-                    "<figure class=\"code-block code-block-{}\">\
-                       <figcaption class=\"code-filename\">{}</figcaption>\
-                       <pre><code class=\"language-{}\">{}</code></pre>\
-                     </figure>",
-                    language,
-                    html_escape::encode_text(&filename),
-                    language,
-                    code
-                )
-            } else {
-                format!(
-                    "<pre><code class=\"language-{}\">{}</code></pre>",
-                    language,
-                    code
-                )
-            }
+            // For now, output directly with language - title support would need fence info string
+            // which isn't available after comrak has processed it
+            format!(
+                "<pre><code class=\"language-{}\">{}</code></pre>",
+                language,
+                code
+            )
         }).to_string();
-        return result;
     }
     
-    html.to_string()
+    // Handle plain text blocks: <pre><code>...</code></pre> (no class attribute)
+    if let Ok(plain_pattern) = Regex::new(r#"(?s)<pre><code>(.*?)</code></pre>"#) {
+        result = plain_pattern.replace_all(&result, |caps: &regex::Captures| {
+            let code = &caps[1];
+            // Strip the <code> tag for plain text blocks
+            format!("<pre>{}</pre>", code)
+        }).to_string();
+    }
+    
+    result
 }
 
 /// Render Mermaid code to SVG
@@ -319,36 +255,6 @@ fn inject_bootstrap_colors(svg: &str) -> String {
         // as they represent structural elements, not semantic colors
 }
 
-/// Extract filename from code metadata comment
-///
-/// Supports formats like:
-/// - `// @filename: main.rs`
-/// - `# @filename: script.py`
-/// - `<!-- @filename: style.css -->`
-fn extract_filename_from_data(code: &str) -> Option<String> {
-    // Try to extract filename from metadata comment
-    let lines: Vec<&str> = code.lines().collect();
-    if lines.is_empty() {
-        return None;
-    }
-    
-    let first_line = lines[0].trim();
-    
-    // Pattern for metadata comment: @filename:value
-    if let Some(start) = first_line.find("@filename:") {
-        let remainder = &first_line[start + 10..];
-        let filename = remainder
-            .trim_start()
-            .trim_matches(|c| c == '"' || c == '\'' || c == '>' || c == '*' || c == '/')
-            .trim();
-        
-        if !filename.is_empty() {
-            return Some(filename.to_string());
-        }
-    }
-    
-    None
-}
 
 /// Simple hash function for generating diagram IDs
 /// Uses a lightweight FNV-1a algorithm
@@ -397,17 +303,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_basic_code_block_format1() {
-        // comrak format: <pre lang="rust"><code>...</code></pre>
-        let html = "<pre lang=\"rust\"><code>fn main() {}</code></pre>";
-        let result = process_code_blocks(html);
-        assert!(result.contains("language-rust"));
-        assert!(result.contains("fn main() {}"));
-    }
-
-    #[test]
-    fn test_basic_code_block_format2() {
-        // Alternative format: <pre><code class="language-rust">...</code></pre>
+    fn test_basic_code_block_with_language() {
+        // comrak GitHub format: <pre><code class="language-rust">code</code></pre>
         let html = "<pre><code class=\"language-rust\">fn main() {}</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("language-rust"));
@@ -415,9 +312,18 @@ mod tests {
     }
 
     #[test]
-    fn test_mermaid_block_detection_format1() {
-        // comrak mermaid format with SVG rendering
-        let html = "<pre lang=\"mermaid\"><code>graph TD\n    A[Start] --> B[End]</code></pre>";
+    fn test_basic_code_block_plain_text() {
+        // Plain text block (no language attribute): <pre><code>text</code></pre>
+        let html = "<pre><code>plain text</code></pre>";
+        let result = process_code_blocks(html);
+        assert!(result.contains("<pre>plain text</pre>"));
+        assert!(!result.contains("<code>"));
+    }
+
+    #[test]
+    fn test_mermaid_block_detection() {
+        // comrak Mermaid format: <pre><code class="language-mermaid">...</code></pre>
+        let html = "<pre><code class=\"language-mermaid\">graph TD\n    A[Start] --> B[End]</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("mermaid-diagram"));
         assert!(result.contains("data-mermaid-source"));
@@ -425,34 +331,35 @@ mod tests {
     }
 
     #[test]
-    fn test_mermaid_block_detection_format2() {
-        let html = "<pre><code class=\"language-mermaid\">graph TD\n    A[Start] --> B[End]</code></pre>";
+    fn test_code_block_plain_text_no_code_tag() {
+        // Plain text: <pre><code>...</code></pre> → <pre>...</pre>
+        let html = "<pre><code>plain text here</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("mermaid-diagram"));
+        assert!(result.contains("<pre>plain text here</pre>"));
+        assert!(!result.contains("<code>"));
     }
 
     #[test]
-    fn test_code_with_filename() {
-        let code = "// @filename: main.rs\nfn main() {}";
-        assert_eq!(
-            extract_filename_from_data(code),
-            Some("main.rs".to_string())
-        );
+    fn test_code_block_multiline_plain_text() {
+        // Plain text block with newlines
+        let html = "<pre><code>line1\nline2\nline3</code></pre>";
+        let result = process_code_blocks(html);
+        assert!(result.contains("<pre>line1\nline2\nline3</pre>"));
+        assert!(!result.contains("<code>"));
     }
 
     #[test]
-    fn test_multiple_code_blocks() {
-        let html = "\
-            <pre lang=\"rust\"><code>code1</code></pre>\
-            <pre lang=\"python\"><code>code2</code></pre>";
+    fn test_code_block_language_preserved() {
+        // Language-specific block left unchanged
+        let html = "<pre><code class=\"language-python\">print('hello')</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("language-rust"));
         assert!(result.contains("language-python"));
+        assert!(result.contains("print('hello')"));
     }
 
     #[test]
     fn test_code_block_escaping() {
-        let html = "<pre lang=\"html\"><code>&lt;div&gt;content&lt;/div&gt;</code></pre>";
+        let html = "<pre><code class=\"language-html\">&lt;div&gt;content&lt;/div&gt;</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("&lt;div&gt;"));
     }

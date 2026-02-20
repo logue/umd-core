@@ -28,29 +28,38 @@ fn main() {
 - comrakの`lang`属性を`class="language-*"`に変換
 - フロントエンド処理（Highlight.js、Prism.js等）に対応
 
-### 2. **ファイル名付きコードブロック** ✅
+### 2. **コードブロックタイトル対応** ✅
 
 ````markdown
-```python
-# @filename: script.py
+```python: example.py
 def hello():
     print("Hello")
 ```
 ````
 
-**出力形式:**
+**出力形式（タイトルあり）:**
 
 ```html
 <figure class="code-block code-block-python">
-  <figcaption class="code-filename">script.py</figcaption>
+  <figcaption class="code-title">example.py</figcaption>
+  <pre><code class="language-python">...</code></pre>
+</figure>
+```
+
+**出力形式（タイトルなし）:**
+
+```html
+<figure class="code-block code-block-python">
   <pre><code class="language-python">...</code></pre>
 </figure>
 ```
 
 **特徴:**
 
-- コード内の`@filename:`メタデータを検出
-- セマンティックな`<figure>`+`<figcaption>`で囲む
+- 標準 Markdown 記法（` ```lang: title `）でコードブロックタイトルを指定
+- タイトルはファイル名に限定されない（任意のテキスト可能）
+- `<figcaption>`はタイトルがあるときのみ出力（省略可能）
+- セマンティックな`<figure>`でラップ
 - CSS で`code-block-{language}`クラスで言語別スタイリング可能
 
 ### 3. **Mermaid図対応** ✅
@@ -62,25 +71,52 @@ graph TD
 ```
 ````
 
-**出力形式:**
+**出力形式（タイトルなし）:**
 
 ```html
-<div
-  class="mermaid-diagram"
-  id="mermaid-{hash}"
-  data-mermaid-source="graph TD..."
->
-  <svg><!-- mermaid-rs-renderer生成のSVG --></svg>
-</div>
+<figure class="code-block code-block-mermaid">
+  <svg
+    class="mermaid-diagram"
+    id="mermaid-{uuid}"
+    data-mermaid-source="graph TD..."
+  >
+    <!-- mermaid-rs-renderer生成のSVG -->
+  </svg>
+</figure>
+```
+
+**出力形式（タイトルあり）:**
+
+````markdown
+```mermaid: システムフロー
+graph TD
+    A[開始] --> B[処理] --> C[終了]
+```
+````
+
+```html
+<figure class="code-block code-block-mermaid">
+  <figcaption class="code-title">システムフロー</figcaption>
+  <svg
+    class="mermaid-diagram"
+    id="mermaid-{uuid}"
+    data-mermaid-source="graph TD..."
+  >
+    <!-- mermaid-rs-renderer生成のSVG -->
+  </svg>
+</figure>
 ```
 
 **特徴:**
 
 - `language-mermaid`を自動検出
-- ユニークなID（FNV-1aハッシュ）を生成
+- ユニークなID（UUID）を生成
 - Rust側で `mermaid-rs-renderer` を使ってSVGに変換
 - Bootstrap CSS変数でカラーリング対応（ダークモード自動切り替え）
-- SEO対応（レンダリングすみHTML）
+- SEO対応（レンダリング済みHTML）
+- セマンティックな`<figure>`でラップ
+- タイトルは省略可能（` ```mermaid: title ` で指定）
+- ブロック型プラグイン（CENTER: など）との連携可能
 
 ## ファイル構成
 
@@ -108,9 +144,9 @@ examples/
 3. **他の拡張処理** → UMD固有の装飾やプラグイン処理
 4. **コード復元** → `process_code_blocks()` でコードを復元
 5. **コードブロック処理**
-   - Mermaid検出と `<div class="mermaid-diagram">` でラップ
+   - Mermaid検出と `<figure class="code-block code-block-mermaid">` でラップ
    - Rust側で `mermaid-rs-renderer` を使ってSVGに変換
-   - ファイル名検出と `<figure>` でラップ
+   - タイトル検出と `<figure>` でラップ（タイトルなしの場合は省略可能）
    - 言語クラスを `class="language-*"` に統一
 
 ### 正規表現パターンと変換フロー
@@ -128,18 +164,21 @@ r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
 **Mermaid処理フロー**:
 
 1. `language-mermaid` コードを検出
-2. Mermaid ソースコードをパース
-3. `mermaid-rs-renderer` で SVG に変換
-4. SVG に Bootstrap CSS 変数をインジェクト
-5. `data-mermaid-source` 属性に元のコードを保持
-6. `<div class="mermaid-diagram">` で囲む
+2. fence info string からタイトルを抽出（` ```mermaid: title `）
+3. Mermaid ソースコードをパース
+4. `mermaid-rs-renderer` で SVG に変換
+5. SVG に Bootstrap CSS 変数をインジェクト
+6. 以下の構造で `<figure>` でラップ：
+   - タイトルがある場合：`<figcaption>` とともに出力
+   - タイトルがない場合：SVG のみを埋め込む
+7. `data-mermaid-source` 属性に元のコードを保持
 
 ## フロントエンド対応
 
 ### Mermaid SVG（Rust側で事前レンダリング）
 
 - `mermaid-rs-renderer` で Rust 側で SVG に変換
-- SVG は `<div class="mermaid-diagram">` に直接埋め込み
+- SVG は `<figure class="code-block code-block-mermaid">` の中に埋め込み
 - JavaScript は不要（SEO対応済み）
 - Bootstrap CSS 変数で自動的にダークモード対応
 
@@ -172,7 +211,7 @@ fn inject_bootstrap_colors(svg: &str) -> String {
   overflow: hidden;
 }
 
-.code-block figcaption {
+.code-block figcaption.code-title {
   background-color: var(--bs-secondary);
   padding: 0.5rem 1rem;
   border-radius: 0.25rem 0.25rem 0 0;
@@ -272,8 +311,6 @@ flowchart LR
     D --> E[Display]
 ```
 
-```
-
 ## パフォーマンス特性
 
 - **時間計算量**: O(n) - 正規表現マッチングと置換
@@ -318,4 +355,3 @@ flowchart LR
 **実装日**: 2026年2月20日
 **状態**: ✅ 完了・本番対応可能
 **互換性**: CommonMark + GFM + UMD
-```

@@ -72,7 +72,9 @@ fn test_code_blocks_not_processed() {
     // LukiWiki syntax inside code blocks should NOT be converted
     let input = "```\ntest code\n```";
     let output = parse(input);
-    assert!(output.contains("<code>"));
+    // Plain text code blocks (no language specified) should not have <code> tags
+    assert!(output.contains("<pre>"));
+    assert!(output.contains("test code"));
 }
 
 #[test]

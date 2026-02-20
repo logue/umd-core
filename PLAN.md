@@ -3,7 +3,7 @@
 **プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テストを合理的にパス(75%+目標)しつつ、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステムを提供。レガシー構文との後方互換性も維持。
 
 **作成日**: 2026年1月23日
-**最終更新**: 2026年2月19日
+**最終更新**: 2026年2月20日
 **Rustバージョン**: 1.93.1 (最新安定版)
 **ライセンス**: MIT
 
@@ -41,14 +41,15 @@
 
 ### テスト結果
 
-**総テスト数**: 226 tests passing
+**総テスト数**: 284 tests passing ✅
 
-- 165 unit tests (lib.rs)
+- 193 unit tests (lib.rs)
 - 22 bootstrap integration tests
 - 18 CommonMark compliance tests
 - 14 comment syntax tests
 - 13 conflict resolution tests
-- 13 doctests
+- 15 doctests
+- 12 code block tests
 - 1 semantic integration test
 
 ---
@@ -146,7 +147,27 @@
 
 ## 実装済み機能（最近完了）
 
-#### 1. メディアファイル自動検出（ダウンロードリンク対応） ✅
+#### 1. コードブロック処理の強化 ✅
+
+**実装内容**:
+
+- comrak の `github_pre_lang=true` 出力形式に対応
+- 言語指定なしのプレーンテキストコードブロックから `<code>` タグを削除
+- Mermaid ダイアグラムのサーバーサイド SVG レンダリング
+- Bootstrap CSS 変数の自動注入（`--bs-blue`, `--bs-green` など）
+- 複数行コンテンツ対応
+
+**出力パターン**:
+
+- プレーンテキスト: `<pre><code>...</code></pre>` → `<pre>...</pre>`
+- 言語指定コード: `<pre><code class="language-rust">...</code></pre>` (変更なし)
+- Mermaid: `<pre><code class="language-mermaid">...</code></pre>` → `<div class="mermaid-diagram"><svg>...</svg></div>`
+
+**テスト**: 12個のコードブロック別テストが全部合格
+**実装日**: 2026/02/20
+**詳細**: [src/extensions/code_block.rs](src/extensions/code_block.rs)
+
+#### 2. メディアファイル自動検出（ダウンロードリンク対応） ✅
 
 画像リンク構文 `![alt](url)` を拡張し、URLの拡張子に基づいて自動的に適切なHTMLメディアタグまたはダウンロードリンクに変換。
 

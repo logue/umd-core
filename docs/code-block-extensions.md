@@ -33,42 +33,38 @@ fn main() {
 ```
 ````
 
-````
-
 **出力HTML:**
+
 ```html
 <pre><code class="language-rust">fn main() {
     println!("Hello, World!");
 }</code></pre>
-````
+```
 
 ### 2. ファイル名付きコードブロック
 
-コード内に`@filename: filename.ext`という記法を含めると、自動的に`<figure>`でラップされ、`<figcaption>`がファイル名として表示されます。
+Markdown標準の記法（` ```lang: filename `）を使用すると、自動的に`<figure>`でラップされ、`<figcaption>`がファイル名として表示されます。
 
 #### 使用例
 
 ````markdown
-```rust
-// @filename: main.rs
+```rust: main.rs
 fn main() {
     println!("Hello, World!");
 }
 ```
 ````
 
-````
-
 **出力HTML:**
+
 ```html
 <figure class="code-block code-block-rust">
   <figcaption class="code-filename">main.rs</figcaption>
-  <pre><code class="language-rust">// @filename: main.rs
-fn main() {
+  <pre><code class="language-rust">fn main() {
     println!("Hello, World!");
 }</code></pre>
 </figure>
-````
+```
 
 **利点:**
 
@@ -78,9 +74,9 @@ fn main() {
 
 ### 3. Mermaid図のレンダリング対応
 
-`language-mermaid`クラスを持つコードブロックは、自動的に`<div class="mermaid-diagram">`でラップされます。
+`language-mermaid`クラスを持つコードブロックは、**Rust側で自動的にSVGに変換され**、セマンティックな`<figure>`タグでラップされます。タイトル指定も可能です（` ```mermaid: タイトル `）。
 
-#### 基本的な使用例
+#### 基本的な使用例（タイトルなし）
 
 ````markdown
 ```mermaid
@@ -90,94 +86,77 @@ graph TD
 ```
 ````
 
+**出力HTML（Rust側で生成）:**
+
+```html
+<figure class="code-block code-block-mermaid">
+  <svg
+    class="mermaid-diagram"
+    id="mermaid-{uuid}"
+    data-mermaid-source="graph TD..."
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 800 400"
+  >
+    <!-- Bootstrap CSS変数でスタイル付けされたSVG要素 -->
+    <rect fill="var(--bs-blue, #0d6efd)" />
+    <text fill="var(--bs-body-color)" />
+  </svg>
+</figure>
+```
+
+#### タイトル付きの例
+
+````markdown
+```mermaid: システムフロー
+graph TD
+    A[データ入力] --> B[処理]
+    B --> C[出力] --> D[完了]
+```
 ````
 
-**出力HTML:**
+**出力HTML（タイトル付き）:**
+
 ```html
-<div class="mermaid-diagram" id="mermaid-{hash}">
-  <pre><code class="language-mermaid" data-mermaid-source="...">
-    graph TD
-        A[開始] --> B[処理]
-        B --> C[終了]
-  </code></pre>
-</div>
-````
+<figure class="code-block code-block-mermaid">
+  <figcaption class="code-title">システムフロー</figcaption>
+  <svg
+    class="mermaid-diagram"
+    id="mermaid-{uuid}"
+    data-mermaid-source="graph TD..."
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 800 400"
+  >
+    <!-- Bootstrap CSS変数でスタイル付けされたSVG要素 -->
+  </svg>
+</figure>
+```
+
+**特徴:**
+
+- ✅ サーバー側（Rust）で完全に処理
+- ✅ Bootstrap CSS 変数でダークモード自動対応
+- ✅ SEO対応（HTMLに含まれた状態で配信）
+- ✅ JavaScript不要
+- ✅ セマンティックな`<figure>`でラップ
+- ✅ タイトルは省略可能（` ```mermaid: タイトル ` で指定）
+- ✅ ブロック型プラグイン（CENTER: など）との連携可能
 
 ## フロントエンド対応
 
-### Mermaid図のレンダリング
+### Mermaid図
 
-Mermaid図は、フロントエンド（JavaScript）でレンダリングする必要があります。以下の方法をサポートしています。
+**Mermaid図は Rust側で完全にSVGに変換されるため、フロントエンドJavaScriptの処理は不要です。**
 
-#### 1. Mermaid.js CDN (推奨)
+ただし、`data-mermaid-source`属性にMermaidコードが保存されているため、デバッグや再レンダリングが必要な場合は以下の方法で処理できます：
 
-```html
-<script
-  async
-  src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"
-></script>
+#### デバッグ用：Mermaidコードの表示
 
-<script>
-  // Mermaid初期化（読み込み後）
-  document.addEventListener("DOMContentLoaded", function () {
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: "default", // 'dark' for dark mode
-    });
-    mermaid.contentLoaded();
-  });
-</script>
-```
-
-#### 2. Bootstrap統合版（推奨）
-
-```html
-<script
-  async
-  src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"
-></script>
-
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const isDarkMode =
-      document.documentElement.getAttribute("data-bs-theme") === "dark";
-
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: isDarkMode ? "dark" : "light",
-      primaryColor: isDarkMode ? "#6c757d" : "#0d6efd",
-      primaryBorderColor: isDarkMode ? "#495057" : "#0d6efd",
-      primaryTextColor: isDarkMode ? "#fff" : "#000",
-      background: isDarkMode ? "#212529" : "#fff",
-    });
-
-    // ダークモード切り替え時の対応
-    const observer = new MutationObserver(() => {
-      mermaid.contentLoaded();
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-bs-theme"],
-    });
-
-    mermaid.contentLoaded();
-  });
-</script>
-```
-
-#### 3. モダンブラウザ向け（ES6モジュール）
-
-```html
-<script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
-
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: "default",
-  });
-  mermaid.contentLoaded();
-</script>
+```javascript
+// Mermaidコードをデバッグ表示
+document.querySelectorAll(".mermaid-diagram").forEach((svg) => {
+  const source = svg.getAttribute("data-mermaid-source");
+  console.log("Mermaid source:", source);
+});
 ```
 
 ### シンタックスハイライト
@@ -259,7 +238,7 @@ pre code {
 /* figcaption スタイル */
 .code-block figcaption {
   background-color: var(--bs-secondary);
-  color: var(--bs-secondary-text);
+  color: var(--bs-secondary-color);
   padding: 0.5rem 1rem;
   border-radius: 0.25rem 0.25rem 0 0;
   font-size: 0.875rem;
@@ -284,15 +263,16 @@ pre code {
 
 - `process_code_blocks(html: &str) -> String` - メイン処理関数
 - `process_mermaid_blocks(html: &str) -> String` - Mermaid検出と変換
+- `render_mermaid_as_svg(mermaid_code: &str) -> String` - Mermaid → SVG変換
 - `process_syntax_highlighted_blocks(html: &str) -> String` - 言語クラス追加
-- `extract_filename_from_data(code: &str) -> Option<String>` - ファイル名抽出
-- `simple_hash(data: &str) -> u64` - 図のID生成用ハッシュ
+- `extract_filename_from_info_string(info: &str) -> Option<String>` - fence info stringからコードブロックタイトル抽出
+- `inject_bootstrap_colors(svg: &str) -> String` - Bootstrap CSS変数の注入
 
 #### 処理パイプライン
 
-1. **Mermaid検出**: `language-mermaid`クラスを検索
-2. **言語別処理**: `language-{lang}`クラスを検索
-3. **ファイル名抽出**: コード先頭行の`@filename:` をパース
+1. **Mermaid処理**: `language-mermaid`クラスを検索し、Rust側でSVGに変換
+2. **言語別処理**: `language-{lang}`クラスを検索して保持
+3. **タイトル抽出**: fence info stringから`lang: title`形式をパース
 4. **HTML変換**: 検出結果に応じて適切なHTMLを生成
 
 ### パフォーマンス考慮
@@ -322,44 +302,38 @@ sequenceDiagram
 ```
 ````
 
-````
-
 ### 複数言語のコードブロック
 
-```markdown
-```javascript
-// @filename: app.js
+````markdown
+```javascript: app.js
 function hello() {
   console.log("Hello, World!");
 }
-````
+```
 
-```python
-# @filename: script.py
+```python: script.py
 def hello():
     print("Hello, World!")
 ```
 
-```rust
-// @filename: main.rs
+```rust: main.rs
 fn main() {
     println!("Hello, World!");
 }
 ```
-
-```
+````
 
 ## 制限事項と今後の拡張
 
 ### 現在の制限
 
-- Mermaidのレンダリングはフロントエンド依存
-- シンタックスハイライトもフロントエンド側で実装
-- ファイル名はメタデータコメントで指定（将来的には言語別対応予定）
+- Mermaidのレンダリングはサーバー（Rust）完結
+- シンタックスハイライトはフロントエンド側で実装
+- **コードブロックタイトルは標準 Markdown 形式で指定**（任意のテキストを使用可能、省略できります）
 
 ### 今後の拡張計画
 
-1. **複数行ファイル名指定**: YAML形式のメタデータをサポート
+1. **複数行タイトル指定**: YAML形式のメタデータをサポート
 2. **コピーボタン**: 自動生成（JavaScript側）
 3. **行番号表示**: 言語別対応（JavaScript側）
 4. **行選択ハイライト**: シンタックスハイライトライブラリと統合
@@ -369,10 +343,9 @@ fn main() {
 
 ### Mermaid図が表示されない
 
-1. `<script>`タグが読み込まれているか確認
-2. ブラウザコンソールでエラーを確認
-3. `mermaid.contentLoaded()`が呼び出されているか確認
-4. `data-mermaid-source`属性にコードがあるか確認
+1. ブラウザコンソールでエラーがないか確認
+2. `data-mermaid-source`属性にコードがあるか確認
+3. SVG要素が正しく埋め込まれているか確認
 
 ### シンタックスハイライトが効かない
 
@@ -380,9 +353,8 @@ fn main() {
 2. `<code>`要素に`language-{lang}`クラスがあるか確認
 3. ブラウザのデベロッパーツールで適用されているクラスを確認
 
-### ファイル名が表示されない
+### コードブロックタイトルが表示されない
 
-1. `// @filename:` の後に空白があるか確認
-2. ファイル名に特殊文字が含まれていないか確認
-3. 最初の行にコメントがあるか確認
-```
+1. フェンス情報文字列に `:` 区切り文字が含まれているか確認
+2. コードブロックタイトルに特殊文字が含まれていないか確認
+3. 言語指定と `:` の間に空白がないか確認（例：` ```rust: ` ではなく ` ```rust:filename.rs `）

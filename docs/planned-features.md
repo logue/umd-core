@@ -1282,7 +1282,7 @@ pre[class*="language-"] {
 .token.keyword,
 .token.attr-name,
 .language-autohotkey .token.selector {
-  color: var(--bs-blue);
+  color: var(--bs-indigo);
 }
 
 .token.function,
@@ -1332,7 +1332,7 @@ pre[class*="language-"] {
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-subst {
-  color: var(--bs-blue);
+  color: var(--bs-indigo);
   font-weight: bold;
 }
 
@@ -1407,7 +1407,7 @@ function generateBootstrapTheme() {
       {
         scope: ["keyword", "storage.type", "storage.modifier"],
         settings: {
-          foreground: styles.getPropertyValue("--bs-blue").trim(),
+          foreground: styles.getPropertyValue("--bs-indigo").trim(),
         },
       },
       {
@@ -1443,13 +1443,13 @@ const highlighter = await getHighlighter({
 | トークンタイプ | Bootstrapカラー | 理由 |
 |-------------|---------------|------|
 | コメント | `--bs-gray-600` | 目立たせない副次的な情報 |
-| キーワード | `--bs-blue` | 言語の予約語（青は落ち着きと信頼性を表す） |
+| キーワード | `--bs-indigo` | 言語の予約語（落ち着きと信頼性を表す） |
 | 文字列 | `--bs-green` | データとして「正常」な値（緑は安全性を示す） |
 | 数値/定数 | `--bs-cyan` | 値としての情報（水色は情報性を示す） |
 | 関数名 | `--bs-orange` | 実行される箇所（オレンジは注意を引く） |
 | エラー/削除 | `--bs-red` | 問題のある箇所（赤は危険を示す） |
 
-**注**: システムカラー（`--bs-primary`, `--bs-success`等）ではなく、**純粋な色値**（`--bs-blue`, `--bs-green`等）を使用します。これにより、コードのキーワードが「プライマリーなアクション」という誤った意味づけを避け、純粋に色として青を使用していることが明確になります。
+**注**: システムカラー（`--bs-primary`, `--bs-success`等）ではなく、**純粋な色値**（`--bs-indigo`, `--bs-green`等）を使用します。色が足りない場合を除き、`--bs-blue`の使用は避けます。これにより、コードのキーワードが「プライマリーなアクション」という誤った意味づけを避け、純粋に色として使っていることが明確になります。
 
 **ダークモード対応**:
 
