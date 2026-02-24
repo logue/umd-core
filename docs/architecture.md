@@ -1,6 +1,6 @@
 # アーキテクチャドキュメント
 
-**最終更新**: 2026年2月4日
+**最終更新**: 2026年2月24日
 
 Universal Markdownの技術アーキテクチャとシステム設計を記載しています。
 
@@ -11,6 +11,7 @@ Universal Markdownの技術アーキテクチャとシステム設計を記載�
 - [主要コンポーネント](#主要コンポーネント)
 - [依存クレート](#依存クレート)
 - [ディレクトリ構造](#ディレクトリ構造)
+- [開発者向けガイド](#開発者向けガイド)
 - [構文優先順位ポリシー](#構文優先順位ポリシー)
 - [セキュリティ方針](#セキュリティ方針)
 
@@ -356,6 +357,159 @@ umd/
 - 曖昧な入力に対する警告メッセージ（将来実装予定）
 
 ---
+
+## 開発者向けガイド
+
+このセクションはAIエージェントおよび開発者向けの実装ハンドブックです。
+
+### ドキュメント駆動型開発
+
+**原則**: 実装前に仕様を文書化し、テストと仕様の一貫性を保つ
+
+#### ワークフロー
+
+1. `PLAN.md` を読んで実装対象のタスクを理解
+2. 新しいルール（タグ使法等）が生じた場合は、`docs/rules/` に新規文書を作成するか、既存文書を更新
+3. **実装完了の定義**: コードが書かれ、テストがパスし、仕様が `docs/` に更新されたとき
+
+#### ドキュメント管理
+
+- `PLAN.md` が100行を超える場合は、実装済みセクションを `docs/archive/` に移動するか削除
+- 複数のAIエージェント（Gemini, Grok等）での理解を想定した明確な文書を作成
+
+### 何をどこで変更するか
+
+#### 構文競合やUMD仕様の修正
+
+ファイル: `src/extensions/conflict_resolver.rs` + `tests/conflict_resolution.rs`
+
+- 機能: UMD構文とMarkdown構文の衝突解決
+- マーカー方式での前処理・後処理
+- カスタムヘッダーID処理（`{#id}`）
+
+#### インライン装飾・ブロック装飾
+
+- **インライン**: `src/extensions/inline_decorations.rs`
+  - `&color()`, `&badge()`, `&ruby()` などのセマンティック関数
+  - 取り消し線 `%%text%%` → `<s>`
+- **ブロック**: `src/extensions/block_decorations.rs`
+  - `COLOR(...)`, `SIZE(...)`, `CENTER:` などのプレフィックス装飾
+  - LEFT/CENTER/RIGHT/JUSTIFYプレフィックス（配置制御）
+
+#### プラグインシステム
+
+- **メイン実装**: `src/extensions/plugins.rs`
+- **マーカー補助**: `src/extensions/plugin_markers.rs`
+- **構文**: `&fn(args){...};` (インライン), `@fn(args){{ ... }}` (ブロック)
+- **出力形式**: `<template class="umd-plugin umd-plugin-*"><data value="i"></data>...</template>`
+- **実行**: 外部（Nuxt/Laravel等のバックエンド）で処理
+
+#### コードブロック機能
+
+ファイル: `src/extensions/code_block.rs`
+
+- 言語別シンタックスハイライト: `language-*` クラス
+- Mermaid図: 自動ラップ `<div class="mermaid">...</div>`
+- プレーンテキスト: 言語指定なし → `<pre><code>...</code></pre>`
+
+#### テーブル拡張
+
+ファイル: `src/extensions/table/umd/*`
+
+- `|>` (セル横連結), `|^` (セル縦連結)
+- セル装飾: 配置、色、サイズ
+- ComraKのテーブルAS Tを UMD仕様で拡張
+
+#### メディア自動検出
+
+ファイル: `src/extensions/media.rs`
+
+- 画像構文から動画・音声・ダウンロードリンク自動判別
+- `![alt](video.mp4)` → `<video>`
+- `![alt](audio.mp3)` → `<audio>`
+- `![alt](image.png)` → `<picture>` (応答性対応)
+- ブロック vs インライン自動判別
+
+### プロジェクト固有の規約
+
+#### パイプラインの安定性
+
+- **ルール**: パイプラインの優先順位を維持する（ローカル「整理」より重視）
+- **理由**: 複数の機能が前処理・後処理ステージに依存している
+- **チェック方法**: `src/lib.rs:parse_with_frontmatter_opts()` の処理順序表を参照
+
+#### コード保護パターン
+
+- **コード区間の保護**: 正規表現変換前に `protect_code_sections` で保護
+- **新規regex**: 既存の保護パターンを回避しない設計
+
+#### UMM固有構文
+
+- **ブロック引用**: `> ... <` → `<blockquote class="umd-blockquote">`（Plain Markdownと異なる）
+- **下線**: `__text__` → `<u>` （Discord風、CommonMark strong emphasisではない）
+- **プラグイン出力**: メタデータ優先HTML（`<template>`タグ）、実行はバックエンド
+- **Base URIリライト**: `ParserOptions.base_url` での opt-in（`tests/base_url.rs`に仕様あり）
+
+### ビルド・テスト・デバッグワークフロー
+
+#### ローカルCI実行
+
+```bash
+cargo build --verbose && cargo test --verbose
+```
+
+`.github/workflows/rust.yml` に合わせた本番環境相当の実行。
+
+#### 高速検証（開発中）
+
+```bash
+# 特定テストファイルのみ実行
+cargo test --test conflict_resolution
+cargo test --test bootstrap_integration
+
+# 特定モジュールのテストを実行
+cargo test transform_images_to_media -- --nocapture
+```
+
+#### WASMビルド
+
+```bash
+./build.sh [dev|release]
+# 出力: pkg/ フォルダ
+# 要件: wasm-pack ツールチェーン
+```
+
+#### 手動デバッグ例実行
+
+```bash
+cargo run --example test_plugin_extended
+cargo run --example test_table_colspan
+```
+
+`examples/` フォルダのサンプルで機能を素早く検証。
+
+### パイプライン処理順序（重要）
+
+`src/lib.rs:parse_with_frontmatter_opts()` の実行順序は厳密であり、多くの機能がこの順番に依存しています。
+
+1. **フロントマター抽出** - メタデータを先に取得
+2. **前処理器** - ネストブロック、タスクリスト、下線などの一次処理
+3. **競合保護** - UMD構文をマーカーでラップ → Markdown競合を回避
+4. **サニタイズ** - HTML直接入力をエスケープ
+5. **comrakパース** - Markdown → AST生成
+6. **拡張機能** - インライン/ブロック装飾、プラグイン、メディア処理
+7. **フットノート抽出** - 脚注をJSON化
+8. **後処理** - マーカーの復元、最終HTML出力
+
+**順序の変更は避けてください。テストで順序依存がないことが確認される場合にのみ、慎重に変更してください。**
+
+### 依存クレートの役割（実装時の参考）
+
+- **comrak**: CommonMark + GFM パーサー、AST生成で一度だけ使用
+- **regex**: UMD構文検出・変換、複数ステージで使用
+- **ammonia**: ホワイトリストベースのHTML安全化
+- **maud**: 型安全HTML生成（コンパイル時検証）
+- **once_cell**: 正規表現パターンのキャッシュ（性能最適化）
 
 ## セキュリティ方針
 
