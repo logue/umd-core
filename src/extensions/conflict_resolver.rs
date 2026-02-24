@@ -587,13 +587,18 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 
     // Restore and apply block decorations
     let block_decoration_marker =
-        Regex::new(r"<p>\{\{BLOCK_DECORATION:(.+?):BLOCK_DECORATION\}\}</p>").unwrap();
+        Regex::new(r"(?s)<p>\{\{BLOCK_DECORATION:(.+?):BLOCK_DECORATION\}\}</p>").unwrap();
 
     result = block_decoration_marker
         .replace_all(&result, |caps: &Captures| {
             let decoration = &caps[1];
-            // Apply block decoration logic
-            block_decorations::apply_block_decorations(decoration)
+            // Multiline decorations (e.g., RIGHT:\n<media>) are handled later by
+            // apply_block_placement, so keep them as a paragraph payload.
+            if decoration.contains('\n') {
+                format!("<p>{}</p>", decoration)
+            } else {
+                block_decorations::apply_block_decorations(decoration)
+            }
         })
         .to_string();
 

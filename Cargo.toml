@@ -12,7 +12,7 @@ repository = "https://github.com/logue/umd-core"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2.108" # WASM bindings
+wasm-bindgen = "0.2.112" # WASM bindings
 comrak = "0.50.0" # Markdown parser (GFM)
 ammonia = "4.1.2" # HTML sanitization
 maud = "0.27.0" # Type-safe HTML generation
@@ -22,16 +22,16 @@ unicode-segmentation = "1.12.0" # Grapheme cluster handling
 html-escape = "0.2.13" # HTML escaping
 base64 = "0.22.1" # Base64 encoding for content protection
 serde_json = "1.0.149" # JSON serialization for definition lists
-syntect = "5.2.0" # Syntax highlighting (Sublime Text based)
-serde = { version = "1.0", features = ["derive"] } # Serialization
-uuid = { version = "1.11.0", features = [
+syntect = "5.3.0" # Syntax highlighting (Sublime Text based)
+serde = { version = "1.0.228", features = ["derive"] } # Serialization
+uuid = { version = "1.21.0", features = [
   "v4",
 ] } # UUID generation for diagram IDs
 
 [dev-dependencies]
 insta = "1.46.3"             # Snapshot testing
 criterion = "0.8.2"          # Benchmarking
-wasm-bindgen-test = "0.3.58" # WASM testing
+wasm-bindgen-test = "0.3.62" # WASM testing
 
 [profile.release]
 opt-level = "z"   # Optimize for size

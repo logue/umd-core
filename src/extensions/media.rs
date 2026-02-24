@@ -204,7 +204,7 @@ pub fn generate_media_html(
                 .map(|t| format!(" title=\"{}\"", escape_html(t)))
                 .unwrap_or_default();
             format!(
-                "<picture{}>\n  <source srcset=\"{}\" type=\"{}\" />\n  <img src=\"{}\" alt=\"{}\" loading=\"lazy\"{} />\n</picture>",
+                "<picture{}>\n  <source srcset=\"{}\" type=\"{}\" />\n  <img src=\"{}\" alt=\"{}\" loading=\"lazy\" class=\"img-fluid\"{} />\n</picture>",
                 title_attr,
                 escape_html(url),
                 mime_type,
@@ -267,7 +267,7 @@ pub fn transform_images_to_media(html: &str) -> String {
         Regex::new(r#"<img\s+src="([^"]+)"(?:\s+alt="([^"]*)")?(?:\s+title="([^"]*)")?\s*/>"#)
             .unwrap();
 
-    img_re
+    let transformed = img_re
         .replace_all(html, |caps: &regex::Captures| {
             let url = caps.get(1).map_or("", |m| m.as_str());
             let alt = caps.get(2).map_or("", |m| m.as_str());
@@ -285,10 +285,24 @@ pub fn transform_images_to_media(html: &str) -> String {
                     .map(|t| format!(" title=\"{}\"", t))
                     .unwrap_or_default();
                 format!(
-                    "<picture{}>\n  <img src=\"{}\" alt=\"{}\" loading=\"lazy\"{} />\n</picture>",
+                    "<picture{}>\n  <img src=\"{}\" alt=\"{}\" loading=\"lazy\" class=\"img-fluid\"{} />\n</picture>",
                     title_attr, url, alt, img_title
                 )
             }
+        })
+        .to_string();
+
+    // Block media: if a paragraph consists only of a media element,
+    // treat it as block-level output and wrap with <figure>.
+    // Inline media inside text remains unchanged.
+    let media_only_paragraph = Regex::new(
+        r#"(?s)<p>\s*(<picture[\s\S]*?</picture>|<video[\s\S]*?</video>|<audio[\s\S]*?</audio>|<a href="[^"]+" download class="download-link[^"]*"[^>]*>[\s\S]*?</a>)\s*</p>"#,
+    )
+    .unwrap();
+
+    media_only_paragraph
+        .replace_all(&transformed, |caps: &regex::Captures| {
+            format!("<figure class=\"w-100\">\n{}\n</figure>", &caps[1])
         })
         .to_string()
 }
@@ -529,5 +543,24 @@ mod tests {
         );
         assert!(html.contains("href=\"document.pdf?version=2\""));
         assert!(html.contains("📄 User Guide"));
+    }
+
+    #[test]
+    fn test_transform_media_paragraph_to_figure() {
+        let html = r#"<p><img src="image.png" alt="alt" title="Title" /></p>"#;
+        let transformed = transform_images_to_media(html);
+        assert!(transformed.contains(r#"<figure class="w-100">"#));
+        assert!(transformed.contains("<picture"));
+        assert!(transformed.contains("src=\"image.png\""));
+    }
+
+    #[test]
+    fn test_transform_inline_media_remains_inline() {
+        let html = r#"<p>before <img src="image.png" alt="alt" /> after</p>"#;
+        let transformed = transform_images_to_media(html);
+        assert!(!transformed.contains("<figure>"));
+        assert!(transformed.contains("before"));
+        assert!(transformed.contains("after"));
+        assert!(transformed.contains("<picture"));
     }
 }

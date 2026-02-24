@@ -114,7 +114,10 @@ static ALIGN_EXTRACT: Lazy<Regex> =
 
 // Block placement pattern for tables and plugins (must start on new line)
 static BLOCK_PLACEMENT: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?m)^(LEFT|CENTER|RIGHT|JUSTIFY):\n((?:\|[^\n]*\|(?:\n|$))+|@\w+(?:\([^)]*\))?\{[^}]*\})").unwrap()
+    Regex::new(
+        r"(?m)^(LEFT|CENTER|RIGHT|JUSTIFY):\n((?:\|[^\n]*\|(?:\n|$))+|@\w+(?:\([^)]*\))?\{[^}]*\})",
+    )
+    .unwrap()
 });
 
 /// Map font size value to Bootstrap class or inline style
@@ -318,16 +321,42 @@ pub fn apply_block_decorations(html: &str) -> String {
 ///
 /// HTML with block placement applied (Bootstrap utility classes)
 pub fn apply_block_placement(html: &str) -> String {
-    BLOCK_PLACEMENT
+    let media_block_placement = Regex::new(
+        r#"(?s)<p>\s*(LEFT|CENTER|RIGHT|JUSTIFY):\s*\n\s*(<picture[\s\S]*?</picture>|<video[\s\S]*?</video>|<audio[\s\S]*?</audio>|<a href="[^"]+" download class="download-link[^"]*"[^>]*>[\s\S]*?</a>)\s*</p>"#,
+    )
+    .unwrap();
+
+    let with_media_placement = media_block_placement
         .replace_all(html, |caps: &regex::Captures| {
+            let placement = &caps[1];
+            let media = &caps[2];
+
+            let wrapper_class = match placement {
+                "LEFT" => "ms-0 me-auto",
+                "CENTER" => "mx-auto",
+                "RIGHT" => "ms-auto me-0",
+                "JUSTIFY" => "w-100",
+                _ => "",
+            };
+
+            if wrapper_class.is_empty() {
+                format!("<figure>\n{}\n</figure>", media)
+            } else {
+                format!("<figure class=\"{}\">\n{}\n</figure>", wrapper_class, media)
+            }
+        })
+        .to_string();
+
+    BLOCK_PLACEMENT
+        .replace_all(&with_media_placement, |caps: &regex::Captures| {
             let placement = &caps[1];
             let content = &caps[2];
 
             let wrapper_class = match placement {
-                "LEFT" => "w-auto", // Content width, left aligned
-                "CENTER" => "w-auto mx-auto", // Content width, centered
+                "LEFT" => "w-auto",               // Content width, left aligned
+                "CENTER" => "w-auto mx-auto",     // Content width, centered
                 "RIGHT" => "w-auto ms-auto me-0", // Content width, right aligned
-                "JUSTIFY" => "w-100", // Full width
+                "JUSTIFY" => "w-100",             // Full width
                 _ => "",
             };
 
@@ -452,5 +481,17 @@ mod tests {
         let output = apply_block_placement(input);
         assert!(output.contains(r#"<div class="w-auto mx-auto">"#));
         assert!(output.contains("@youtube"));
+    }
+
+    #[test]
+    fn test_block_placement_right_media() {
+        let input = r#"<p>RIGHT:
+<picture>
+  <img src="image.png" alt="alt" title="Title" />
+</picture></p>"#;
+        let output = apply_block_placement(input);
+        assert!(output.contains(r#"<figure class="ms-auto me-0">"#));
+        assert!(output.contains("<picture>"));
+        assert!(!output.contains("RIGHT:"));
     }
 }

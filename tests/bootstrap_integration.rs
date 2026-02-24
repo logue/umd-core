@@ -191,3 +191,22 @@ fn test_strikethrough_compatibility() {
     assert!(output.contains("<s>UMD strikethrough</s>"));
     assert!(output.contains("<del>GFM strikethrough</del>"));
 }
+
+#[test]
+fn test_media_line_start_treated_as_block() {
+    let input = "![alt](image.png \"Title\")";
+    let output = parse(input);
+    assert!(output.contains(r#"<figure class="w-100">"#));
+    assert!(output.contains("<picture"));
+    assert!(output.contains("src=\"image.png\""));
+}
+
+#[test]
+fn test_right_prefix_places_media_right() {
+    let input = "RIGHT:\n![alt](image.png \"Title\")";
+    let output = parse(input);
+    assert!(output.contains(r#"<figure class="ms-auto me-0">"#));
+    assert!(output.contains("<picture"));
+    assert!(output.contains("src=\"image.png\""));
+    assert!(!output.contains("RIGHT:"));
+}
