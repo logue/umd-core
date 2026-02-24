@@ -40,4 +40,24 @@ fn main() {
     println!("\n=== Compound Prefixes ===");
     let output = parse("SIZE(1.5): COLOR(primary): CENTER: Styled text");
     println!("{}", output);
+
+    println!("\n=== Custom Color Blue ===");
+    let output = parse("&color(blue){Blue text};");
+    println!("{}", output);
+
+    println!("\n=== Custom Color Yellow ===");
+    let output = parse("&color(yellow){Yellow text};");
+    println!("{}", output);
+
+    println!("\n=== Block Color Yellow ===");
+    let output = parse("COLOR(yellow): Yellow block");
+    println!("{}", output);
+
+    println!("\n=== Custom Color Blue-Subtle ===");
+    let output = parse("&color(blue-subtle){Blue subtle text};");
+    println!("{}", output);
+
+    println!("\n=== Background Blue ===");
+    let output = parse("&color(,blue){Text on blue};");
+    println!("{}", output);
 }

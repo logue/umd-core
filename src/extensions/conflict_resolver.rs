@@ -82,11 +82,12 @@ fn map_font_size_value(value: &str) -> (bool, String) {
 }
 
 /// Map color value to Bootstrap class or inline style
-fn map_color_value(value: &str, is_background: bool) -> (bool, String) {
+fn map_color_value(value: &str, is_background: bool) -> Option<(bool, String)> {
     let trimmed = value.trim();
 
-    // Bootstrap theme colors
+    // Bootstrap theme colors (14) + custom colors (10)
     let bootstrap_colors = [
+        // Theme colors
         "primary",
         "secondary",
         "success",
@@ -99,34 +100,39 @@ fn map_color_value(value: &str, is_background: bool) -> (bool, String) {
         "body-secondary",
         "body-tertiary",
         "body-emphasis",
-        "primary-subtle",
-        "secondary-subtle",
-        "success-subtle",
-        "danger-subtle",
-        "warning-subtle",
-        "info-subtle",
-        "light-subtle",
-        "dark-subtle",
-        "primary-emphasis",
-        "secondary-emphasis",
-        "success-emphasis",
-        "danger-emphasis",
-        "warning-emphasis",
-        "info-emphasis",
-        "light-emphasis",
-        "dark-emphasis",
+        // Custom colors
+        "blue",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "teal",
+        "cyan",
     ];
 
-    // Check if it's a Bootstrap color
+    let prefix = if is_background { "bg" } else { "text" };
+
+    // Check if it's a Bootstrap color or variant
     for color in &bootstrap_colors {
         if trimmed == *color || trimmed.starts_with(&format!("{}-", color)) {
-            let prefix = if is_background { "bg" } else { "text" };
-            return (true, format!("{}-{}", prefix, trimmed));
+            return Some((true, format!("{}-{}", prefix, trimmed)));
         }
     }
 
-    // Otherwise, return as inline style value
-    (false, trimmed.to_string())
+    // Validate HEX color format (#RGB or #RRGGBB)
+    // TODO: Future support for rgb() and hsl() formats
+    if trimmed.starts_with('#') && (trimmed.len() == 4 || trimmed.len() == 7) {
+        // Validate all characters after # are hex digits
+        if trimmed[1..].chars().all(|c| c.is_ascii_hexdigit()) {
+            return Some((false, trimmed.to_string()));
+        }
+    }
+
+    // Invalid color - reject
+    None
 }
 
 // Patterns that need special handling
@@ -344,20 +350,22 @@ fn convert_inline_decoration_to_html(function: &str, args: &str, content: &str) 
             let mut styles = Vec::new();
 
             if !fg.is_empty() && fg != "inherit" {
-                let (is_class, value) = map_color_value(fg, false);
-                if is_class {
-                    classes.push(value);
-                } else {
-                    styles.push(format!("color: {}", value));
+                if let Some((is_class, value)) = map_color_value(fg, false) {
+                    if is_class {
+                        classes.push(value);
+                    } else {
+                        styles.push(format!("color: {}", value));
+                    }
                 }
             }
 
             if !bg.is_empty() && bg != "inherit" {
-                let (is_class, value) = map_color_value(bg, true);
-                if is_class {
-                    classes.push(value);
-                } else {
-                    styles.push(format!("background-color: {}", value));
+                if let Some((is_class, value)) = map_color_value(bg, true) {
+                    if is_class {
+                        classes.push(value);
+                    } else {
+                        styles.push(format!("background-color: {}", value));
+                    }
                 }
             }
 

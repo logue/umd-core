@@ -5,15 +5,27 @@ fn test_semantic_html_integration() {
     // Test dfn
     let html = parse("&dfn{API};");
     println!("DFN output: {}", html);
-    assert!(html.contains("<dfn>API</dfn>"), "Expected dfn tag, got: {}", html);
-    
+    assert!(
+        html.contains("<dfn>API</dfn>"),
+        "Expected dfn tag, got: {}",
+        html
+    );
+
     // Test kbd
     let html = parse("&kbd{Ctrl};");
     println!("KBD output: {}", html);
-    assert!(html.contains("<kbd>Ctrl</kbd>"), "Expected kbd tag, got: {}", html);
-    
-    // Test existing color (should work)
+    assert!(
+        html.contains("<kbd>Ctrl</kbd>"),
+        "Expected kbd tag, got: {}",
+        html
+    );
+
+    // Test existing color (red is a Bootstrap custom color, so should use class)
     let html = parse("&color(red){text};");
     println!("COLOR output: {}", html);
-    assert!(html.contains("color: red"), "Expected color style, got: {}", html);
+    assert!(
+        html.contains(r#"class="text-red""#),
+        "Expected text-red class, got: {}",
+        html
+    );
 }

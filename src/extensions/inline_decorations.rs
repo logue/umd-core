@@ -105,11 +105,14 @@ fn map_font_size(value: &str) -> (bool, String) {
 }
 
 /// Map color value to Bootstrap class or inline style
-fn map_color(value: &str, is_background: bool) -> (bool, String) {
+/// Returns Some((is_class, value)) if valid, None if invalid
+/// Only accepts Bootstrap color names and HEX format (#RRGGBB or #RGB)
+fn map_color(value: &str, is_background: bool) -> Option<(bool, String)> {
     let trimmed = value.trim();
 
     // Bootstrap theme colors
     let bootstrap_colors = [
+        // Theme colors
         "primary",
         "secondary",
         "success",
@@ -122,6 +125,18 @@ fn map_color(value: &str, is_background: bool) -> (bool, String) {
         "body-secondary",
         "body-tertiary",
         "body-emphasis",
+        // Custom colors (Bootstrap 5.3+)
+        "blue",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "teal",
+        "cyan",
+        // Theme colors with suffixes
         "primary-subtle",
         "secondary-subtle",
         "success-subtle",
@@ -138,18 +153,53 @@ fn map_color(value: &str, is_background: bool) -> (bool, String) {
         "info-emphasis",
         "light-emphasis",
         "dark-emphasis",
+        // Custom colors with suffixes
+        "blue-subtle",
+        "indigo-subtle",
+        "purple-subtle",
+        "pink-subtle",
+        "red-subtle",
+        "orange-subtle",
+        "yellow-subtle",
+        "green-subtle",
+        "teal-subtle",
+        "cyan-subtle",
+        "blue-emphasis",
+        "indigo-emphasis",
+        "purple-emphasis",
+        "pink-emphasis",
+        "red-emphasis",
+        "orange-emphasis",
+        "yellow-emphasis",
+        "green-emphasis",
+        "teal-emphasis",
+        "cyan-emphasis",
     ];
 
     // Check if it's a Bootstrap color
     for color in &bootstrap_colors {
         if trimmed == *color || trimmed.starts_with(&format!("{}-", color)) {
             let prefix = if is_background { "bg" } else { "text" };
-            return (true, format!("{}-{}", prefix, trimmed));
+            return Some((true, format!("{}-{}", prefix, trimmed)));
         }
     }
 
-    // Otherwise, return as inline style value
-    (false, trimmed.to_string())
+    // Check if it's a HEX color (#RRGGBB or #RGB)
+    if trimmed.starts_with('#') && (trimmed.len() == 4 || trimmed.len() == 7) {
+        // Basic validation: check if all characters after # are hex digits
+        if trimmed[1..].chars().all(|c| c.is_ascii_hexdigit()) {
+            return Some((false, trimmed.to_string()));
+        }
+    }
+
+    // Future: Support rgb() and hsl() formats
+    // if trimmed.starts_with("rgb(") || trimmed.starts_with("rgba(") ||
+    //    trimmed.starts_with("hsl(") || trimmed.starts_with("hsla(") {
+    //     return Some((false, trimmed.to_string()));
+    // }
+
+    // Invalid color specification (e.g., HTML color names are not supported)
+    None
 }
 
 /// Map badge type to Bootstrap badge classes
@@ -175,6 +225,33 @@ fn map_badge_type(badge_type: &str) -> String {
 /// HTML with inline decorations applied
 pub fn apply_inline_decorations(html: &str) -> String {
     let mut result = html.to_string();
+
+    // Decode HTML entities for UMD inline syntax
+    // Comrak escapes & to &amp;, which prevents our regexes from matching
+    // We need to convert &amp; back to & for UMD syntax only
+    result = result.replace("&amp;color(", "&color(");
+    result = result.replace("&amp;badge(", "&badge(");
+    result = result.replace("&amp;size(", "&size(");
+    result = result.replace("&amp;sup(", "&sup(");
+    result = result.replace("&amp;sub(", "&sub(");
+    result = result.replace("&amp;lang(", "&lang(");
+    result = result.replace("&amp;abbr(", "&abbr(");
+    result = result.replace("&amp;ruby(", "&ruby(");
+    result = result.replace("&amp;spoiler(", "&spoiler(");
+    result = result.replace("&amp;spoiler{", "&spoiler{");
+    result = result.replace("&amp;dfn(", "&dfn(");
+    result = result.replace("&amp;kbd(", "&kbd(");
+    result = result.replace("&amp;samp(", "&samp(");
+    result = result.replace("&amp;var(", "&var(");
+    result = result.replace("&amp;cite(", "&cite(");
+    result = result.replace("&amp;q(", "&q(");
+    result = result.replace("&amp;small(", "&small(");
+    result = result.replace("&amp;time(", "&time(");
+    result = result.replace("&amp;data(", "&data(");
+    result = result.replace("&amp;bdi(", "&bdi(");
+    result = result.replace("&amp;bdo(", "&bdo(");
+    result = result.replace("&amp;wbr", "&wbr");
+    result = result.replace("&amp;br", "&br");
 
     // Apply %%text%% → <s>text</s> (LukiWiki strikethrough)
     result = LUKIWIKI_STRIKETHROUGH
@@ -226,20 +303,22 @@ pub fn apply_inline_decorations(html: &str) -> String {
             let mut styles = Vec::new();
 
             if !fg.is_empty() && fg != "inherit" {
-                let (is_class, value) = map_color(fg, false);
-                if is_class {
-                    classes.push(value);
-                } else {
-                    styles.push(format!("color: {}", value));
+                if let Some((is_class, value)) = map_color(fg, false) {
+                    if is_class {
+                        classes.push(value);
+                    } else {
+                        styles.push(format!("color: {}", value));
+                    }
                 }
             }
 
             if !bg.is_empty() && bg != "inherit" {
-                let (is_class, value) = map_color(bg, true);
-                if is_class {
-                    classes.push(value);
-                } else {
-                    styles.push(format!("background-color: {}", value));
+                if let Some((is_class, value)) = map_color(bg, true) {
+                    if is_class {
+                        classes.push(value);
+                    } else {
+                        styles.push(format!("background-color: {}", value));
+                    }
                 }
             }
 
@@ -349,25 +428,74 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_map_color_blue() {
+        let result = map_color("blue", false);
+        assert!(result.is_some(), "blue should be recognized as a valid color");
+        let (is_class, class_or_style) = result.unwrap();
+        assert!(is_class, "blue should be recognized as a Bootstrap class");
+        assert_eq!(class_or_style, "text-blue", "Expected text-blue, got {}", class_or_style);
+    }
+
+    #[test]
+    fn test_map_color_hex() {
+        let result = map_color("#FF5733", false);
+        assert!(result.is_some(), "#FF5733 should be recognized as a valid HEX color");
+        let (is_class, value) = result.unwrap();
+        assert!(!is_class, "HEX color should not be a Bootstrap class");
+        assert_eq!(value, "#FF5733", "Expected #FF5733, got {}", value);
+    }
+
+    #[test]
+    fn test_map_color_invalid_html_name() {
+        // HTML color names like "white" or "black" are not in Bootstrap color list
+        // and should be rejected
+        let result = map_color("white", false);
+        assert!(result.is_none(), "HTML color name 'white' should be rejected");
+
+        let result = map_color("black", false);
+        assert!(result.is_none(), "HTML color name 'black' should be rejected");
+    }
+
+    #[test]
     fn test_inline_color_foreground() {
         let input = "This is &color(red){red text};";
         let output = apply_inline_decorations(input);
-        assert!(output.contains("<span style=\"color: red\">red text</span>"));
+        // red is now a Bootstrap color, so it should output a class
+        assert!(output.contains(r#"<span class="text-red">red text</span>"#));
     }
 
     #[test]
     fn test_inline_color_background() {
         let input = "&color(,yellow){yellow bg};";
         let output = apply_inline_decorations(input);
-        assert!(output.contains("<span style=\"background-color: yellow\">yellow bg</span>"));
+        // yellow is now a Bootstrap color, so it should output a class
+        assert!(output.contains(r#"<span class="bg-yellow">yellow bg</span>"#));
     }
 
     #[test]
     fn test_inline_color_both() {
+        // Test with valid Bootstrap colors
+        let input = "&color(cyan,yellow){cyan on yellow};";
+        let output = apply_inline_decorations(input);
+        // cyan and yellow are Bootstrap custom colors
+        assert!(output.contains(r#"class="text-cyan bg-yellow""#), "Expected both colors as classes, got: {}", output);
+    }
+
+    #[test]
+    fn test_inline_color_invalid() {
+        // white and black are not in Bootstrap color list, so they should be rejected
         let input = "&color(white,black){white on black};";
         let output = apply_inline_decorations(input);
-        assert!(output.contains("color: white"));
-        assert!(output.contains("background-color: black"));
+        // Invalid colors should be ignored, text remains as-is
+        assert_eq!(output, "white on black", "Invalid colors should be ignored, got: {}", output);
+    }
+
+    #[test]
+    fn test_inline_color_hex() {
+        // Test with HEX color
+        let input = "&color(#FF5733){Custom hex color};";
+        let output = apply_inline_decorations(input);
+        assert!(output.contains(r#"style="color: #FF5733""#), "Expected HEX color as inline style, got: {}", output);
     }
 
     #[test]
@@ -413,7 +541,8 @@ mod tests {
     fn test_multiple_inline_decorations() {
         let input = "&color(red){Red}; and &size(2){Big}; and &sup(superscript);";
         let output = apply_inline_decorations(input);
-        assert!(output.contains("color: red"));
+        // red is now a Bootstrap color, so it should use a class instead of inline style
+        assert!(output.contains(&"text-red"));
         // 2 maps to Bootstrap fs-2 class
         assert!(output.contains("fs-2"));
         assert!(output.contains("<sup>superscript</sup>"));

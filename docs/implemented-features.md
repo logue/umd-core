@@ -255,7 +255,7 @@ URLスキーム（`https://`等）の `//` はコメントとして扱われま�
 <video controls title="製品デモ">
   <source src="video.mp4" type="video/mp4" />
   <track kind="captions" label="Product demo" />
-  <a href="video.mp4" download class="download-link video-fallback"></a>
+  <a href="video.mp4" download class="download-link video-fallback">
     🎬 Product demo
   </a>
 </video>
@@ -632,9 +632,12 @@ COLOR(#FF0000): カスタム色 → インラインスタイル
 
 **サポートされるBootstrap色**:
 
-- テーマカラー: `primary`, `secondary`, `success`, `danger`, `warning`, `info`, `light`, `dark`
-- グレースケール: `gray-100`～`gray-900`
-- サブトル色: `primary-subtle`, `success-border-subtle`等
+- **テーマカラー** (14色): `primary`, `secondary`, `success`, `danger`, `warning`, `info`, `light`, `dark`, `body`, `body-secondary`, `body-tertiary`, `body-emphasis`
+- **カスタムカラー** (10色): `blue`, `indigo`, `purple`, `pink`, `red`, `orange`, `yellow`, `green`, `teal`, `cyan`
+- **サフィックスバリアント** (48バリアント): `-subtle`, `-emphasis` (例: `primary-subtle`, `danger-emphasis`)
+- **HEX形式**: `#RGB` (例: `#F00`) または `#RRGGBB` (例: `#FF0000`)
+
+**注意**: HTMLカラー名（`white`, `black`, `gray`等）は上記のBootstrapカラーリストに含まれていない限りサポートされません。将来的に`rgb()`や`hsl()`形式のサポートが追加される可能性があります。
 
 #### サイズ指定
 
@@ -670,10 +673,20 @@ SIZE(1.5): COLOR(primary): CENTER: 強調テキスト
 
 ```umd
 &color(danger){エラー}; → <span class="text-danger">エラー</span>
+&color(blue){青文字}; → <span class="text-blue">青文字</span> (カスタムカラー)
+&color(#FF5733){オレンジ}; → <span style="color: #FF5733">オレンジ</span> (HEX)
+&color(,yellow){黄背景}; → <span class="bg-yellow">黄背景</span>
+&color(teal,pink-subtle){複合色}; → <span class="text-teal bg-pink-subtle">複合色</span>
 &size(2){大きい文字}; → <span class="fs-2">大きい文字</span>
 &badge(success){Active}; → <span class="badge bg-success">Active</span>
 &badge(primary){[New](/new)}; → <a href="/new" class="badge bg-primary">New</a>
 ```
+
+**色指定の詳細**:
+
+- ブロック装飾と同じBootstrapカラー（テーマ14色 + カスタム10色 + サフィックス48バリアント）をサポート
+- HEX色（`#RGB` または `#RRGGBB`）もサポート
+- HTMLカラー名（`white`, `black`等）はBootstrapリストに無い限り非対応
 
 #### セマンティック要素
 

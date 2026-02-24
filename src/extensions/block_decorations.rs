@@ -148,6 +148,7 @@ fn map_color(value: &str, is_background: bool) -> Option<String> {
 
     // Bootstrap theme colors
     let bootstrap_colors = [
+        // Theme colors
         "primary",
         "secondary",
         "success",
@@ -160,7 +161,18 @@ fn map_color(value: &str, is_background: bool) -> Option<String> {
         "body-secondary",
         "body-tertiary",
         "body-emphasis",
-        // With suffixes
+        // Custom colors (Bootstrap 5.3+)
+        "blue",
+        "indigo",
+        "purple",
+        "pink",
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "teal",
+        "cyan",
+        // Theme colors with suffixes
         "primary-subtle",
         "secondary-subtle",
         "success-subtle",
@@ -177,6 +189,27 @@ fn map_color(value: &str, is_background: bool) -> Option<String> {
         "info-emphasis",
         "light-emphasis",
         "dark-emphasis",
+        // Custom colors with suffixes
+        "blue-subtle",
+        "indigo-subtle",
+        "purple-subtle",
+        "pink-subtle",
+        "red-subtle",
+        "orange-subtle",
+        "yellow-subtle",
+        "green-subtle",
+        "teal-subtle",
+        "cyan-subtle",
+        "blue-emphasis",
+        "indigo-emphasis",
+        "purple-emphasis",
+        "pink-emphasis",
+        "red-emphasis",
+        "orange-emphasis",
+        "yellow-emphasis",
+        "green-emphasis",
+        "teal-emphasis",
+        "cyan-emphasis",
     ];
 
     // Check if it's a Bootstrap color
@@ -187,8 +220,22 @@ fn map_color(value: &str, is_background: bool) -> Option<String> {
         }
     }
 
-    // Otherwise, return as inline style value
-    Some(trimmed.to_string())
+    // Check if it's a HEX color (#RRGGBB or #RGB)
+    if trimmed.starts_with('#') && (trimmed.len() == 4 || trimmed.len() == 7) {
+        // Basic validation: check if all characters after # are hex digits
+        if trimmed[1..].chars().all(|c| c.is_ascii_hexdigit()) {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    // Future: Support rgb() and hsl() formats
+    // if trimmed.starts_with("rgb(") || trimmed.starts_with("rgba(") ||
+    //    trimmed.starts_with("hsl(") || trimmed.starts_with("hsla(") {
+    //     return Some(trimmed.to_string());
+    // }
+
+    // Invalid color specification (e.g., HTML color names are not supported)
+    None
 }
 
 /// Map alignment to Bootstrap class

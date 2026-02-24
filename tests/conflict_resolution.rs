@@ -57,7 +57,8 @@ fn test_horizontal_rules() {
 fn test_color_decoration() {
     let input = "COLOR(red): Red text";
     let output = parse(input);
-    assert!(output.contains("color: red"));
+    // red is now a Bootstrap color name, so it should output a class
+    assert!(output.contains(r#"class="text-red""#));
 }
 
 #[test]
@@ -105,5 +106,6 @@ fn test_multiline_content() {
     let output = parse(input);
     assert!(output.contains("<h1>"));
     assert!(output.contains(r#"<blockquote class="umd-blockquote">"#));
-    assert!(output.contains("color: blue"));
+    // blue is now a Bootstrap color, so it should output a class
+    assert!(output.contains(r#"class="text-blue""#));
 }

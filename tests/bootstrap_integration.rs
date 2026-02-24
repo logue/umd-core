@@ -62,10 +62,56 @@ fn test_color_bootstrap_class() {
 }
 
 #[test]
-fn test_color_custom_value() {
-    let input = "&color(#FF5733){Custom color};";
+fn test_color_custom_bootstrap_colors() {
+    // Test custom Bootstrap colors (blue, yellow, teal, etc.)
+    // Should now use Bootstrap classes like text-blue, text-yellow, etc.
+    let test_cases = vec![
+        ("&color(blue){Blue text};", r#"class="text-blue""#),
+        ("&color(yellow){Yellow text};", r#"class="text-yellow""#),
+        ("&color(teal){Teal text};", r#"class="text-teal""#),
+    ];
+
+    for (input, expected) in test_cases {
+        let output = parse(input);
+        assert!(
+            output.contains(expected),
+            "Failed for input: {} - output: {}",
+            input,
+            output
+        );
+    }
+}
+
+#[test]
+fn test_block_color_custom_bootstrap_colors() {
+    // Test block-level custom colors
+    let test_cases = vec![
+        ("COLOR(blue): Blue block", "text-blue"),
+        ("COLOR(yellow): Yellow block", "text-yellow"),
+        ("COLOR(teal): Teal block", "text-teal"),
+    ];
+
+    for (input, expected_class) in test_cases {
+        let output = parse(input);
+        assert!(
+            output.contains(&format!(r#"class="{}""#, expected_class)),
+            "Failed for input: {} - output: {}",
+            input,
+            output
+        );
+    }
+}
+
+#[test]
+fn test_color_background_custom_colors() {
+    // Test background colors with Bootstrap custom colors
+    let input = "&color(,blue){Text on blue background};";
     let output = parse(input);
-    assert!(output.contains(r#"style="color: #FF5733""#));
+    assert!(output.contains(r#"class="bg-blue""#));
+
+    let input = "&color(cyan,yellow){Cyan text on yellow};";
+    let output = parse(input);
+    assert!(output.contains(r#"class="text-cyan bg-yellow""#));
 }
 
 #[test]
