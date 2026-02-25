@@ -2,7 +2,7 @@
 
 A next-generation Markdown parser built with Rust, combining CommonMark compliance (~75%+), Bootstrap 5 integration, semantic HTML generation, and an extensible plugin system. Maintains backward compatibility with UMD legacy syntax.
 
-**Status**: Production-ready | **Latest Update**: February 24, 2026 | **License**: MIT
+**Status**: Production-ready | **Latest Update**: February 25, 2026 | **License**: MIT
 
 ---
 
@@ -20,7 +20,8 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 - ✅ **Auto-detect Media Files**: `![alt](url)` intelligently becomes `<video>`, `<audio>`, `<picture>`, or download link based on file extension
 - ✅ **Semantic HTML Elements**: `&badge()`, `&ruby()`, `&sup()`, `&time()`, etc.
 - ✅ **Definition Lists**: `:term|definition` syntax with block-level support
-- ✅ **Code Blocks with Bootstrap Integration**: Language-specific syntax highlighting support
+- ✅ **Code Blocks with Bootstrap Integration**: Class-based language output (`<code class="language-*">`) and syntect highlighting
+- ✅ **Mermaid SSR**: ` ```mermaid ` blocks are rendered server-side as `<figure class="code-block code-block-mermaid mermaid-diagram">...<svg>...</svg></figure>`
 
 ### Tables & Layout
 
@@ -53,6 +54,46 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 
 - ✅ **WebAssembly (WASM)**: Browser-side rendering via `wasm-bindgen`
 - ✅ **Server-side Rendering**: Rust library for backend integration (Nuxt, Laravel, etc.)
+
+### Mermaid Example
+
+Input:
+
+````markdown
+```mermaid
+flowchart TD
+    A[Start] --> B[End]
+```
+````
+
+Output (excerpt):
+
+```html
+<figure
+  class="code-block code-block-mermaid mermaid-diagram"
+  data-mermaid-source="flowchart TD..."
+>
+  <svg><!-- rendered by mermaid-rs-renderer --></svg>
+</figure>
+```
+
+### Syntax Highlight Example
+
+Input:
+
+````markdown
+```rust
+fn main() {
+        println!("hello");
+}
+```
+````
+
+Output (excerpt):
+
+```html
+<pre><code class="language-rust syntect-highlight"><span class="syntect-source syntect-rust">...</span></code></pre>
+```
 
 ---
 

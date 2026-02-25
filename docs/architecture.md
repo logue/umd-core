@@ -1,6 +1,6 @@
 # アーキテクチャドキュメント
 
-**最終更新**: 2026年2月24日
+**最終更新**: 2026年2月25日
 
 Universal Markdownの技術アーキテクチャとシステム設計を記載しています。
 
@@ -409,8 +409,9 @@ umd/
 ファイル: `src/extensions/code_block.rs`
 
 - 言語別シンタックスハイライト: `language-*` クラス
-- Mermaid図: 自動ラップ `<div class="mermaid">...</div>`
-- プレーンテキスト: 言語指定なし → `<pre><code>...</code></pre>`
+- Mermaid図: `<figure class="code-block code-block-mermaid mermaid-diagram">...</figure>` でラップ（内部にSVGを直接配置）
+- プレーンテキスト: 言語指定なし → `<pre>...</pre>`
+- 仕様: `pre`タグには`lang`属性を付与しない（言語情報は`code.language-*`へ統一）
 
 #### テーブル拡張
 

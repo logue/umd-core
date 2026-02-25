@@ -1,6 +1,6 @@
 # 実装済み機能リファレンス
 
-**最終更新**: 2026年2月18日
+**最終更新**: 2026年2月25日
 
 このドキュメントはUniversal Markdownで実装済みの機能を記載しています。
 
@@ -52,6 +52,39 @@ fn main() {
 }
 ```
 ````
+
+**出力仕様**:
+
+- 言語指定あり: `<pre><code class="language-rust">...</code></pre>`
+- 言語指定なし: `<pre>...</pre>`
+- `pre`タグには`lang`属性を付与しません
+
+### Mermaid図のレンダリング
+
+Mermaidフェンスコードブロック（` ```mermaid `）は、バックエンドでSVGに変換して出力します。
+
+```html
+<figure
+  class="code-block code-block-mermaid mermaid-diagram"
+  data-mermaid-source="graph TD..."
+>
+  <svg>...</svg>
+</figure>
+```
+
+**実装詳細**:
+
+- `mermaid-rs-renderer` によりサーバーサイドでSVG生成
+- 失敗時は `mermaid-error` クラス付きコードブロックへフォールバック
+- SVG色はBootstrap CSS変数に後処理でマッピング
+
+### シンタックスハイライト
+
+言語付きコードブロックは `syntect` によりHTMLスパンへハイライトされます。
+
+```html
+<pre><code class="language-rust syntect-highlight"><span class="syntect-source syntect-rust">...</span></code></pre>
+```
 
 ### リスト
 
@@ -732,7 +765,9 @@ Universal Markdownは拡張可能なプラグインシステムを提供しま�
 #### ブロック型
 
 ```umd
-@function(args){{ multi-line content }} 複数行
+@function(args){{
+  multi-line content
+}} 複数行
 @function(args){single-line content} 単行
 @function(args) 引数のみ
 @function() 引数なし
@@ -762,7 +797,9 @@ Universal Markdownは拡張可能なプラグインシステムを提供しま�
 コンテンツ内のWiki構文はエスケープされて保持されるため、バックエンド側で`<template>`要素のテキストコンテンツを取得し、再度パーサーに渡すことでネストされた構文も処理可能です：
 
 ```umd
-@box(){{ **bold** and *italic* }}
+@box(){{
+  **bold** and *italic*
+}}
 ```
 
 ↓

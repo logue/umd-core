@@ -256,3 +256,21 @@ fn test_right_prefix_places_media_right() {
     assert!(output.contains("src=\"image.png\""));
     assert!(!output.contains("RIGHT:"));
 }
+
+#[test]
+fn test_mermaid_code_block_rendered_as_svg() {
+    let input = "```mermaid\nflowchart TD\n  A[Start] --> B[End]\n```";
+    let output = parse(input);
+    assert!(output.contains("mermaid-diagram"));
+    assert!(output.contains("<svg"));
+    assert!(!output.contains("language-mermaid"));
+}
+
+#[test]
+fn test_code_block_syntax_highlighted_with_syntect() {
+    let input = "```rust\nfn main() {\n    println!(\"hello\");\n}\n```";
+    let output = parse(input);
+    assert!(output.contains("language-rust"));
+    assert!(output.contains("syntect-highlight"));
+    assert!(output.contains("syntect-"));
+}

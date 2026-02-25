@@ -28,6 +28,9 @@ uuid = { version = "1.21.0", features = [
   "v4",
 ] } # UUID generation for diagram IDs
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+mermaid-rs-renderer = { version = "0.2.0", default-features = false } # Mermaid SSR (native only)
+
 [dev-dependencies]
 insta = "1.46.3"             # Snapshot testing
 criterion = "0.8.2"          # Benchmarking

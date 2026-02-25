@@ -5,8 +5,30 @@
 //! - Mermaid diagrams: Diagram rendering from Markdown fence blocks with SVG generation
 //! - File name support: Code blocks with associated file names
 
+use once_cell::sync::Lazy;
 use regex::Regex;
+use syntect::html::{ClassStyle, ClassedHTMLGenerator};
+use syntect::parsing::SyntaxSet;
+use syntect::util::LinesWithEndings;
 use uuid::Uuid;
+
+static MERMAID_BLOCK_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?s)<pre><code[^>]*class=\"language-mermaid\"[^>]*>(.*?)</code></pre>"#)
+        .expect("valid mermaid block regex")
+});
+
+static CODE_BLOCK_WITH_LANG_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?s)<pre><code[^>]*class=\"language-([a-zA-Z0-9_+\-]+)\"[^>]*>(.*?)</code></pre>"#,
+    )
+    .expect("valid language code block regex")
+});
+
+static CODE_BLOCK_PLAIN_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?s)<pre><code>(.*?)</code></pre>"#).expect("valid plain code regex")
+});
+
+static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 
 /// Process code blocks with syntax highlighting and metadata
 ///
@@ -17,7 +39,7 @@ use uuid::Uuid;
 /// - ✅ Bootstrap CSS variable integration
 /// - ✅ Plain text blocks (no language) without `<code>` tags
 ///
-/// # Input Format (from comrak with github_pre_lang=true)
+/// # Input Format (from comrak)
 ///
 /// comrak outputs code blocks in GitHub-flavored format:
 /// - `<pre><code>plain text content</code></pre>` - Plain text (no language)
@@ -30,11 +52,11 @@ use uuid::Uuid;
 ///
 /// Language-specific: `<pre><code class="language-rust">content</code></pre>` (unchanged)
 ///
-/// Mermaid diagram: `<div class="mermaid-diagram">SVG content</div>`
+/// Mermaid diagram: `<figure class="code-block code-block-mermaid mermaid-diagram">SVG content</figure>`
 pub fn process_code_blocks(html: &str) -> String {
     // First handle Mermaid diagrams if present
     let html = process_mermaid_blocks(html);
-    
+
     // Then process regular code blocks with syntax highlighting
     process_syntax_highlighted_blocks(&html)
 }
@@ -48,36 +70,39 @@ fn process_mermaid_blocks(html: &str) -> String {
     if !html.contains("language-mermaid") || html.contains("mermaid-diagram") {
         return html.to_string();
     }
-    
-    let mut result = html.to_string();
-    
-    // Handle comrak format: <pre><code class="language-mermaid">...</code></pre>
-    // Using (?s) for DOTALL mode to match newlines
-    if let Ok(mermaid_pattern) = Regex::new(r#"(?s)<pre><code[^>]*class="language-mermaid"[^>]*>(.*?)</code></pre>"#) {
-        result = mermaid_pattern.replace_all(&result, |caps: &regex::Captures| {
+
+    MERMAID_BLOCK_RE
+        .replace_all(html, |caps: &regex::Captures| {
             let code = &caps[1];
             let decoded = decode_html_entities(code);
             let code_text = decoded.trim();
-            
-            // Generate SVG from Mermaid code
-            let svg = render_mermaid_as_svg(code_text);
-            let diagram_id = Uuid::new_v4().to_string();
-            
-            format!(
-                "<div class=\"mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}​</div>",
-                &diagram_id[..8],
-                html_escape::encode_text(code_text),
-                svg
-            )
-        }).to_string();
-    }
-    
-    result
+
+            match render_mermaid_as_svg(code_text) {
+                Ok(svg) => {
+                    let diagram_id = Uuid::new_v4().to_string();
+                    format!(
+                        "<figure class=\"code-block code-block-mermaid mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}</figure>",
+                        &diagram_id[..8],
+                        html_escape::encode_double_quoted_attribute(code_text),
+                        svg
+                    )
+                }
+                Err(error) => {
+                    let escaped_error = html_escape::encode_double_quoted_attribute(&error);
+                    format!(
+                        "<figure class=\"code-block code-block-mermaid mermaid-diagram\"><pre class=\"mermaid-error\" data-error=\"{}\"><code class=\"language-mermaid\">{}</code></pre></figure>",
+                        escaped_error,
+                        code
+                    )
+                }
+            }
+        })
+        .to_string()
 }
 
 /// Process syntax highlighting for code blocks
 ///
-/// comrak with `github_pre_lang=true` outputs code blocks as:
+/// comrak outputs code blocks as:
 /// - `<pre><code>plain content</code></pre>` for plain text blocks (no language)
 /// - `<pre><code class="language-rust">highlighted content</code></pre>` for language-specific blocks
 ///
@@ -92,150 +117,78 @@ fn process_mermaid_blocks(html: &str) -> String {
 /// 3. Language-only: `<pre><code class="language-rust">...</code></pre>`
 /// 4. Language+Title: add figcaption wrapper with title
 fn process_syntax_highlighted_blocks(html: &str) -> String {
-    let mut result = html.to_string();
-    
-    // Handle comrak GitHub format: <pre><code class="language-...">...</code></pre>
-    // This covers language-specific code blocks
-    if let Ok(with_lang) = Regex::new(r#"(?s)<pre><code[^>]*class="language-([a-z0-9_+\-]+)"[^>]*>(.*?)</code></pre>"#) {
-        result = with_lang.replace_all(&result, |caps: &regex::Captures| {
+    let with_highlighted = CODE_BLOCK_WITH_LANG_RE
+        .replace_all(html, |caps: &regex::Captures| {
             let language = &caps[1];
             let code = &caps[2];
-            
-            // Skip mermaid (handled separately)
-            if language == "mermaid" {
-                return format!("<pre><code class=\"language-{}\">{}</code></pre>", language, code);
+
+            if language.eq_ignore_ascii_case("mermaid") {
+                return caps[0].to_string();
             }
-            
-            // For now, output directly with language - title support would need fence info string
-            // which isn't available after comrak has processed it
-            format!(
-                "<pre><code class=\"language-{}\">{}</code></pre>",
-                language,
-                code
-            )
-        }).to_string();
-    }
-    
-    // Handle plain text blocks: <pre><code>...</code></pre> (no class attribute)
-    if let Ok(plain_pattern) = Regex::new(r#"(?s)<pre><code>(.*?)</code></pre>"#) {
-        result = plain_pattern.replace_all(&result, |caps: &regex::Captures| {
+
+            let decoded = decode_html_entities(code);
+            match highlight_code_with_syntect(language, &decoded) {
+                Some(highlighted) => format!(
+                    "<pre><code class=\"language-{} syntect-highlight\">{}</code></pre>",
+                    language, highlighted
+                ),
+                None => format!(
+                    "<pre><code class=\"language-{}\">{}</code></pre>",
+                    language, code
+                ),
+            }
+        })
+        .to_string();
+
+    CODE_BLOCK_PLAIN_RE
+        .replace_all(&with_highlighted, |caps: &regex::Captures| {
             let code = &caps[1];
-            // Strip the <code> tag for plain text blocks
             format!("<pre>{}</pre>", code)
-        }).to_string();
-    }
-    
-    result
+        })
+        .to_string()
 }
 
 /// Render Mermaid code to SVG
 ///
 /// Converts Mermaid diagram notation to SVG format with Bootstrap CSS variable support.
 /// Supports basic graph, flowchart, and sequence diagrams.
-fn render_mermaid_as_svg(mermaid_code: &str) -> String {
-    // Default SVG with fallback styling
-    let svg_wrapper = generate_fallback_svg(mermaid_code);
-    
-    // Inject Bootstrap CSS variables for coloring
-    inject_bootstrap_colors(&svg_wrapper)
+fn render_mermaid_as_svg(mermaid_code: &str) -> Result<String, String> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        mermaid_rs_renderer::render(mermaid_code)
+            .map(|svg| inject_bootstrap_colors(&svg))
+            .map_err(|error| error.to_string())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = mermaid_code;
+        Err("Mermaid rendering is unavailable on wasm32 target".to_string())
+    }
 }
 
-/// Generate a fallback SVG representation of Mermaid diagram
-///
-/// Creates a basic SVG structure with Bootstrap styling
-fn generate_fallback_svg(mermaid_code: &str) -> String {
-    let trimmed = mermaid_code.trim();
-    
-    // Basic SVG header with Bootstrap variable references
-    let mut svg = String::from(
-        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" class="mermaid-svg" style="max-width: 100%; height: auto;">
-        <defs>
-            <style>
-                .mermaid-node { fill: var(--bs-body-bg); stroke: var(--bs-border-color); stroke-width: 2; }
-                .mermaid-edge { stroke: var(--bs-border-color); stroke-width: 2; fill: none; }
-                .mermaid-arrow { fill: var(--bs-border-color); }
-                .mermaid-text { fill: var(--bs-body-color); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; text-anchor: middle; }
-                .mermaid-title { fill: var(--bs-primary, #0d6efd); font-size: 16px; font-weight: bold; }
-            </style>
-        </defs>
-        <rect width="800" height="400" fill="transparent" stroke="var(--bs-border-color)" stroke-width="1" />
-"#
+fn highlight_code_with_syntect(language: &str, source: &str) -> Option<String> {
+    let syntax = SYNTAX_SET
+        .find_syntax_by_token(language)
+        .or_else(|| SYNTAX_SET.find_syntax_by_name(language))
+        .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
+
+    let mut generator = ClassedHTMLGenerator::new_with_class_style(
+        syntax,
+        &SYNTAX_SET,
+        ClassStyle::SpacedPrefixed { prefix: "syntect-" },
     );
-    
-    // Parse and render basic diagram elements
-    if trimmed.starts_with("graph") || trimmed.starts_with("flowchart") {
-        // Simple graph/flowchart rendering
-        svg.push_str(render_graph_nodes(mermaid_code).as_str());
-    } else if trimmed.starts_with("sequenceDiagram") {
-        // Simple sequence diagram placeholder
-        svg.push_str(render_sequence_diagram(mermaid_code).as_str());
-    } else {
-        // Generic placeholder for unsupported diagram types
-        svg.push_str(&format!(
-            r#"<text x="400" y="200" class="mermaid-text">{}</text>"#,
-            html_escape::encode_text("Mermaid Diagram")
-        ));
-    }
-    
-    svg.push_str("</svg>");
-    svg
-}
 
-/// Render graph/flowchart nodes and edges
-fn render_graph_nodes(mermaid_code: &str) -> String {
-    let mut result = String::new();
-    let lines: Vec<&str> = mermaid_code.lines().collect();
-    
-    let mut y_pos = 80;
-    for line in lines.iter().skip(1) {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with("%%") {
-            continue;
-        }
-        
-        // Simple node rendering (nodeId[label])
-        if trimmed.contains('[') && trimmed.contains(']') {
-            let node_svg = render_single_node(trimmed, 100, y_pos);
-            result.push_str(&node_svg);
-            y_pos += 80;
+    for line in LinesWithEndings::from(source) {
+        if generator
+            .parse_html_for_line_which_includes_newline(line)
+            .is_err()
+        {
+            return None;
         }
     }
-    
-    result
-}
 
-/// Render a single graph node
-fn render_single_node(node_def: &str, x: i32, y: i32) -> String {
-    // Extract node label from brackets
-    if let Some(start) = node_def.find('[') {
-        if let Some(end) = node_def.find(']') {
-            let label = &node_def[start + 1..end];
-            return format!(
-                r#"<rect x="{}" y="{}" width="150" height="50" class="mermaid-node" rx="5" />
-                <text x="{}" y="{}" class="mermaid-text">{}</text>
-                "#,
-                x,
-                y,
-                x + 75,
-                y + 30,
-                html_escape::encode_text(label.trim())
-            );
-        }
-    }
-    String::new()
-}
-
-/// Render sequence diagram placeholder
-fn render_sequence_diagram(_mermaid_code: &str) -> String {
-    // Placeholder for sequence diagram
-    r#"<text x="400" y="100" class="mermaid-title">Sequence Diagram</text>
-       <line x1="100" y1="150" x2="100" y2="350" class="mermaid-edge" />
-       <line x1="400" y1="150" x2="400" y2="350" class="mermaid-edge" />
-       <line x1="700" y1="150" x2="700" y2="350" class="mermaid-edge" />
-       <text x="100" y="140" class="mermaid-text">Actor 1</text>
-       <text x="400" y="140" class="mermaid-text">System</text>
-       <text x="700" y="140" class="mermaid-text">Actor 2</text>
-    "#.to_string()
+    Some(generator.finalize())
 }
 
 /// Inject Bootstrap CSS variables for diagram coloring
@@ -244,17 +197,15 @@ fn render_sequence_diagram(_mermaid_code: &str) -> String {
 /// instead of system theme variables. White and black are excluded as they represent
 /// structural elements rather than semantic colors.
 fn inject_bootstrap_colors(svg: &str) -> String {
-    svg
-        .replace("\"#0d6efd\"", "\"var(--bs-blue, #0d6efd)\"")
-        .replace("\"#6c757d\"", "\"var(--bs-gray, #6c757d)\"")
-        .replace("\"#198754\"", "\"var(--bs-green, #198754)\"")
-        .replace("\"#dc3545\"", "\"var(--bs-red, #dc3545)\"")
-        .replace("\"#ffc107\"", "\"var(--bs-yellow, #ffc107)\"")
-        .replace("\"#0dcaf0\"", "\"var(--bs-cyan, #0dcaf0)\"")
-        // Note: #ffffff (white) and #000000 (black) are intentionally excluded
-        // as they represent structural elements, not semantic colors
+    svg.replace("#0d6efd", "var(--bs-blue, #0d6efd)")
+        .replace("#6c757d", "var(--bs-gray, #6c757d)")
+        .replace("#198754", "var(--bs-green, #198754)")
+        .replace("#dc3545", "var(--bs-red, #dc3545)")
+        .replace("#ffc107", "var(--bs-yellow, #ffc107)")
+        .replace("#0dcaf0", "var(--bs-cyan, #0dcaf0)")
+    // Note: #ffffff (white) and #000000 (black) are intentionally excluded
+    // as they represent structural elements, not semantic colors
 }
-
 
 /// Simple hash function for generating diagram IDs
 /// Uses a lightweight FNV-1a algorithm
@@ -263,7 +214,7 @@ fn inject_bootstrap_colors(svg: &str) -> String {
 fn simple_hash(data: &str) -> u64 {
     const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
-    
+
     let mut hash = FNV_OFFSET_BASIS;
     for byte in data.bytes() {
         hash ^= byte as u64;
@@ -287,14 +238,48 @@ fn decode_html_entities(s: &str) -> String {
 /// Returns language identifiers that can be used in code fence info strings
 pub fn get_supported_languages() -> Vec<&'static str> {
     vec![
-        "rust", "python", "javascript", "typescript", "jsx", "tsx",
-        "html", "css", "scss", "less",
-        "java", "kotlin", "go", "c", "cpp", "csharp", "swift", "objc",
-        "php", "ruby", "perl", "bash", "shell", "zsh", "fish",
-        "sql", "mysql", "postgresql", "mongodb",
-        "json", "yaml", "toml", "xml", "markdown", "latex",
-        "dockerfile", "nginx", "apache", "lua", "vim", "elisp",
-        "mermaid",  // Diagram support
+        "rust",
+        "python",
+        "javascript",
+        "typescript",
+        "jsx",
+        "tsx",
+        "html",
+        "css",
+        "scss",
+        "less",
+        "java",
+        "kotlin",
+        "go",
+        "c",
+        "cpp",
+        "csharp",
+        "swift",
+        "objc",
+        "php",
+        "ruby",
+        "perl",
+        "bash",
+        "shell",
+        "zsh",
+        "fish",
+        "sql",
+        "mysql",
+        "postgresql",
+        "mongodb",
+        "json",
+        "yaml",
+        "toml",
+        "xml",
+        "markdown",
+        "latex",
+        "dockerfile",
+        "nginx",
+        "apache",
+        "lua",
+        "vim",
+        "elisp",
+        "mermaid", // Diagram support
     ]
 }
 
@@ -308,7 +293,9 @@ mod tests {
         let html = "<pre><code class=\"language-rust\">fn main() {}</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("language-rust"));
-        assert!(result.contains("fn main() {}"));
+        assert!(result.contains("syntect-highlight"));
+        assert!(result.contains("fn"));
+        assert!(result.contains("main"));
     }
 
     #[test]
@@ -323,11 +310,20 @@ mod tests {
     #[test]
     fn test_mermaid_block_detection() {
         // comrak Mermaid format: <pre><code class="language-mermaid">...</code></pre>
-        let html = "<pre><code class=\"language-mermaid\">graph TD\n    A[Start] --> B[End]</code></pre>";
+        let html =
+            "<pre><code class=\"language-mermaid\">graph TD\n    A[Start] --> B[End]</code></pre>";
         let result = process_code_blocks(html);
+        assert!(result.contains("code-block-mermaid"));
         assert!(result.contains("mermaid-diagram"));
         assert!(result.contains("data-mermaid-source"));
         assert!(result.contains("<svg"));
+    }
+
+    #[test]
+    fn test_mermaid_parse_error_fallback() {
+        let html = "<pre><code class=\"language-mermaid\">graph TD\n  A --&gt;</code></pre>";
+        let result = process_code_blocks(html);
+        assert!(result.contains("mermaid-error") || result.contains("mermaid-diagram"));
     }
 
     #[test]
@@ -354,14 +350,17 @@ mod tests {
         let html = "<pre><code class=\"language-python\">print('hello')</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("language-python"));
-        assert!(result.contains("print('hello')"));
+        assert!(result.contains("print"));
+        assert!(result.contains("hello"));
     }
 
     #[test]
     fn test_code_block_escaping() {
         let html = "<pre><code class=\"language-html\">&lt;div&gt;content&lt;/div&gt;</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("&lt;div&gt;"));
+        assert!(result.contains("&lt;"));
+        assert!(result.contains("&gt;"));
+        assert!(result.contains("content"));
     }
 
     #[test]

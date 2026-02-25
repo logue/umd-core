@@ -74,12 +74,12 @@ graph TD
 **出力形式（タイトルなし）:**
 
 ```html
-<figure class="code-block code-block-mermaid">
-  <svg
-    class="mermaid-diagram"
-    id="mermaid-{uuid}"
-    data-mermaid-source="graph TD..."
-  >
+<figure
+  class="code-block code-block-mermaid mermaid-diagram"
+  id="mermaid-{uuid}"
+  data-mermaid-source="graph TD..."
+>
+  <svg>
     <!-- mermaid-rs-renderer生成のSVG -->
   </svg>
 </figure>
@@ -95,13 +95,13 @@ graph TD
 ````
 
 ```html
-<figure class="code-block code-block-mermaid">
+<figure
+  class="code-block code-block-mermaid mermaid-diagram"
+  id="mermaid-{uuid}"
+  data-mermaid-source="graph TD..."
+>
   <figcaption class="code-title">システムフロー</figcaption>
-  <svg
-    class="mermaid-diagram"
-    id="mermaid-{uuid}"
-    data-mermaid-source="graph TD..."
-  >
+  <svg>
     <!-- mermaid-rs-renderer生成のSVG -->
   </svg>
 </figure>
@@ -139,7 +139,7 @@ examples/
 
 ### 処理パイプライン
 
-1. **comrakパース** → `<pre lang="rust"><code>...</code></pre>` または `<pre><code class="language-rust">...</code></pre>`
+1. **comrakパース/正規化** → 常に `<pre><code class="language-rust">...</code></pre>` 形式に統一
 2. **コード保護** → 変換されないよう一時的にプレースホルダーに置換
 3. **他の拡張処理** → UMD固有の装飾やプラグイン処理
 4. **コード復元** → `process_code_blocks()` でコードを復元
@@ -152,12 +152,10 @@ examples/
 ### 正規表現パターンと変換フロー
 
 ```rust
-// Mermaid検出（2つのフォーマット対応）
-r#"(?s)<pre lang="mermaid"[^>]*><code>(.*?)</code></pre>"#
+// Mermaid検出（正規化後フォーマット）
 r#"(?s)<pre><code[^>]*language-mermaid[^>]*>(.*?)</code></pre>"#
 
-// 言語検出（2つのフォーマット対応）
-r#"(?s)<pre lang="([^"]+)"[^>]*><code>(.*?)</code></pre>"#
+// 言語検出（正規化後フォーマット）
 r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
 ```
 

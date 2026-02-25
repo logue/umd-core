@@ -89,14 +89,12 @@ graph TD
 **出力HTML（Rust側で生成）:**
 
 ```html
-<figure class="code-block code-block-mermaid">
-  <svg
-    class="mermaid-diagram"
-    id="mermaid-{uuid}"
-    data-mermaid-source="graph TD..."
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 800 400"
-  >
+<figure
+  class="code-block code-block-mermaid mermaid-diagram"
+  id="mermaid-{uuid}"
+  data-mermaid-source="graph TD..."
+>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
     <!-- Bootstrap CSS変数でスタイル付けされたSVG要素 -->
     <rect fill="var(--bs-blue, #0d6efd)" />
     <text fill="var(--bs-body-color)" />
@@ -117,15 +115,13 @@ graph TD
 **出力HTML（タイトル付き）:**
 
 ```html
-<figure class="code-block code-block-mermaid">
+<figure
+  class="code-block code-block-mermaid mermaid-diagram"
+  id="mermaid-{uuid}"
+  data-mermaid-source="graph TD..."
+>
   <figcaption class="code-title">システムフロー</figcaption>
-  <svg
-    class="mermaid-diagram"
-    id="mermaid-{uuid}"
-    data-mermaid-source="graph TD..."
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 800 400"
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
     <!-- Bootstrap CSS変数でスタイル付けされたSVG要素 -->
   </svg>
 </figure>
@@ -153,8 +149,8 @@ graph TD
 
 ```javascript
 // Mermaidコードをデバッグ表示
-document.querySelectorAll(".mermaid-diagram").forEach((svg) => {
-  const source = svg.getAttribute("data-mermaid-source");
+document.querySelectorAll("figure.mermaid-diagram").forEach((figure) => {
+  const source = figure.getAttribute("data-mermaid-source");
   console.log("Mermaid source:", source);
 });
 ```
