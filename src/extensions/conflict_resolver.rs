@@ -744,6 +744,10 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_args.to_string());
 
+            if function == "clear" && args.trim().is_empty() {
+                return "<div class=\"clearfix\"></div>".to_string();
+            }
+
             let args_html = render_args_as_data(&args);
             format!(
                 "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
@@ -757,6 +761,10 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
         Regex::new(r#"<p>\s*(<template class="umd-plugin[^"]*"[^>]*>.*?</template>)\s*</p>"#)
             .unwrap();
     result = wrapped_plugin.replace_all(&result, "$1").to_string();
+
+    // Remove wrapping <p> tags around clearfix blocks
+    let wrapped_clearfix = Regex::new(r#"<p>\s*(<div class="clearfix"></div>)\s*</p>"#).unwrap();
+    result = wrapped_clearfix.replace_all(&result, "$1").to_string();
 
     // Restore definition lists
     let definition_list_marker =

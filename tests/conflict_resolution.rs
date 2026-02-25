@@ -69,6 +69,17 @@ fn test_plugin_syntax_preserved() {
 }
 
 #[test]
+fn test_clear_plugin_outputs_div() {
+    let input = "@clear()";
+    let output = parse(input);
+    assert!(
+        output.contains(r#"<div class="clearfix"></div>"#),
+        "Unexpected output: {}",
+        output
+    );
+}
+
+#[test]
 fn test_code_blocks_not_processed() {
     // LukiWiki syntax inside code blocks should NOT be converted
     let input = "```\ntest code\n```";

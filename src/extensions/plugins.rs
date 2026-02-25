@@ -64,6 +64,8 @@ fn render_args_as_data(args: &str) -> String {
 
 // Standard plugins that output direct HTML instead of <template>
 // @detail plugin for <details> element
+static CLEAR_PLUGIN: Lazy<Regex> = Lazy::new(|| Regex::new(r"@clear\(\)").unwrap());
+
 static DETAIL_PLUGIN: Lazy<Regex> = Lazy::new(|| {
     // Match @detail(summary) or @detail(summary, open){{ content }}
     Regex::new(r"@detail\(([^,)]+)(?:,\s*open)?\)\{\{([\s\S]*?)\}\}").unwrap()
@@ -195,6 +197,11 @@ static HTML_ENTITIES: Lazy<std::collections::HashSet<&'static str>> = Lazy::new(
 /// ```
 pub fn apply_plugin_syntax(html: &str) -> String {
     let mut result = html.to_string();
+
+    // Process standard plugins first - @clear() outputs a clearfix block
+    result = CLEAR_PLUGIN
+        .replace_all(&result, "\n<div class=\"clearfix\"></div>\n")
+        .to_string();
 
     // Process standard plugins first - @detail(summary[, open]){{ content }}
     // This outputs direct HTML <details> instead of <template>

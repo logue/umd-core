@@ -12,7 +12,7 @@ repository = "https://github.com/logue/umd-core"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2.112" # WASM bindings
+wasm-bindgen = "0.2.113" # WASM bindings
 comrak = "0.50.0" # Markdown parser (GFM)
 ammonia = "4.1.2" # HTML sanitization
 maud = "0.27.0" # Type-safe HTML generation

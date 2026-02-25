@@ -818,6 +818,22 @@ Universal Markdownは拡張可能なプラグインシステムを提供しま�
 - ネストされた構文も再パース可能
 - モバイルフレンドリー
 
+#### @clear - クリアフィックス
+
+`<div class="clearfix"></div>` を出力し、フロート解除用のブロックを挿入します。
+
+**構文**:
+
+```umd
+@clear()
+```
+
+**出力HTML**:
+
+```html
+<div class="clearfix"></div>
+```
+
 **使用例**:
 
 ```umd
