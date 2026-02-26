@@ -967,6 +967,34 @@ GFM準拠のテーブル（ソート可能）:
 | COLOR(primary): 青い文字 | SIZE(1.5): 大きい文字 |
 ```
 
+### テーブルプラグイン（@table）
+
+テーブルにBootstrapバリエーションを適用するブロック型プラグインをサポート:
+
+```umd
+@table(striped,hover){{
+  | Header1 | Header2 |
+  | ------- | ------- |
+  | Cell1   | Cell2   |
+}}
+```
+
+**サポートオプション**:
+
+- `striped` → `table-striped`
+- `hover` → `table-hover`
+- `dark` → `table-dark`
+- `bordered` → `table-bordered`
+- `borderless` → `table-borderless`
+- `sm` → `table-sm`
+- `responsive` → `<div class="table-responsive">` でテーブルをラップ
+
+**仕様**:
+
+- `{{ }}` 内の最初の1つのテーブルにのみオプションを適用
+- GFMテーブルとUMDテーブルの両方に適用可能
+- テーブルが存在しない場合は警告を出力し、内容は通常のMarkdownとして描画
+
 ---
 
 ## その他の機能

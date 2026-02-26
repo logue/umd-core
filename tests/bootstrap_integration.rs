@@ -310,3 +310,47 @@ fn test_code_block_syntax_highlighted_with_syntect() {
     assert!(output.contains("syntect-highlight"));
     assert!(output.contains("syntect-"));
 }
+
+#[test]
+fn test_table_plugin_applies_bootstrap_variants() {
+    let input = "@table(striped,hover){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n}}";
+    let output = parse(input);
+
+    assert!(output.contains("table-striped"), "output: {}", output);
+    assert!(output.contains("table-hover"), "output: {}", output);
+}
+
+#[test]
+fn test_table_plugin_responsive_wrapper() {
+    let input = "@table(responsive){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n}}";
+    let output = parse(input);
+
+    assert!(
+        output.contains(r#"<div class="table-responsive"><table"#),
+        "output: {}",
+        output
+    );
+}
+
+#[test]
+fn test_table_plugin_applies_to_first_table_only() {
+    let input = "@table(hover){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n\n| X1 | X2 |\n|----|----|\n| Y1 | Y2 |\n}}";
+    let output = parse(input);
+
+    assert_eq!(
+        output.matches("table-hover").count(),
+        1,
+        "output: {}",
+        output
+    );
+    assert!(output.matches("<table").count() >= 2, "output: {}", output);
+}
+
+#[test]
+fn test_table_plugin_without_table_falls_back_to_content() {
+    let input = "@table(striped){{\nこれはテキストです\n}}";
+    let output = parse(input);
+
+    assert!(output.contains("これはテキストです"), "output: {}", output);
+    assert!(!output.contains("umd-plugin-table"), "output: {}", output);
+}

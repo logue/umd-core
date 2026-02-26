@@ -60,6 +60,100 @@ fn render_args_as_data(args: &str) -> String {
         .join("")
 }
 
+fn map_table_plugin_option_to_class(option: &str) -> Option<&'static str> {
+    match option {
+        "striped" => Some("table-striped"),
+        "hover" => Some("table-hover"),
+        "dark" => Some("table-dark"),
+        "bordered" => Some("table-bordered"),
+        "borderless" => Some("table-borderless"),
+        "sm" => Some("table-sm"),
+        _ => None,
+    }
+}
+
+fn merge_class_attr(existing_attrs: &str, add_classes: &[String]) -> String {
+    if add_classes.is_empty() {
+        return existing_attrs.to_string();
+    }
+
+    let class_pattern = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
+
+    if let Some(class_caps) = class_pattern.captures(existing_attrs) {
+        let existing_classes = class_caps.get(1).map_or("", |m| m.as_str());
+        let mut class_list: Vec<String> = existing_classes
+            .split_whitespace()
+            .map(|s| s.to_string())
+            .collect();
+
+        for class_name in add_classes {
+            if !class_list.iter().any(|c| c == class_name) {
+                class_list.push(class_name.clone());
+            }
+        }
+
+        let merged = format!(r#"class=\"{}\""#, class_list.join(" "));
+        class_pattern.replace(existing_attrs, merged).to_string()
+    } else {
+        let mut attrs = existing_attrs.to_string();
+        attrs.push_str(&format!(r#" class=\"{}\""#, add_classes.join(" ")));
+        attrs
+    }
+}
+
+fn process_table_plugin(function_args: &str, content: &str) -> String {
+    let rendered_content = crate::parse(content);
+
+    let parsed_args = parse_args(function_args);
+    let is_responsive = parsed_args.iter().any(|arg| arg == "responsive");
+    let mut table_classes: Vec<String> = Vec::new();
+
+    for arg in &parsed_args {
+        if let Some(mapped_class) = map_table_plugin_option_to_class(arg) {
+            if !table_classes.iter().any(|c| c == mapped_class) {
+                table_classes.push(mapped_class.to_string());
+            }
+        }
+    }
+
+    let table_pattern = Regex::new(r"(?s)<table[^>]*>.*?</table>").unwrap();
+    let open_table_pattern = Regex::new(r"<table([^>]*)>").unwrap();
+
+    if let Some(table_match) = table_pattern.find(&rendered_content) {
+        let table_html = table_match.as_str();
+
+        let table_with_classes = open_table_pattern
+            .replace(table_html, |caps: &Captures| {
+                let existing_attrs = caps.get(1).map_or("", |m| m.as_str());
+                let merged_attrs = merge_class_attr(existing_attrs, &table_classes);
+                format!("<table{}>", merged_attrs)
+            })
+            .to_string();
+
+        let processed_table = if is_responsive {
+            format!(
+                "<div class=\"table-responsive\">{}</div>",
+                table_with_classes
+            )
+        } else {
+            table_with_classes
+        };
+
+        format!(
+            "{}{}{}",
+            &rendered_content[..table_match.start()],
+            processed_table,
+            &rendered_content[table_match.end()..]
+        )
+    } else {
+        eprintln!(
+            "[UMD warning] @table plugin requires a table inside its content: {}",
+            content.replace('\n', "\\n")
+        );
+        rendered_content
+    }
+}
+
 /// Map font size value to Bootstrap class or inline style
 fn map_font_size_value(value: &str) -> (bool, String) {
     // Check if value has unit (rem, em, px, etc.)
@@ -713,6 +807,10 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 .ok()
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_content.to_string());
+
+            if function == "table" {
+                return process_table_plugin(args, &content);
+            }
 
             let args_html = render_args_as_data(args);
             let escaped_content = escape_html_text(&content);
