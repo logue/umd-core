@@ -1,6 +1,6 @@
 # WASM Build Instructions
 
-LukiWiki ParserはWebAssemblyとしてビルドできます。
+Universal Markdown (UMD) はWebAssemblyとしてビルドできます。
 
 ## 前提条件
 
@@ -29,9 +29,9 @@ cargo install wasm-pack
 
 `pkg/`ディレクトリに以下のファイルが生成されます：
 
-- `lukiwiki_parser.js` - JavaScriptバインディング
-- `lukiwiki_parser.d.ts` - TypeScript型定義
-- `lukiwiki_parser_bg.wasm` - WASMバイナリ
+- `umd.js` - JavaScriptバインディング
+- `umd.d.ts` - TypeScript型定義
+- `umd_bg.wasm` - WASMバイナリ
 - `package.json` - npmパッケージ情報
 
 ## 使用例
@@ -43,7 +43,7 @@ cargo install wasm-pack
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>LukiWiki Parser Demo</title>
+    <title>Universal Markdown Demo</title>
   </head>
   <body>
     <textarea id="input" rows="10" cols="50">
@@ -55,13 +55,13 @@ This is **bold** and *italic* text.
     <div id="output"></div>
 
     <script type="module">
-      import init, { parse_wiki } from "./pkg/lukiwiki_parser.js";
+      import init, { parse_markdown } from "./pkg/umd.js";
 
       await init();
 
       window.parseWiki = function () {
         const input = document.getElementById("input").value;
-        const html = parse_wiki(input);
+        const html = parse_markdown(input);
         document.getElementById("output").innerHTML = html;
       };
     </script>
@@ -72,13 +72,13 @@ This is **bold** and *italic* text.
 ### Node.jsから使用
 
 ```javascript
-import init, { parse_wiki } from "./pkg/lukiwiki_parser.js";
+import init, { parse_markdown } from "./pkg/umd.js";
 
 async function main() {
   await init();
 
   const input = `
-# LukiWiki Example
+# UMD Example
 
 This is **bold** and *italic* text.
 
@@ -86,7 +86,7 @@ This is **bold** and *italic* text.
 - List item 2
 `;
 
-  const html = parse_wiki(input);
+  const html = parse_markdown(input);
   console.log(html);
 }
 
@@ -96,11 +96,11 @@ main();
 ### TypeScript
 
 ```typescript
-import init, { parse_wiki } from "./pkg/lukiwiki_parser.js";
+import init, { parse_markdown } from "./pkg/umd.js";
 
 async function parseMarkdown(source: string): Promise<string> {
   await init();
-  return parse_wiki(source);
+  return parse_markdown(source);
 }
 
 // 使用例

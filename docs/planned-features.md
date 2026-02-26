@@ -441,7 +441,7 @@ graph TD
 ```
 ````
 
-#### 実装方針
+#### 実装方針（Mermaid）
 
 **バックエンド処理を採用する理由**:
 
@@ -555,7 +555,7 @@ graph TD
 2. **デザインの不統一**: MermaidデフォルトのカラースキームがBootstrapのデザインから浮いてしまう
 3. **テーマ切り替えへの非対応**: ライト/ダーク切り替え時に図の色が連動しない
 
-**解決策: BootstrapのCSS変数を使用**
+#### 解決策（BootstrapのCSS変数を使用）
 
 Mermaid SVGの色指定をBootstrapのCSS変数（`--bs-*`）から取得する必要があります：
 
@@ -837,7 +837,7 @@ function validateMermaidColors() {
 - `pre`タグには`lang`属性を付与しない
 - 言語情報は`<code class="language-...">`で出力する
 
-#### 基本構文
+#### 基本構文（シンタックスハイライト）
 
 ````umd
 ```rust
@@ -1067,7 +1067,7 @@ fn parse_info_string(info: &str) -> CodeBlockInfo {
 | **軽量**             | バックエンドでの処理は最小限（class属性のみ）          |
 | **パフォーマンス**   | 初期表示はJavaScript不要、ハイライトは非同期で適用可能 |
 
-#### 技術的詳細
+#### 技術的詳細（シンタックスハイライト）
 
 **Rust側での実装**:
 
@@ -1228,7 +1228,7 @@ impl NodeCodeBlockExt for Adapter {
 }
 ```
 
-#### Bootstrap統合とカラーリング
+#### Bootstrap統合とカラーリング（シンタックスハイライト）
 
 **重要**: シンタックスハイライトのカラースキームはBootstrapのデザインシステムと統合する必要があります。
 
@@ -1238,7 +1238,7 @@ impl NodeCodeBlockExt for Adapter {
 2. **ダークモード非対応**: 多くのハイライトテーマはライトモード専用で、ダークモードでコントラストが不適切
 3. **カラーコンセプトの不一致**: Bootstrap（例: `--bs-primary`が青）とハイライトテーマ（例: キーワードが紫）で色の意味が異なる
 
-**解決策: Bootstrapカラー変数ベースのテーマ**
+#### 解決策（Bootstrapカラー変数ベースのテーマ）
 
 シンタックスハイライトテーマをBootstrapのCSS変数（`--bs-*`）を使用してカスタマイズします。
 
@@ -1486,7 +1486,7 @@ BootstrapのCSS変数を使用すると、`data-bs-theme="dark"`属性でテー�
 
 UMDプロジェクトの一部として、Bootstrapベースのカスタムシンタックスハイライトテーマを配布：
 
-```
+```text
 pkg/
 ├── themes/
 │   ├── prism-bootstrap.css
@@ -1895,11 +1895,11 @@ let result = parse_with_frontmatter_opts(input, &opts);
 
 ### 数式サポート（Math Formula Support）
 
-#### 概要
+#### 概要（数式サポート）
 
 数式を表現するための明示的な構文を提供します。
 
-#### 構文
+#### 構文（数式サポート）
 
 ```umd
 &math(\sqrt{x^2});
@@ -1920,7 +1920,7 @@ let result = parse_with_frontmatter_opts(input, &opts);
 2. **明示性の向上**: `&math(...);` で数式であることが明確
 3. **エスケープの回避**: 金銭表記のたびに `\$` とエスケープするのは非効率的
 
-#### 出力HTML
+#### 出力HTML（数式サポート）
 
 ```html
 <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -1931,7 +1931,7 @@ let result = parse_with_frontmatter_opts(input, &opts);
 </math>
 ```
 
-#### 実装方針
+#### 実装方針（数式サポート）
 
 - パーサーがLaTeX式をMathMLに直接変換
 - MathMLは標準的なXMLベースの数式表現形式（W3C仕様）
@@ -1941,7 +1941,7 @@ let result = parse_with_frontmatter_opts(input, &opts);
 
 ### ポップオーバー（Popover）
 
-#### 概要
+#### 概要（Popover）
 
 HTML Popover APIを利用した軽量なポップアップコンテンツを提供します。トリガーとなるボタンをクリックすると、関連するコンテンツがポップオーバーとして表示されます。
 
@@ -1952,7 +1952,7 @@ HTML Popover APIを利用した軽量なポップアップコンテンツを提�
 
 この両方のバリエーションを提供することで、シンプルなケースから複雑なケースまで対応できます。
 
-#### 構文
+#### 構文（Popover）
 
 **インライン型**（単一行のみ）:
 
@@ -1991,7 +1991,7 @@ HTML Popover APIを利用した軽量なポップアップコンテンツを提�
 }}
 ```
 
-#### 出力HTML
+#### 出力HTML（Popover）
 
 ```html
 <button command="show-popover" commandfor="umd-popover-a1b2c3d4">text</button>
@@ -2117,7 +2117,7 @@ let popover_id = format!("umd-popover-{}", Uuid::new_v4().simple());
 > 🚧 **将来構想**  
 > この機能は正式バージョンリリース後の仕様策定段階です。現時点ではアイデアレベルであり、実装時期や詳細は未定です。
 
-### 概要
+### 概要（テンプレートエンジン）
 
 フロントマターで定義した変数をMarkdown本文中で展開できるテンプレートエンジン機能を提供します。既存のプラグイン構文をマクロとして転用することで、統一的な記法を実現します。
 

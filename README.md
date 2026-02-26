@@ -196,7 +196,7 @@ CENTER: Centered paragraph → <p class="text-center">Centered paragraph</p>
 
 ### Plugins
 
-```markdown
+```umd
 &highlight(yellow){Important text}; → <template class="umd-plugin umd-plugin-highlight">
 <data value="0">yellow</data>
 Important text
@@ -210,12 +210,12 @@ Hidden
 
 ### Tables with Cell Spanning
 
-```markdown
+```umd
 UMD Table (with colspan/rowspan):
 
-| Header1 |> | Header3 |
-| Cell1 | Cell2 | Cell3 |
-|^ | Cell4 | Cell5 |
+| Header1 |>      | Header3 |
+| Cell1   | Cell2 | Cell3 |
+|^        | Cell4 | Cell5 |
 
 RIGHT:
 | Left Cell | Right Cell |
@@ -228,6 +228,7 @@ CENTER:
 
 ## Documentation
 
+- **[docs/README.md](docs/README.md)** - Documentation index (entry point)
 - **[docs/architecture.md](docs/architecture.md)** - System architecture, processing pipeline, component details, developer guide
 - **[docs/implemented-features.md](docs/implemented-features.md)** - Complete reference of implemented features
 - **[docs/planned-features.md](docs/planned-features.md)** - Roadmap for planned features
@@ -238,24 +239,30 @@ CENTER:
 
 ## Architecture Overview
 
-```
+```text
 Input Text
-    ↓
-[HTML Sanitizer]        ← Escape user input, preserve entities
-    ↓
-[Conflict Resolver]     ← Protect UMD syntax with markers
     ↓
 [Frontmatter Extractor] ← Extract YAML/TOML metadata
     ↓
+[Nested Blocks Preprocess] ← Normalize list-item nested blocks
+    ↓
+[Tasklist Preprocess]   ← Convert indeterminate markers
+    ↓
+[Underline Preprocess]  ← Protect Discord-style __text__
+    ↓
+[Conflict Resolver]     ← Protect UMD syntax with markers
+    ↓
+[HTML Sanitizer]        ← Escape user input, preserve entities
+    ↓
 [comrak Parser]         ← CommonMark + GFM AST generation
+    ↓
+[Underline Postprocess] ← Restore <u> tags
     ↓
 [UMD Extensions]        ← Apply inline/block decorations, plugins, tables, media
     ↓
-[HTML Renderer]         ← Type-safe HTML output (maud)
+[Footnotes Extractor]   ← Split body HTML and footnotes section
     ↓
-[Post-processor]        ← Restore markers, apply custom headers
-    ↓
-Output: HTML + Metadata + Footnotes
+Output: HTML + Frontmatter + Footnotes
 ```
 
 ### Key Components
@@ -278,7 +285,7 @@ Output: HTML + Metadata + Footnotes
 
 **284 tests passing** ✅
 
-```
+```text
 196 unit tests (core modules)
  24 bootstrap integration tests (CSS class generation)
  18 commonmark compliance tests (specification adherence)

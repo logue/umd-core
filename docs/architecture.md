@@ -42,77 +42,89 @@ Universal Markdownは、CommonMark準拠のMarkdownパーサーをベースに�
 
 ## 処理フロー
 
-```
+```text
 Input Text
+    ↓
+[Frontmatter Extractor] - YAML/TOMLフロントマター抽出
+    ↓
+[Nested Blocks Preprocess] - リスト内ブロック要素の前処理
+    ↓
+[Tasklist Preprocess] - 不定タスクリスト記法の正規化
+    ↓
+[Underline Preprocess] - Discord風下線（`__text__`）保護
+    ↓
+[Conflict Resolver] - UMD構文をマーカーで保護、ヘッダーID抽出
     ↓
 [HTML Sanitizer] - HTMLエスケープ、エンティティ保持
     ↓
-[Conflict Resolver] - UMD構文をマーカーで保護
+[comrak Parser] - Markdown → AST構築・HTML生成
     ↓
-[Frontmatter Extractor] - YAMLFrontmatterを抽出・除去
-    ↓
-[comrak Parser] - Markdown → AST構築
-    ↓
-[UMD Extensions] - UMD独自ノード追加・変換
-    ↓
-[HTML Renderer] - AST → HTML変換
-    ↓
-[Plugin Processor] - プラグインを<template>タグに変換
-    ↓
-[Post Processor] - マーカーをHTMLに復元
+[Underline Postprocess] - 下線プレースホルダを`<u>`へ復元
+  ↓
+[Extensions Apply] - UMD拡張適用・ヘッダーID適用・後処理
+  ↓
+[Footnotes Extractor] - 本文HTMLと脚注セクションを分離
     ↓
 Output HTML + Frontmatter + Footnotes
 ```
 
 ### 各ステージの詳細
 
-#### 1. HTML Sanitizer
-
-- 全てのHTMLタグをエスケープ (`<tag>` → `&lt;tag&gt;`)
-- HTMLエンティティ（`&nbsp;`, `&lt;`等）は保持
-- XSS攻撃の防止
-
-#### 2. Conflict Resolver (前処理)
-
-- UMD構文を`{{MARKER:...:MARKER}}`形式で一時保護
-- Markdown構文との衝突を回避
-- カスタムヘッダーID `{#id}` を抽出・除去
-
-#### 3. Frontmatter Extractor
+#### 1. Frontmatter Extractor
 
 - YAML (`---`) またはTOML (`+++`) フロントマターを検出
 - 本文から分離し、メタデータとして保存
 - HTML出力には含めない
 
-#### 4. comrak Parser
+#### 2. Nested Blocks Preprocess
+
+- リスト内にあるブロック要素を前処理し、構文衝突を回避
+- Markdownパース前に構造を安定化
+
+#### 3. Tasklist Preprocess
+
+- 不定タスクリスト記法を正規化
+- comrak処理前に互換フォーマットへ変換
+
+#### 4. Underline Preprocess
+
+- Discord風下線（`__text__`）をプレースホルダ化
+- CommonMarkの`<strong>`変換との競合を回避
+
+#### 5. Conflict Resolver (前処理)
+
+- UMD構文を`{{MARKER:...:MARKER}}`形式で一時保護
+- Markdown構文との衝突を回避
+- カスタムヘッダーID `{#id}` を抽出・除去
+
+#### 6. HTML Sanitizer
+
+- 全てのHTMLタグをエスケープ (`<tag>` → `&lt;tag&gt;`)
+- HTMLエンティティ（`&nbsp;`, `&lt;`等）は保持
+- XSS攻撃の防止
+
+#### 7. comrak Parser
 
 - CommonMark準拠のMarkdownパース
 - AST（Abstract Syntax Tree）を構築
 - GFM拡張機能（テーブル、打ち消し線等）をサポート
 
-#### 5. UMD Extensions
+#### 8. Underline Postprocess
+
+- 下線プレースホルダを`<u>`タグへ復元
+- CommonMark処理後の下線表現を保証
+
+#### 9. Extensions Apply
 
 - UMD独自構文（強調、装飾、プラグイン等）をASTに追加
 - セル連結対応テーブルをパース
 - Bootstrapクラスへのマッピング
+- カスタムヘッダーIDを`<h*>`タグへ適用
 
-#### 6. HTML Renderer
+#### 10. Footnotes Extractor
 
-- ASTを型安全なHTML文字列に変換
-- セマンティックHTMLタグを優先的に使用
-- Bootstrapユーティリティクラスを自動生成
-
-#### 7. Plugin Processor
-
-- プラグイン構文を`<template>`タグに変換
-- 引数を`<data value="index">`要素に格納
-- バックエンドでの処理に最適化
-
-#### 8. Post Processor (後処理)
-
-- 保護されたマーカーを実際のHTMLに復元
-- カスタムヘッダーIDを`<h*>`タグに適用
-- 最終的なHTML出力を生成
+- comrakが生成した`<section class="footnotes">`を分離
+- 本文HTMLと脚注HTMLを個別に返却
 
 ---
 
@@ -238,7 +250,7 @@ wasm-bindgen-test = "0.3.58" # WASM testing
 
 ## ディレクトリ構造
 
-```
+```text
 umd/
 ├── Cargo.toml              # プロジェクト設定
 ├── build.sh                # WASMビルドスクリプト
@@ -628,11 +640,11 @@ XSS対策のため、以下のスキームをブロック:
 
 ## 参考リソース
 
-- **PHP実装**: https://github.com/logue/LukiWiki/tree/master/app/LukiWiki
-- **仕様書**: https://github.com/logue/LukiWiki-core/blob/master/docs/rules.md
-- **CommonMark仕様**: https://spec.commonmark.org/
-- **GFM仕様**: https://github.github.com/gfm/
-- **Bootstrap 5**: https://getbootstrap.com/docs/5.3/
+- **PHP実装**: [logue/LukiWiki](https://github.com/logue/LukiWiki/tree/master/app/LukiWiki)
+- **仕様書**: [LukiWiki rules](https://github.com/logue/LukiWiki-core/blob/master/docs/rules.md)
+- **CommonMark仕様**: [spec.commonmark.org](https://spec.commonmark.org/)
+- **GFM仕様**: [GitHub Flavored Markdown](https://github.github.com/gfm/)
+- **Bootstrap 5**: [Bootstrap Docs](https://getbootstrap.com/docs/5.3/)
 
 ---
 

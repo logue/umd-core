@@ -3,7 +3,7 @@
 **プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テスト 75%+ パス、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステム提供。
 
 **作成日**: 2026年1月23日  
-**最終更新**: 2026年2月24日  
+**最終更新**: 2026年2月26日  
 **Rustバージョン**: 1.93.1 (Edition 2024)  
 **ライセンス**: MIT
 
@@ -13,6 +13,7 @@
 
 このPLAN.mdは**実装状況とロードマップ**を記載しています。詳細は以下を参照：
 
+- **[docs/README.md](docs/README.md)** - ドキュメント索引（入口）
 - **[docs/architecture.md](docs/architecture.md)** - システムアーキテクチャ、開発者ガイド、技術設計
 - **[docs/implemented-features.md](docs/implemented-features.md)** - 実装済み機能の完全リファレンス
 - **[docs/planned-features.md](docs/planned-features.md)** - 実装予定機能の詳細仕様
@@ -50,7 +51,7 @@
 
 **総テスト数**: 284 tests passing ✅
 
-```
+```text
 193 unit tests ..................... lib.rs
  22 bootstrap integration tests .... 拡張機能
  18 commonmark compliance tests .... 仕様準拠
@@ -67,7 +68,7 @@
 
 ### 2026年2月24日
 
-**ドキュメント体系の統一**
+#### ドキュメント体系の統一
 
 - `.github/copilot-instructions.md` を簡潔なリファレンスに再設計
 - `docs/architecture.md` に開発者向けガイドを統合
@@ -75,7 +76,7 @@
 
 ### 2026年2月20日-24日
 
-**メディア機能の最終化**
+#### メディア機能の最終化
 
 - ブロック vs インライン自動判別実装
 - Bootstrap 5 マージン クラス（`ms/me`）採用
@@ -86,7 +87,7 @@
 
 ### 2026年2月20日
 
-**コードブロック強化**
+#### コードブロック強化
 
 - Mermaid SVG レンダリング
 - 複数行コンテンツ対応
@@ -126,19 +127,19 @@
 
 ### 中期（3-6週間）
 
-3. **数式サポート** (MathML生成)
+1. **数式サポート** (MathML生成)
    - LaTeX → MathML 変換
    - KaTeX 互換性確保
    - レンダリング検証
 
-4. **シンタックスハイライト** (ハイブリッド)
+2. **シンタックスハイライト** (ハイブリッド)
    - サーバー側: HTML 属性付与
    - フロントエンド: JavaScript オプション
    - Bootstrap CSS 変数カスタムテーマ
 
 ### 長期（2ヶ月以降）
 
-5. **Mermaid 図レンダリング**
+1. **Mermaid 図レンダリング**
    - SVG 生成とキャッシュ
    - Bootstrap カラー自動マッピング
    - ダークモード対応
@@ -160,12 +161,12 @@
 
 ### 優先度：中
 
-3. **WASM バイナリサイズ最適化**
+1. **WASM バイナリサイズ最適化**
    - LTO (Link Time Optimization) 有効化
    - 不使用機能の削除検討
    - 目標: pkg/ < 200KB
 
-4. **エラーメッセージの改善**
+2. **エラーメッセージの改善**
    - ユーザー向けエラーログ実装
    - デバッグモード（verbose）オプション
 
