@@ -368,6 +368,41 @@ pub fn apply_block_decorations(html: &str) -> String {
 ///
 /// HTML with block placement applied (Bootstrap utility classes)
 pub fn apply_block_placement(html: &str) -> String {
+    fn merge_class_attr(tag_html: &str, extra_classes: &str) -> String {
+        let class_re = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
+
+        if let Some(caps) = class_re.captures(tag_html) {
+            let existing = caps.get(1).map_or("", |m| m.as_str());
+            let mut merged: Vec<String> = if existing.trim().is_empty() {
+                Vec::new()
+            } else {
+                existing.split_whitespace().map(|s| s.to_string()).collect()
+            };
+
+            for class_name in extra_classes.split_whitespace() {
+                if !merged.iter().any(|c| c == class_name) {
+                    merged.push(class_name.to_string());
+                }
+            }
+
+            class_re
+                .replace(tag_html, format!(r#"class=\"{}\""#, merged.join(" ")))
+                .to_string()
+        } else {
+            tag_html.replacen('>', &format!(r#" class=\"{}\">"#, extra_classes), 1)
+        }
+    }
+
+    fn placement_class_for_block(placement: &str) -> &'static str {
+        match placement {
+            "LEFT" => "w-auto",
+            "CENTER" => "w-auto mx-auto",
+            "RIGHT" => "w-auto ms-auto me-0",
+            "JUSTIFY" => "w-100",
+            _ => "",
+        }
+    }
+
     let media_block_placement = Regex::new(
         r#"(?s)<p>\s*(LEFT|CENTER|RIGHT|JUSTIFY):\s*\n\s*(<picture[\s\S]*?</picture>|<video[\s\S]*?</video>|<audio[\s\S]*?</audio>|<a href="[^"]+" download class="download-link[^"]*"[^>]*>[\s\S]*?</a>)\s*</p>"#,
     )
@@ -394,30 +429,76 @@ pub fn apply_block_placement(html: &str) -> String {
         })
         .to_string();
 
-    BLOCK_PLACEMENT
+    let table_and_plugin_placement_in_paragraph = Regex::new(
+        r#"(?s)<p>\s*(LEFT|CENTER|RIGHT|JUSTIFY):\s*\n\s*(<(?:table|template)\b[^>]*>[\s\S]*?</(?:table|template)>)\s*</p>"#,
+    )
+    .unwrap();
+
+    let with_table_and_plugin_placement_in_paragraph = table_and_plugin_placement_in_paragraph
         .replace_all(&with_media_placement, |caps: &regex::Captures| {
             let placement = &caps[1];
-            let content = &caps[2];
+            let block = &caps[2];
+            let placement_class = placement_class_for_block(placement);
 
-            let wrapper_class = match placement {
-                "LEFT" => "w-auto",               // Content width, left aligned
-                "CENTER" => "w-auto mx-auto",     // Content width, centered
-                "RIGHT" => "w-auto ms-auto me-0", // Content width, right aligned
-                "JUSTIFY" => "w-100",             // Full width
-                _ => "",
-            };
-
-            // Wrap table or plugin in div with appropriate class
-            if content.starts_with('|') {
-                // UMD table
-                format!("<div class=\"{}\">\n{}</div>", wrapper_class, content)
-            } else if content.starts_with('@') {
-                // Block plugin
-                format!("<div class=\"{}\">\n{}</div>", wrapper_class, content)
-            } else {
-                content.to_string()
+            if block.starts_with("<table") {
+                return merge_class_attr(block, placement_class);
             }
+
+            if block.starts_with("<template") && block.contains("umd-plugin") {
+                return merge_class_attr(block, placement_class);
+            }
+
+            block.to_string()
         })
+        .to_string();
+
+    let table_and_plugin_placement = Regex::new(
+        r#"(?s)<p>\s*(LEFT|CENTER|RIGHT|JUSTIFY):\s*</p>\s*(<(?:table|template)\b[^>]*>[\s\S]*?</(?:table|template)>)"#,
+    )
+    .unwrap();
+
+    let with_table_and_plugin_placement = table_and_plugin_placement
+        .replace_all(
+            &with_table_and_plugin_placement_in_paragraph,
+            |caps: &regex::Captures| {
+                let placement = &caps[1];
+                let block = &caps[2];
+                let placement_class = placement_class_for_block(placement);
+
+                if block.starts_with("<table") {
+                    return merge_class_attr(block, placement_class);
+                }
+
+                if block.starts_with("<template") && block.contains("umd-plugin") {
+                    return merge_class_attr(block, placement_class);
+                }
+
+                block.to_string()
+            },
+        )
+        .to_string();
+
+    BLOCK_PLACEMENT
+        .replace_all(
+            &with_table_and_plugin_placement,
+            |caps: &regex::Captures| {
+                let placement = &caps[1];
+                let content = &caps[2];
+
+                let wrapper_class = placement_class_for_block(placement);
+
+                // Wrap table or plugin in div with appropriate class
+                if content.starts_with('|') {
+                    // UMD table
+                    format!("<div class=\"{}\">\n{}</div>", wrapper_class, content)
+                } else if content.starts_with('@') {
+                    // Block plugin
+                    format!("<div class=\"{}\">\n{}</div>", wrapper_class, content)
+                } else {
+                    content.to_string()
+                }
+            },
+        )
         .to_string()
 }
 

@@ -226,26 +226,20 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
-    // Protect UMD block decorations (COLOR, SIZE, alignment)
-    // These will be applied in post-processing
-    let color_prefix = Regex::new(r"(?m)^(COLOR\([^)]*\):\s*.+)$").unwrap();
-    result = color_prefix
+    // Protect UMD block decorations (COLOR, SIZE, TRUNCATE, alignment, vertical alignment)
+    // These will be applied in post-processing.
+    let block_decoration_prefix = Regex::new(
+        r"(?m)^((?:(?:SIZE\([^)]+\)|COLOR\([^)]*\)|TRUNCATE|TOP|MIDDLE|BOTTOM|BASELINE|JUSTIFY|RIGHT|CENTER|LEFT):[ \t]*)+.*)$",
+    )
+    .unwrap();
+    result = block_decoration_prefix
         .replace_all(&result, |caps: &Captures| {
-            format!("{{{{BLOCK_DECORATION:{}:BLOCK_DECORATION}}}}", &caps[1])
-        })
-        .to_string();
-
-    let size_prefix = Regex::new(r"(?m)^(SIZE\([^)]+\):\s*.+)$").unwrap();
-    result = size_prefix
-        .replace_all(&result, |caps: &Captures| {
-            format!("{{{{BLOCK_DECORATION:{}:BLOCK_DECORATION}}}}", &caps[1])
-        })
-        .to_string();
-
-    let align_prefix = Regex::new(r"(?m)^((RIGHT|CENTER|LEFT):\s*.+)$").unwrap();
-    result = align_prefix
-        .replace_all(&result, |caps: &regex::Captures| {
-            format!("{{{{BLOCK_DECORATION:{}:BLOCK_DECORATION}}}}", &caps[1])
+            use base64::{Engine as _, engine::general_purpose};
+            let encoded = general_purpose::STANDARD.encode(caps[1].as_bytes());
+            format!(
+                "{{{{BLOCK_DECORATION_B64:{}:BLOCK_DECORATION_B64}}}}",
+                encoded
+            )
         })
         .to_string();
 
@@ -595,17 +589,27 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 
     // Restore and apply block decorations
     let block_decoration_marker =
-        Regex::new(r"(?s)<p>\{\{BLOCK_DECORATION:(.+?):BLOCK_DECORATION\}\}</p>").unwrap();
+        Regex::new(r"\{\{BLOCK_DECORATION_B64:([A-Za-z0-9+/=]+):BLOCK_DECORATION_B64\}\}").unwrap();
 
     result = block_decoration_marker
         .replace_all(&result, |caps: &Captures| {
-            let decoration = &caps[1];
-            // Multiline decorations (e.g., RIGHT:\n<media>) are handled later by
-            // apply_block_placement, so keep them as a paragraph payload.
-            if decoration.contains('\n') {
-                format!("<p>{}</p>", decoration)
+            use base64::{Engine as _, engine::general_purpose};
+            let encoded = &caps[1];
+            let decoration = general_purpose::STANDARD
+                .decode(encoded.as_bytes())
+                .ok()
+                .and_then(|bytes| String::from_utf8(bytes).ok())
+                .unwrap_or_else(|| encoded.to_string());
+            // Multiline decorations (e.g., RIGHT:\n<media>) and standalone block placement
+            // prefixes are handled later by apply_block_placement.
+            let placement_only = Regex::new(r"^(LEFT|CENTER|RIGHT|JUSTIFY):\s*$")
+                .unwrap()
+                .is_match(decoration.trim());
+
+            if decoration.contains('\n') || placement_only {
+                decoration
             } else {
-                block_decorations::apply_block_decorations(decoration)
+                block_decorations::apply_block_decorations(&decoration)
             }
         })
         .to_string();

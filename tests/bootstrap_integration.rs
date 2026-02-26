@@ -150,6 +150,42 @@ fn test_block_alignment() {
 }
 
 #[test]
+fn test_block_justify_alignment() {
+    let input = "JUSTIFY: この文章は両端揃えです";
+    let output = parse(input);
+    assert!(output.contains(r#"class="text-justify""#));
+    assert!(output.contains("この文章は両端揃えです"));
+}
+
+#[test]
+fn test_block_truncate() {
+    let input = "TRUNCATE: 長いテキストは省略表示されます";
+    let output = parse(input);
+    assert!(output.contains(r#"class="text-truncate""#));
+    assert!(output.contains("長いテキストは省略表示されます"));
+}
+
+#[test]
+fn test_block_placement_justify_for_umd_table() {
+    let input = "JUSTIFY:\n| Header1 | Header2 |\n| Cell1 | Cell2 |";
+    let output = parse(input);
+    assert!(output.contains("<table"), "output: {}", output);
+    assert!(output.contains("umd-table"), "output: {}", output);
+    assert!(output.contains("w-100"), "output: {}", output);
+    assert!(!output.contains("<p>JUSTIFY:</p>"));
+}
+
+#[test]
+fn test_block_placement_center_for_block_plugin() {
+    let input = "CENTER:\n@callout(info)";
+    let output = parse(input);
+    assert!(output.contains("umd-plugin-callout"), "output: {}", output);
+    assert!(output.contains("w-auto"), "output: {}", output);
+    assert!(output.contains("mx-auto"), "output: {}", output);
+    assert!(!output.contains("CENTER:"));
+}
+
+#[test]
 fn test_compound_prefixes() {
     let input = "SIZE(1.5): COLOR(primary): CENTER: Styled text";
     let output = parse(input);

@@ -1,6 +1,6 @@
 # 実装済み機能リファレンス
 
-**最終更新**: 2026年2月25日
+**最終更新**: 2026年2月26日
 
 このドキュメントはUniversal Markdownで実装済みの機能を記載しています。
 
@@ -652,6 +652,35 @@ document.querySelectorAll(".spoiler").forEach((el) => {
 LEFT: 左寄せテキスト → <p class="text-start">...</p>
 CENTER: 中央寄せテキスト → <p class="text-center">...</p>
 RIGHT: 右寄せテキスト → <p class="text-end">...</p>
+JUSTIFY: 両端揃えテキスト → <p class="text-justify">...</p>
+```
+
+#### 省略表示
+
+```umd
+TRUNCATE: 長いテキスト → <p class="text-truncate">...</p>
+```
+
+`text-truncate` により `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` 相当の表示が有効になります（幅はCSS側で指定）。
+
+#### ブロック要素の配置（UMDテーブル・ブロック型プラグイン）
+
+改行後の UMD テーブルおよびブロック型プラグイン（`@function(...)`）に対して、以下のクラスを適用します。
+
+- `LEFT:` → `w-auto`
+- `CENTER:` → `w-auto mx-auto`
+- `RIGHT:` → `w-auto ms-auto me-0`
+- `JUSTIFY:` → `w-100`
+
+例:
+
+```umd
+JUSTIFY:
+| Header1 | Header2 |
+| Cell1   | Cell2   |
+
+CENTER:
+@callout(info)
 ```
 
 #### 色指定
