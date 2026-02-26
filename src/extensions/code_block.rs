@@ -17,15 +17,13 @@ static MERMAID_BLOCK_RE: Lazy<Regex> = Lazy::new(|| {
         .expect("valid mermaid block regex")
 });
 
-static CODE_BLOCK_WITH_LANG_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(
-        r#"(?s)<pre><code[^>]*class=\"language-([a-zA-Z0-9_+\-]+)\"[^>]*>(.*?)</code></pre>"#,
-    )
-    .expect("valid language code block regex")
+static CODE_BLOCK_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?s)<pre><code(?P<attrs>[^>]*)>(?P<code>.*?)</code></pre>"#)
+        .expect("valid code block regex")
 });
 
-static CODE_BLOCK_PLAIN_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?s)<pre><code>(.*?)</code></pre>"#).expect("valid plain code regex")
+static HTML_ATTR_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*\"([^\"]*)\""#).expect("valid html attr regex")
 });
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
@@ -117,35 +115,82 @@ fn process_mermaid_blocks(html: &str) -> String {
 /// 3. Language-only: `<pre><code class="language-rust">...</code></pre>`
 /// 4. Language+Title: add figcaption wrapper with title
 fn process_syntax_highlighted_blocks(html: &str) -> String {
-    let with_highlighted = CODE_BLOCK_WITH_LANG_RE
+    CODE_BLOCK_RE
         .replace_all(html, |caps: &regex::Captures| {
-            let language = &caps[1];
-            let code = &caps[2];
+            let attrs = caps.name("attrs").map(|m| m.as_str()).unwrap_or("");
+            let code = caps.name("code").map(|m| m.as_str()).unwrap_or("");
 
-            if language.eq_ignore_ascii_case("mermaid") {
+            let language = extract_language_from_attrs(attrs);
+            if matches!(language.as_deref(), Some(lang) if lang.eq_ignore_ascii_case("mermaid")) {
                 return caps[0].to_string();
             }
 
-            let decoded = decode_html_entities(code);
-            match highlight_code_with_syntect(language, &decoded) {
-                Some(highlighted) => format!(
-                    "<pre><code class=\"language-{} syntect-highlight\">{}</code></pre>",
-                    language, highlighted
-                ),
-                None => format!(
-                    "<pre><code class=\"language-{}\">{}</code></pre>",
-                    language, code
-                ),
+            let filename = extract_attribute(attrs, "data-meta")
+                .map(|value| decode_html_entities(&value))
+                .and_then(|meta| extract_filename_from_meta(&meta));
+
+            let rendered_block = if let Some(lang) = language.as_deref() {
+                let decoded = decode_html_entities(code);
+                match highlight_code_with_syntect(lang, &decoded) {
+                    Some(highlighted) => format!(
+                        "<pre><code class=\"language-{} syntect-highlight\">{}</code></pre>",
+                        lang, highlighted
+                    ),
+                    None => format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code),
+                }
+            } else {
+                format!("<pre>{}</pre>", code)
+            };
+
+            if let Some(filename) = filename {
+                let escaped_filename = html_escape::encode_text(&filename);
+                format!(
+                    "<figure class=\"code-block\"><figcaption class=\"code-filename\"><span class=\"filename\">{}</span></figcaption>{}</figure>",
+                    escaped_filename,
+                    rendered_block
+                )
+            } else {
+                rendered_block
             }
         })
-        .to_string();
-
-    CODE_BLOCK_PLAIN_RE
-        .replace_all(&with_highlighted, |caps: &regex::Captures| {
-            let code = &caps[1];
-            format!("<pre>{}</pre>", code)
-        })
         .to_string()
+}
+
+fn extract_attribute(attrs: &str, name: &str) -> Option<String> {
+    for caps in HTML_ATTR_RE.captures_iter(attrs) {
+        if caps.get(1)?.as_str().eq_ignore_ascii_case(name) {
+            return Some(caps.get(2)?.as_str().to_string());
+        }
+    }
+    None
+}
+
+fn extract_language_from_attrs(attrs: &str) -> Option<String> {
+    let class_attr = extract_attribute(attrs, "class")?;
+
+    for class_name in class_attr.split_whitespace() {
+        if let Some(language) = class_name.strip_prefix("language-") {
+            if language.eq_ignore_ascii_case("umd-nolang") {
+                return None;
+            }
+            if !language.is_empty() {
+                return Some(language.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+fn extract_filename_from_meta(meta: &str) -> Option<String> {
+    let marker = "umd-filename:";
+    let index = meta.find(marker)?;
+    let filename = meta[index + marker.len()..].trim();
+    if filename.is_empty() {
+        None
+    } else {
+        Some(filename.to_string())
+    }
 }
 
 /// Render Mermaid code to SVG
@@ -375,5 +420,25 @@ mod tests {
         let encoded = "&lt;div&gt; &amp; &quot;test&quot;";
         let decoded = decode_html_entities(encoded);
         assert_eq!(decoded, "<div> & \"test\"");
+    }
+
+    #[test]
+    fn test_code_block_with_filename_and_language() {
+        let html = "<pre><code class=\"language-rust\" data-meta=\"umd-filename:src/main.rs\">fn main() {}</code></pre>";
+        let result = process_code_blocks(html);
+        assert!(result.contains("<figure class=\"code-block\">"));
+        assert!(result.contains("<figcaption class=\"code-filename\">"));
+        assert!(result.contains("src/main.rs"));
+        assert!(result.contains("language-rust"));
+    }
+
+    #[test]
+    fn test_code_block_with_filename_without_language() {
+        let html = "<pre><code class=\"language-umd-nolang\" data-meta=\"umd-filename:config.yml\">key: value</code></pre>";
+        let result = process_code_blocks(html);
+        assert!(result.contains("<figure class=\"code-block\">"));
+        assert!(result.contains("config.yml"));
+        assert!(result.contains("<pre>key: value</pre>"));
+        assert!(!result.contains("language-umd-nolang"));
     }
 }

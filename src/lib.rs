@@ -156,6 +156,9 @@ pub fn parse_with_frontmatter_opts(input: &str, options: &parser::ParserOptions)
     // Step 3: Pre-process Discord-style underline (__text__) to prevent CommonMark conversion
     let content = extensions::preprocessor::preprocess_discord_underline(&content);
 
+    // Step 3.5: Normalize fenced code block filename syntax (```lang:file)
+    let content = extensions::preprocessor::preprocess_code_block_filenames(&content);
+
     // Step 4: Pre-process to resolve syntax conflicts and extract custom header IDs
     let (preprocessed, header_map) = extensions::conflict_resolver::preprocess_conflicts(&content);
 

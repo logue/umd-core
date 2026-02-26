@@ -86,6 +86,32 @@ Mermaidフェンスコードブロック（` ```mermaid `）は、バックエ�
 <pre><code class="language-rust syntect-highlight"><span class="syntect-source syntect-rust">...</span></code></pre>
 ```
 
+### ファイル名付きコードブロック
+
+フェンス情報に `lang:filename` を指定すると、コードブロックを `<figure>` で包み、`<figcaption>` にファイル名を出力します。
+
+````umd
+```rust:src/main.rs
+fn main() {
+    println!("Hello, world!");
+}
+```
+````
+
+```html
+<figure class="code-block">
+  <figcaption class="code-filename">
+    <span class="filename">src/main.rs</span>
+  </figcaption>
+  <pre><code class="language-rust syntect-highlight">...</code></pre>
+</figure>
+```
+
+**補足**:
+
+- `:config.yml` のような言語なしファイル名指定にも対応
+- 通常のコードブロック（ファイル名なし）は従来通り出力
+
 ### リスト
 
 **順序なしリスト**:

@@ -312,6 +312,41 @@ fn test_code_block_syntax_highlighted_with_syntect() {
 }
 
 #[test]
+fn test_code_block_with_filename_uses_figure_caption() {
+    let input = "```rust:src/main.rs\nfn main() {\n    println!(\"hello\");\n}\n```";
+    let output = parse(input);
+    assert!(
+        output.contains(r#"<figure class="code-block">"#),
+        "output: {}",
+        output
+    );
+    assert!(
+        output.contains(r#"<figcaption class="code-filename"><span class="filename">src/main.rs</span></figcaption>"#),
+        "output: {}",
+        output
+    );
+    assert!(output.contains("language-rust"), "output: {}", output);
+}
+
+#[test]
+fn test_code_block_with_filename_without_language() {
+    let input = "```:config.yml\nkey: value\n```";
+    let output = parse(input);
+    assert!(
+        output.contains(r#"<figure class="code-block">"#),
+        "output: {}",
+        output
+    );
+    assert!(output.contains("config.yml"), "output: {}", output);
+    assert!(output.contains("<pre>key: value"), "output: {}", output);
+    assert!(
+        !output.contains("language-umd-nolang"),
+        "output: {}",
+        output
+    );
+}
+
+#[test]
 fn test_table_plugin_applies_bootstrap_variants() {
     let input = "@table(striped,hover){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n}}";
     let output = parse(input);

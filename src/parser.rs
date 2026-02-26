@@ -70,7 +70,7 @@ pub fn parse_to_html(input: &str, options: &ParserOptions) -> String {
     // Render options
     comrak_options.render.hardbreaks = false;
     comrak_options.render.github_pre_lang = false; // Keep language on <code class="language-*"> (no lang on <pre>)
-    comrak_options.render.full_info_string = false;
+    comrak_options.render.full_info_string = true;
     comrak_options.render.width = 0;
     comrak_options.render.r#unsafe = false; // Don't render raw HTML
     comrak_options.render.escape = false;
