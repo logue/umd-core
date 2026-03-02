@@ -229,25 +229,28 @@ document.querySelectorAll("figure.mermaid-diagram").forEach((figure) => {
 
 #### 3. Bootstrap統合版カスタムテーマ
 
+> 補足: このテーマ例では意味付きシステムカラー（`--bs-primary` など）を避け、パレット系トークン（`--bs-blue` など）を優先しています。\
+> ただし、意味づけ自体が仕様であるケース（例: `> ![NOTE]` 系、`COLOR(primary):`、バッジ用途）は例外です。
+
 ```css
 /* ライトモード */
 :root {
-  --code-bg: #f8f9fa;
-  --code-text: #212529;
-  --code-keyword: #0d6efd;
-  --code-string: #198754;
-  --code-comment: #6c757d;
-  --code-number: #fd7e14;
+  --code-bg: var(--bs-light, #f8f9fa);
+  --code-text: var(--bs-gray-900, #212529);
+  --code-keyword: var(--bs-blue, #0d6efd);
+  --code-string: var(--bs-green, #198754);
+  --code-comment: var(--bs-gray, #6c757d);
+  --code-number: var(--bs-orange, #fd7e14);
 }
 
 /* ダークモード */
 [data-bs-theme="dark"] {
-  --code-bg: #212529;
-  --code-text: #f8f9fa;
-  --code-keyword: #0dcaf0;
-  --code-string: #13c798;
-  --code-comment: #adb5bd;
-  --code-number: #ffc107;
+  --code-bg: var(--bs-dark, #212529);
+  --code-text: var(--bs-gray-100, #f8f9fa);
+  --code-keyword: var(--bs-cyan, #0dcaf0);
+  --code-string: var(--bs-teal, #13c798);
+  --code-comment: var(--bs-gray-500, #adb5bd);
+  --code-number: var(--bs-yellow, #ffc107);
 }
 
 code {
@@ -264,8 +267,8 @@ pre code {
 
 /* figcaption スタイル */
 .code-block figcaption {
-  background-color: var(--bs-secondary);
-  color: var(--bs-secondary-color);
+  background-color: var(--bs-gray-200, #e9ecef);
+  color: var(--bs-gray-800, #343a40);
   padding: 0.5rem 1rem;
   border-radius: 0.25rem 0.25rem 0 0;
   font-size: 0.875rem;
@@ -276,7 +279,7 @@ pre code {
   margin: 1rem 0;
   border-radius: 0.25rem;
   overflow: hidden;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--bs-gray-300, #dee2e6);
 }
 ```
 

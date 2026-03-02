@@ -456,6 +456,13 @@ umd/
 - **コード区間の保護**: 正規表現変換前に `protect_code_sections` で保護
 - **新規regex**: 既存の保護パターンを回避しない設計
 
+#### Bootstrapカラー変数の記述規約
+
+- **ドキュメント/サンプルCSS**: 意味付きシステムカラー（`--bs-primary`, `--bs-success`, `--bs-secondary` など）は使用しない
+- **推奨**: 用途に依存しないパレット系トークン（`--bs-blue`, `--bs-cyan`, `--bs-gray-500` など）を使用する
+- **理由**: 同じ色でも「意味（semantic）」と「色相（palette）」を分離し、設計意図の衝突を避ける
+- **例外**: 意味づけ自体が仕様である場合（例: `> ![NOTE]` 系、`COLOR(primary):`、バッジ用途）はこの限りではない
+
 #### UMM固有構文
 
 - **ブロック引用**: `> ... <` → `<blockquote class="umd-blockquote">`（Plain Markdownと異なる）
