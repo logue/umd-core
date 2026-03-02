@@ -133,7 +133,7 @@ fn process_syntax_highlighted_blocks(html: &str) -> String {
                 let decoded = decode_html_entities(code);
                 match highlight_code_with_syntect(lang, &decoded) {
                     Some(highlighted) => format!(
-                        "<pre><code class=\"language-{} syntect-highlight\">{}</code></pre>",
+                        "<pre><code class=\"language-{} syntect-highlight\" data-highlighted=\"true\">{}</code></pre>",
                         lang, highlighted
                     ),
                     None => format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code),
@@ -339,6 +339,7 @@ mod tests {
         let result = process_code_blocks(html);
         assert!(result.contains("language-rust"));
         assert!(result.contains("syntect-highlight"));
+        assert!(result.contains("data-highlighted=\"true\""));
         assert!(result.contains("fn"));
         assert!(result.contains("main"));
     }
@@ -395,6 +396,7 @@ mod tests {
         let html = "<pre><code class=\"language-python\">print('hello')</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("language-python"));
+        assert!(result.contains("data-highlighted=\"true\""));
         assert!(result.contains("print"));
         assert!(result.contains("hello"));
     }

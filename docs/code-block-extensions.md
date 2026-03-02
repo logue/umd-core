@@ -36,9 +36,32 @@ fn main() {
 **出力HTML:**
 
 ```html
-<pre><code class="language-rust">fn main() {
+<pre><code class="language-rust syntect-highlight" data-highlighted="true">fn main() {
     println!("Hello, World!");
 }</code></pre>
+```
+
+#### ハイブリッド方式（処理フロー）
+
+シンタックスハイライトは **Rust優先 + フロントフォールバック** で動作します。
+
+- Syntectで処理できる言語は、Rust側でハイライト済みHTMLを生成
+- ハイライト済み要素には `data-highlighted="true"` を付与
+- Syntect未対応言語は `language-xxx` のまま出力し、フロント側で処理可能
+- Mermaidは別経路でSVGに変換され、通常のコードハイライト対象から外れる
+
+```mermaid
+flowchart TD
+  A[Markdown fenced code] --> B[comrak: code class=language-xxx]
+  B --> C{言語は mermaid?}
+  C -->|Yes| D[Rust: MermaidをSVG化]
+  D --> E[figure.mermaid-diagram を出力]
+  C -->|No| F{Syntectでハイライト可能?}
+  F -->|Yes| G[Rust: ハイライトHTML生成]
+  G --> H[code class="language-xxx syntect-highlight"\ndata-highlighted="true"]
+  F -->|No| I[code class="language-xxx" のまま出力]
+  H --> J[フロント側ハイライト対象から除外]
+  I --> K[フロント側で Prism/HLJS/Shiki が処理]
 ```
 
 ### 2. ファイル名付きコードブロック
@@ -60,7 +83,7 @@ fn main() {
 ```html
 <figure class="code-block code-block-rust">
   <figcaption class="code-filename">main.rs</figcaption>
-  <pre><code class="language-rust">fn main() {
+  <pre><code class="language-rust syntect-highlight" data-highlighted="true">fn main() {
     println!("Hello, World!");
 }</code></pre>
 </figure>
@@ -170,9 +193,13 @@ document.querySelectorAll("figure.mermaid-diagram").forEach((figure) => {
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll("pre code").forEach((el) => {
-      hljs.highlightElement(el);
-    });
+    document
+      .querySelectorAll(
+        'pre code[class*="language-"]:not([data-highlighted="true"])',
+      )
+      .forEach((el) => {
+        hljs.highlightElement(el);
+      });
   });
 </script>
 ```
@@ -191,7 +218,11 @@ document.querySelectorAll("figure.mermaid-diagram").forEach((figure) => {
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    Prism.highlightAll();
+    document
+      .querySelectorAll(
+        'pre code[class*="language-"]:not([data-highlighted="true"])',
+      )
+      .forEach((el) => Prism.highlightElement(el));
   });
 </script>
 ```
@@ -260,16 +291,17 @@ pre code {
 - `process_code_blocks(html: &str) -> String` - メイン処理関数
 - `process_mermaid_blocks(html: &str) -> String` - Mermaid検出と変換
 - `render_mermaid_as_svg(mermaid_code: &str) -> String` - Mermaid → SVG変換
-- `process_syntax_highlighted_blocks(html: &str) -> String` - 言語クラス追加
-- `extract_filename_from_info_string(info: &str) -> Option<String>` - fence info stringからコードブロックタイトル抽出
+- `process_syntax_highlighted_blocks(html: &str) -> String` - Syntectハイライト + フォールバック出力
+- `extract_filename_from_meta(meta: &str) -> Option<String>` - `data-meta`からファイル名抽出
 - `inject_bootstrap_colors(svg: &str) -> String` - Bootstrap CSS変数の注入
 
 #### 処理パイプライン
 
 1. **Mermaid処理**: `language-mermaid`クラスを検索し、Rust側でSVGに変換
-2. **言語別処理**: `language-{lang}`クラスを検索して保持
-3. **タイトル抽出**: fence info stringから`lang: title`形式をパース
-4. **HTML変換**: 検出結果に応じて適切なHTMLを生成
+2. **言語別処理**: `language-{lang}`を判定し、Syntectで処理可能ならハイライトHTMLを生成
+3. **状態付与**: Rust側で処理した`<code>`に`data-highlighted="true"`を付与
+4. **フォールバック**: 未対応言語は`language-{lang}`を保持してそのまま出力
+5. **メタ処理**: `data-meta`からファイル名を抽出し、必要に応じて`<figure>/<figcaption>`を生成
 
 ### パフォーマンス考慮
 
@@ -324,8 +356,8 @@ fn main() {
 ### 現在の制限
 
 - Mermaidのレンダリングはサーバー（Rust）完結
-- シンタックスハイライトはフロントエンド側で実装
-- **コードブロックタイトルは標準 Markdown 形式で指定**（任意のテキストを使用可能、省略できります）
+- Syntect未対応言語はフロントエンド側ハイライトの導入が必要
+- **コードブロックタイトルは標準 Markdown 形式で指定**（任意のテキストを使用可能、省略できます）
 
 ### 今後の拡張計画
 
@@ -347,7 +379,8 @@ fn main() {
 
 1. ハイライトライブラリのCSS/JSが読み込まれているか確認
 2. `<code>`要素に`language-{lang}`クラスがあるか確認
-3. ブラウザのデベロッパーツールで適用されているクラスを確認
+3. `data-highlighted="true"` が付いている場合は、Rust側で処理済みのためフロント側で再処理しない
+4. ブラウザのデベロッパーツールで適用されているクラスを確認
 
 ### コードブロックタイトルが表示されない
 

@@ -4,6 +4,17 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 
 **Status**: Production-ready | **Latest Update**: February 25, 2026 | **License**: MIT
 
+## 🧩 Philosophy
+
+1. **Semantic-First:**
+   Markdown is not just a shorthand for HTML. It is a structured document. Universal Markdown ensures every element is wrapped in semantically correct tags (e.g., using `<figure>` for code blocks) to enhance SEO and accessibility.
+
+2. **Empowerment without Complexity:**
+   Inspired by the PukiWiki legacy, we provide rich formatting (alignment, coloring, etc) without forcing users to write raw HTML. We believe in "Expressive Markdown."
+
+3. **Universal Media Handling:**
+   Redefining the standard image tag as a versatile "Media Tag." Whether it's an image, video, or audio, the parser intelligently determines the best output.
+
 ---
 
 ## Features
@@ -92,8 +103,53 @@ fn main() {
 Output (excerpt):
 
 ```html
-<pre><code class="language-rust syntect-highlight"><span class="syntect-source syntect-rust">...</span></code></pre>
+<pre><code class="language-rust syntect-highlight" data-highlighted="true"><span class="syntect-source syntect-rust">...</span></code></pre>
 ```
+
+### Code Block Specification
+
+UMD code blocks use a Rust-first hybrid strategy with frontend fallback.
+
+#### Output Rules
+
+- `pre` never gets a `lang` attribute
+- Language is represented as `class="language-xxx"` on `<code>`
+- If Syntect highlights on server side:
+  - `class="language-xxx syntect-highlight"`
+  - `data-highlighted="true"` is added
+- If language is not supported by Syntect:
+  - Keep `class="language-xxx"` and let frontend highlighter process it
+- `mermaid` is handled separately and rendered as SVG `<figure class="... mermaid-diagram">`
+
+#### Processing Flow
+
+```mermaid
+flowchart TD
+    A[Fenced code block] --> B[comrak emits code class=language-xxx]
+    B --> C{language == mermaid}
+    C -->|Yes| D[Rust renders Mermaid SVG]
+    D --> E[figure.mermaid-diagram output]
+    C -->|No| F{Syntect supports language?}
+    F -->|Yes| G[Rust highlighted HTML]
+    G --> H[code.language-xxx.syntect-highlight + data-highlighted=true]
+    F -->|No| I[code.language-xxx (fallback)]
+    H --> J[skip client-side re-highlight]
+    I --> K[Prism/Highlight.js/Shiki can process]
+```
+
+#### Frontend Integration Rule
+
+Use selectors that exclude server-highlighted code blocks:
+
+```javascript
+document
+  .querySelectorAll(
+    'pre code[class*="language-"]:not([data-highlighted="true"])',
+  )
+  .forEach((el) => Prism.highlightElement(el));
+```
+
+This prevents double-highlighting and keeps Mermaid processing isolated.
 
 ---
 

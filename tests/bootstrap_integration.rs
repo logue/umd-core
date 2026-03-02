@@ -308,6 +308,7 @@ fn test_code_block_syntax_highlighted_with_syntect() {
     let output = parse(input);
     assert!(output.contains("language-rust"));
     assert!(output.contains("syntect-highlight"));
+    assert!(output.contains("data-highlighted=\"true\""));
     assert!(output.contains("syntect-"));
 }
 

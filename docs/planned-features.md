@@ -884,7 +884,7 @@ def hello():
   <figcaption class="code-filename">
     <span class="filename">test.js</span>
   </figcaption>
-  <pre><code class="language-javascript">function hello() {
+  <pre><code class="language-javascript syntect-highlight" data-highlighted="true">function hello() {
     console.log("Hello, world!");
 }</code></pre>
 </figure>
@@ -893,7 +893,7 @@ def hello():
   <figcaption class="code-filename">
     <span class="filename">main.py</span>
   </figcaption>
-  <pre><code class="language-python">def hello():
+  <pre><code class="language-python syntect-highlight" data-highlighted="true">def hello():
     print("Hello, world!")
 </code></pre>
 </figure>
@@ -1004,7 +1004,7 @@ document.querySelectorAll(".code-block").forEach((figure) => {
 通常のコードブロック（` ```rust `）は`<figure>`で括らず、従来通りの`<pre><code>`のみを出力：
 
 ```html
-<pre><code class="language-rust">fn main() {
+<pre><code class="language-rust syntect-highlight" data-highlighted="true">fn main() {
     println!("Hello, world!");
 }</code></pre>
 ```
@@ -1046,68 +1046,79 @@ fn parse_info_string(info: &str) -> CodeBlockInfo {
 
 **注意**: ファイル名にパス区切り文字（`/`, `\`）が含まれる場合もそのまま表示します（例：`src/main.rs`）。セキュリティ上、ファイル名のサニタイゼーション（パストラバーサル攻撃対策）は不要です（静的な表示のみ）。
 
-#### ハイブリッド方式の設計
+#### ハイブリッド方式（Rust優先 + フロントフォールバック）
 
-**バックエンド処理（UMD層）**:
+現行のシンタックスハイライトは、**Rust側を第一優先**にしつつ、未対応言語のみをフロントエンドに委譲する構成です。
 
-- 言語情報をHTML属性として付与
-- CommonMark標準の`info string`を`class`属性に変換
-- SEO対策として基本構造を提供
+**現行動作の要点**:
 
-**出力HTML**:
+- comrakが `info string` から `language-xxx` クラスを生成
+- UMD（Rust）がSyntectでハイライト可能なら、サーバー側でHTML化
+- サーバー側でハイライト済みの要素には `data-highlighted="true"` を付与
+- Syntect未対応言語は `language-xxx` を維持してそのまま出力（フロント側で処理可能）
+- Mermaidは別経路でSVG化され、通常のコードハイライト対象にならない
 
-```html
-<pre><code class="language-rust">fn main() {
-    println!("Hello, world!");
-}</code></pre>
+#### 処理フロー
+
+```mermaid
+flowchart TD
+  A[Markdown fenced code] --> B[comrak: code class=language-xxx]
+  B --> C{言語は mermaid?}
+  C -->|Yes| D[Rust: MermaidをSVG化]
+  D --> E[figure.mermaid-diagram を出力]
+  C -->|No| F{Syntectでハイライト可能?}
+  F -->|Yes| G[Rust: ハイライトHTML生成]
+  G --> H[code class="language-xxx syntect-highlight"\ndata-highlighted="true"]
+  F -->|No| I[code class="language-xxx" のまま出力]
+  H --> J[フロント側ハイライト対象から除外]
+  I --> K[フロント側で Prism/HLJS/Shiki が処理]
 ```
-
-**フロントエンド処理（オプション）**:
-
-- JavaScript側でプログレッシブエンハンスメントとして実装
-- 例: Prism.js, highlight.js, Shiki等のライブラリを使用
-- インタラクティブ機能の追加が可能
 
 #### ハイブリッド方式の利点
 
-| 利点                 | 説明                                                   |
-| -------------------- | ------------------------------------------------------ |
-| **SEO最適化**        | 検索エンジンがコードブロックを認識・インデックス化可能 |
-| **段階的な機能向上** | JavaScript無効環境でも基本表示が可能                   |
-| **柔軟性**           | フロントエンド側で好みのハイライトエンジンを選択可能   |
-| **軽量**             | バックエンドでの処理は最小限（class属性のみ）          |
-| **パフォーマンス**   | 初期表示はJavaScript不要、ハイライトは非同期で適用可能 |
+| 利点                         | 説明                                                                   |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| **SEO最適化**                | ハイライト済みHTML/SVGをサーバー出力できる                             |
+| **安定した初期表示**         | JavaScript無効でも、Rust側で処理済みの言語は視認性を確保               |
+| **未対応言語への柔軟な対応** | `language-xxx` を残すため、フロント側で追加言語を後付け可能            |
+| **二重処理の回避**           | `data-highlighted="true"` を使って、クライアント再ハイライトを防止可能 |
+| **拡張性**                   | コピー機能・行番号などはフロントで段階的に追加できる                   |
 
 #### 技術的詳細（シンタックスハイライト）
 
-**Rust側での実装**:
+**Rust側の実装ポイント**:
 
-現在、comrakは自動的に言語情報を`class`属性に変換しています：
+- 実装ファイル: `src/extensions/code_block.rs`
+- Syntect適用時の出力: `class="language-<lang> syntect-highlight" data-highlighted="true"`
+- Syntect未適用時の出力: `class="language-<lang>"`（フォールバック）
 
-```rust
-// comrakが既に実装している機能
-// `info string`から`language-xxx`クラスを生成
+**出力HTML例（サーバー側でハイライト済み）**:
+
+```html
+<pre><code class="language-rust syntect-highlight" data-highlighted="true">...</code></pre>
 ```
 
-UMD側では追加処理は不要。既存の動作を維持します。
+**出力HTML例（フォールバック）**:
 
-**サポートされる言語**:
-
-- 言語名は自由に指定可能
-- HTML属性として`class="language-{info_string}"`の形式で出力
-- フロントエンド側のハイライトエンジンが対応している言語に依存
+```html
+<pre><code class="language-kql">...</code></pre>
+```
 
 #### フロントエンド統合例
 
 **Prism.js を使用する場合**:
 
 ```html
-<!-- ページに追加 -->
 <link rel="stylesheet" href="prism.css" />
 <script src="prism.js"></script>
+<script>
+  document
+    .querySelectorAll(
+      'pre code[class*="language-"]:not([data-highlighted="true"])',
+    )
+    .forEach((el) => Prism.highlightElement(el));
+</script>
 ```
-
-UMDが出力した`<code class="language-xxx">`要素を自動的に検出してハイライト適用。
 
 **highlight.js を使用する場合**:
 
@@ -1115,20 +1126,33 @@ UMDが出力した`<code class="language-xxx">`要素を自動的に検出して
 <link rel="stylesheet" href="highlight.css" />
 <script src="highlight.js"></script>
 <script>
-  hljs.highlightAll();
+  document
+    .querySelectorAll(
+      'pre code[class*="language-"]:not([data-highlighted="true"])',
+    )
+    .forEach((el) => hljs.highlightElement(el));
 </script>
 ```
 
-**Shiki を使用する場合** (より高度な選択肢):
+**Shiki を使用する場合**（より高度な選択肢）:
 
 ```javascript
 import { getHighlighter } from "shiki";
 
 const highlighter = await getHighlighter({ theme: "nord" });
-document.querySelectorAll('pre code[class^="language-"]').forEach((el) => {
-  const lang = el.className.replace("language-", "");
-  el.innerHTML = highlighter.codeToHtml(el.textContent, { lang });
-});
+document
+  .querySelectorAll(
+    'pre code[class*="language-"]:not([data-highlighted="true"])',
+  )
+  .forEach((el) => {
+    const lang = Array.from(el.classList)
+      .find((className) => className.startsWith("language-"))
+      ?.replace("language-", "");
+
+    if (!lang) return;
+
+    el.innerHTML = highlighter.codeToHtml(el.textContent ?? "", { lang });
+  });
 ```
 
 #### インタラクティブ機能の追加例
@@ -1179,7 +1203,7 @@ fn main() {              // ハイライト行
 | 項目           | ハイブリッド方式        | 完全バックエンド処理 |
 | -------------- | ----------------------- | -------------------- |
 | 実装の複雑さ   | ✅ シンプル             | ⚠️ 複雑              |
-| サーバー負荷   | ✅ 最小限               | ⚠️ 増加              |
+| サーバー負荷   | ⚠️ 中程度（言語依存）   | ⚠️ 増加              |
 | HTMLサイズ     | ✅ 軽量                 | ⚠️ 大幅増加          |
 | SEO            | ✅ 十分                 | ✅ 最適              |
 | カスタマイズ性 | ✅ フロントエンドで自由 | ⚠️ Rust側で固定      |
@@ -1191,7 +1215,9 @@ fn main() {              // ハイライト行
 
 **Phase 1** (現状):
 
-- ✅ 基本的な`class`属性付与（comrakがすでに実装済み）
+- ✅ Syntectによるサーバー側ハイライト
+- ✅ ハイライト済み要素に`data-highlighted="true"`を付与
+- ✅ 未対応言語は`language-xxx`のまま出力（フロント側フォールバック）
 
 **Phase 2** (次期):
 
