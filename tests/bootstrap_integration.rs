@@ -466,3 +466,53 @@ fn test_math_formula_block_with_content_support() {
     assert!(output.contains("display=\"block\""), "output: {}", output);
     assert!(!output.contains("umd-plugin-math"), "output: {}", output);
 }
+
+#[test]
+fn test_inline_code_hex_color_adds_swatch() {
+    let input = "`#ffce44`";
+    let output = parse(input);
+    assert!(
+        output.contains(
+            r#"<code>#ffce44<span class="inline-code-color" style="background-color: #ffce44;"></span></code>"#
+        ),
+        "output: {}",
+        output
+    );
+}
+
+#[test]
+fn test_inline_code_function_color_adds_swatch() {
+    let test_cases = vec![
+        "rgb(255,0,0)",
+        "rgba(0,255,0,0.4)",
+        "hsl(100, 10%, 10%)",
+        "hsla(100, 24%, 40%, 0.5)",
+    ];
+
+    for color in test_cases {
+        let input = format!("`{}`", color);
+        let output = parse(&input);
+        let expected = format!(
+            r#"<code>{}<span class="inline-code-color" style="background-color: {};"></span></code>"#,
+            color, color
+        );
+        assert!(
+            output.contains(&expected),
+            "color: {} output: {}",
+            color,
+            output
+        );
+    }
+}
+
+#[test]
+fn test_inline_code_non_color_does_not_add_swatch() {
+    let input = "`not-a-color`";
+    let output = parse(input);
+    assert!(
+        output.contains("<code>not-a-color</code>"),
+        "output: {}",
+        output
+    );
+    assert!(!output.contains("inline-code-color"), "output: {}", output);
+}

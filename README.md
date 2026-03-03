@@ -2,7 +2,7 @@
 
 A next-generation Markdown parser built with Rust, combining CommonMark compliance (~75%+), Bootstrap 5 integration, semantic HTML generation, and an extensible plugin system. Maintains backward compatibility with UMD legacy syntax.
 
-**Status**: Production-ready | **Latest Update**: February 25, 2026 | **License**: MIT
+**Status**: Production-ready | **Latest Update**: 2026-03-03 | **License**: MIT
 
 ## 🧩 Philosophy
 
@@ -248,6 +248,63 @@ CENTER: Centered paragraph → <p class="text-center">Centered paragraph</p>
 &ruby(reading){漢字}; → <ruby>漢字<rp>(</rp><rt>reading</rt><rp>)</rp></ruby>
 &sup(superscript); → <sup>superscript</sup>
 &time(2026-02-25){Today}; → <time datetime="2026-02-25">Today</time>
+```
+
+### Inline Code Color Swatch
+
+```markdown
+`#ffce44`
+`rgb(255,0,0)`
+`rgba(0,255,0,0.4)`
+`hsl(100, 10%, 10%)`
+`hsla(100, 24%, 40%, 0.5)`
+```
+
+```html
+<code
+  >#ffce44<span
+    class="inline-code-color"
+    style="background-color: #ffce44;"
+  ></span
+></code>
+<code
+  >rgb(255,0,0)<span
+    class="inline-code-color"
+    style="background-color: rgb(255,0,0);"
+  ></span
+></code>
+<code
+  >rgba(0,255,0,0.4)<span
+    class="inline-code-color"
+    style="background-color: rgba(0,255,0,0.4);"
+  ></span
+></code>
+<code
+  >hsl(100, 10%, 10%)<span
+    class="inline-code-color"
+    style="background-color: hsl(100, 10%, 10%);"
+  ></span
+></code>
+<code
+  >hsla(100, 24%, 40%, 0.5)<span
+    class="inline-code-color"
+    style="background-color: hsla(100, 24%, 40%, 0.5);"
+  ></span
+></code>
+```
+
+Recommended CSS:
+
+```css
+code .inline-code-color {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.4em;
+  border-radius: 0.2em;
+  border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.2));
+  vertical-align: middle;
+}
 ```
 
 ### Plugins

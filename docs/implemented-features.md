@@ -1,6 +1,6 @@
 # 実装済み機能リファレンス
 
-**最終更新**: 2026年2月26日
+**最終更新**: 2026年3月3日
 
 このドキュメントはUniversal Markdownで実装済みの機能を記載しています。
 
@@ -111,6 +111,72 @@ fn main() {
 
 - `:config.yml` のような言語なしファイル名指定にも対応
 - 通常のコードブロック（ファイル名なし）は従来通り出力
+
+### インラインコードのカラーサンプル
+
+インラインコード（`` `...` ``）の中身がCSSカラーコードの場合、`<code>` の末尾に色サンプルを自動追加します。
+
+**対応形式**:
+
+- HEX: `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`
+- RGB: `rgb(r,g,b)`
+- RGBA: `rgba(r,g,b,a)`
+- HSL: `hsl(h, s%, l%)`
+- HSLA: `hsla(h, s%, l%, a)`
+
+**出力例**:
+
+```html
+<code
+  >#ffce44<span
+    class="inline-code-color"
+    style="background-color: #ffce44;"
+  ></span
+></code>
+<code
+  >rgb(255,0,0)<span
+    class="inline-code-color"
+    style="background-color: rgb(255,0,0);"
+  ></span
+></code>
+<code
+  >rgba(0,255,0,0.4)<span
+    class="inline-code-color"
+    style="background-color: rgba(0,255,0,0.4);"
+  ></span
+></code>
+<code
+  >hsl(100, 10%, 10%)<span
+    class="inline-code-color"
+    style="background-color: hsl(100, 10%, 10%);"
+  ></span
+></code>
+<code
+  >hsla(100, 24%, 40%, 0.5)<span
+    class="inline-code-color"
+    style="background-color: hsla(100, 24%, 40%, 0.5);"
+  ></span
+></code>
+```
+
+**補足**:
+
+- 色コードとして妥当な値のみサンプルを追加します
+- 通常のインラインコード（非カラー文字列）は従来どおり `<code>...</code>` のみ出力します
+
+**推奨CSS**:
+
+```css
+code .inline-code-color {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.4em;
+  border-radius: 0.2em;
+  border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.2));
+  vertical-align: middle;
+}
+```
 
 ### リスト
 

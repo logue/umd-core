@@ -1,6 +1,6 @@
 # ドキュメント索引
 
-**最終更新**: 2026年2月26日
+**最終更新**: 2026年3月3日
 
 Universal Markdown (UMD) の主要ドキュメントへの入口です。
 
@@ -10,6 +10,7 @@ Universal Markdown (UMD) の主要ドキュメントへの入口です。
 - **実装アーキテクチャを確認したい** → [architecture.md](architecture.md)
 - **実装済み仕様を確認したい** → [implemented-features.md](implemented-features.md)
 - **未実装/提案仕様を確認したい** → [planned-features.md](planned-features.md)
+- **テンプレートエンジン仕様の詳細を確認したい** → [template-engine-spec.md](template-engine-spec.md)
 - **実装計画・進捗を確認したい** → [PLAN.md](../PLAN.md)
 - **WASMビルド手順を確認したい** → [WASM_BUILD.md](../WASM_BUILD.md)
 
