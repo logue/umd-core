@@ -12,6 +12,13 @@ documentation = "https://docs.rs/umd"
 readme = "README.md"
 keywords = ["markdown", "parser", "commonmark", "bootstrap", "wasm"]
 categories = ["parser-implementations", "text-processing", "wasm"]
+exclude = [
+  ".github/**",
+  "target/**",
+  "pkg/**",
+  "AI_Handover_Document.md",
+  "test_table",
+]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

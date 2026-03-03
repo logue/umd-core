@@ -30,6 +30,7 @@ cargo package --list
 5. Publish according to `PUBLISHING.md`.
 6. Create git tag: `vX.Y.Z`.
 7. Create GitHub Release with summary from `CHANGELOG.md`.
+8. Update or add a versioned release note file (e.g. `RELEASE_NOTES_v0.1.0.md`) and paste it into the GitHub Release body.
 
 ## Release notes format
 
