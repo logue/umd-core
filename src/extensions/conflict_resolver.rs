@@ -10,6 +10,13 @@ use std::collections::HashMap;
 use super::plugin_markers;
 use super::preprocessor;
 
+thread_local! {
+    static MATH_CONVERTER: std::cell::RefCell<Option<math_core::LatexToMathML>> =
+        std::cell::RefCell::new(
+            math_core::LatexToMathML::new(math_core::MathCoreConfig::default()).ok()
+        );
+}
+
 /// Escape HTML special characters
 ///
 /// # Arguments
@@ -491,6 +498,7 @@ fn convert_inline_decoration_argsonly_to_html(function: &str, args: &str) -> Opt
     match function {
         "sup" => Some(format!("<sup>{}</sup>", args)),
         "sub" => Some(format!("<sub>{}</sub>", args)),
+        "math" => render_math_html(args, false),
         _ => None,
     }
 }
@@ -502,6 +510,47 @@ fn convert_inline_decoration_noargs_to_html(function: &str) -> Option<String> {
         "br" => Some("<br />".to_string()),
         _ => None,
     }
+}
+
+fn render_math_html(formula: &str, block_display: bool) -> Option<String> {
+    let formula = formula.trim();
+    if formula.is_empty() {
+        return None;
+    }
+
+    let display = if block_display {
+        math_core::MathDisplay::Block
+    } else {
+        math_core::MathDisplay::Inline
+    };
+
+    let converted = MATH_CONVERTER.with(|converter_cell| {
+        let mut converter = converter_cell.borrow_mut();
+        converter
+            .as_mut()
+            .and_then(|converter| converter.convert_with_local_counter(formula, display).ok())
+    });
+
+    match converted {
+        Some(mathml) => Some(mathml),
+        None => Some(format!(
+            "<span class=\"umd-math-error\" data-math-source=\"{}\">{}</span>",
+            escape_html_text(formula),
+            escape_html_text(formula)
+        )),
+    }
+}
+
+fn render_popover_html(trigger_text: &str, raw_content: &str) -> String {
+    let popover_id = format!("umd-popover-{}", uuid::Uuid::new_v4().simple());
+    let content_html = crate::parse(raw_content);
+    format!(
+        "<button command=\"show-popover\" commandfor=\"{}\">{}</button><div id=\"{}\" popover>{}</div>",
+        popover_id,
+        escape_html_text(trigger_text.trim()),
+        popover_id,
+        content_html
+    )
 }
 
 fn is_valid_link_attr_token(token: &str) -> bool {
@@ -725,6 +774,21 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_content.to_string());
 
+            if function == "math" {
+                let formula = if content.trim().is_empty() {
+                    args
+                } else {
+                    &content
+                };
+                if let Some(mathml) = render_math_html(formula, false) {
+                    return mathml;
+                }
+            }
+
+            if function == "popover" {
+                return render_popover_html(args, &content);
+            }
+
             // Try to convert as inline decoration function
             if let Some(html) = convert_inline_decoration_to_html(function, args, &content) {
                 return html;
@@ -812,6 +876,21 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
                 return process_table_plugin(args, &content);
             }
 
+            if function == "math" {
+                let formula = if content.trim().is_empty() {
+                    args
+                } else {
+                    &content
+                };
+                if let Some(mathml) = render_math_html(formula, true) {
+                    return mathml;
+                }
+            }
+
+            if function == "popover" {
+                return render_popover_html(args, &content);
+            }
+
             let args_html = render_args_as_data(args);
             let escaped_content = escape_html_text(&content);
 
@@ -848,6 +927,12 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 
             if function == "clear" && args.trim().is_empty() {
                 return "<div class=\"clearfix\"></div>".to_string();
+            }
+
+            if function == "math" {
+                if let Some(mathml) = render_math_html(&args, true) {
+                    return mathml;
+                }
             }
 
             let args_html = render_args_as_data(&args);

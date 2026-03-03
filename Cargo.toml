@@ -27,6 +27,7 @@ serde = { version = "1.0.228", features = ["derive"] } # Serialization
 uuid = { version = "1.21.0", features = [
   "v4",
 ] } # UUID generation for diagram IDs
+math-core = "0.5.2" # LaTeX to MathML Core conversion for &math/@math
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 mermaid-rs-renderer = { version = "0.2.0", default-features = false } # Mermaid SSR (native only)

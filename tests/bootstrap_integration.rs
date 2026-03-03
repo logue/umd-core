@@ -390,3 +390,79 @@ fn test_table_plugin_without_table_falls_back_to_content() {
     assert!(output.contains("これはテキストです"), "output: {}", output);
     assert!(!output.contains("umd-plugin-table"), "output: {}", output);
 }
+
+#[test]
+fn test_math_formula_inline_support() {
+    let input = "&math(\\frac{a}{b});";
+    let output = parse(input);
+
+    assert!(output.contains("<math"), "output: {}", output);
+    assert!(
+        output.contains("<mfrac>") || output.contains("<mrow>"),
+        "output: {}",
+        output
+    );
+}
+
+#[test]
+fn test_popover_inline_support() {
+    let input = "テキスト&popover(詳細){短い補足説明です};テキスト";
+    let output = parse(input);
+
+    assert!(
+        output.contains("command=\"show-popover\""),
+        "output: {}",
+        output
+    );
+    assert!(
+        output.contains("commandfor=\"umd-popover-"),
+        "output: {}",
+        output
+    );
+    assert!(output.contains(" popover>"), "output: {}", output);
+    assert!(output.contains("短い補足説明です"), "output: {}", output);
+}
+
+#[test]
+fn test_popover_block_support() {
+    let input = "@popover(詳細を表示){{\n**重要**\n\n- 項目1\n- 項目2\n}}";
+    let output = parse(input);
+
+    assert!(
+        output.contains("command=\"show-popover\""),
+        "output: {}",
+        output
+    );
+    assert!(output.contains("詳細を表示</button>"), "output: {}", output);
+    assert!(
+        output.contains("<strong>重要</strong>"),
+        "output: {}",
+        output
+    );
+    assert!(output.contains("<ul>"), "output: {}", output);
+}
+
+#[test]
+fn test_math_formula_block_argsonly_support() {
+    let input = "@math(\\frac{a}{b})";
+    let output = parse(input);
+
+    assert!(output.contains("<math"), "output: {}", output);
+    assert!(output.contains("display=\"block\""), "output: {}", output);
+    assert!(
+        output.contains("<mfrac>") || output.contains("<mrow>"),
+        "output: {}",
+        output
+    );
+    assert!(!output.contains("umd-plugin-math"), "output: {}", output);
+}
+
+#[test]
+fn test_math_formula_block_with_content_support() {
+    let input = "@math(){{\\sum_{i=1}^{n} i}}";
+    let output = parse(input);
+
+    assert!(output.contains("<math"), "output: {}", output);
+    assert!(output.contains("display=\"block\""), "output: {}", output);
+    assert!(!output.contains("umd-plugin-math"), "output: {}", output);
+}
