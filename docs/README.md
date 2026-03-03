@@ -13,6 +13,10 @@ Universal Markdown (UMD) の主要ドキュメントへの入口です。
 - **テンプレートエンジン仕様の詳細を確認したい** → [template-engine-spec.md](template-engine-spec.md)
 - **実装計画・進捗を確認したい** → [PLAN.md](../PLAN.md)
 - **WASMビルド手順を確認したい** → [WASM_BUILD.md](../WASM_BUILD.md)
+- **crate公開手順を確認したい** → [PUBLISHING.md](../PUBLISHING.md)
+- **リリース運用を確認したい** → [RELEASE.md](../RELEASE.md)
+- **変更履歴を確認したい** → [CHANGELOG.md](../CHANGELOG.md)
+- **脆弱性報告手順を確認したい** → [SECURITY.md](../SECURITY.md)
 
 ## 優先参照順（開発時）
 

@@ -1,6 +1,6 @@
 # Copilot Instructions for umd-core
 
-**最終更新**: 2026年2月24日
+**最終更新**: 2026年3月3日
 
 AI駆動開発のためのクイックリファレンス。詳細は [docs/architecture.md](../docs/architecture.md) を参照してください。
 
@@ -68,6 +68,22 @@ cargo run --example test_plugin_extended
 
 詳細は `docs/architecture.md` の「ビルド・テスト・デバッグワークフロー」セクション参照。
 
+## crates.io公開ドキュメント運用
+
+Rust crate の公開関連は以下を一次情報として扱う：
+
+- `PUBLISHING.md` - crates.io 公開手順（事前確認、package確認、publish、公開後検証）
+- `RELEASE.md` - リリース運用（SemVer、タグ、リリースノート）
+- `CHANGELOG.md` - 変更履歴（Keep a Changelog 形式）
+- `SECURITY.md` - 脆弱性報告（GitHub Security Advisory）
+
+運用ルール：
+
+- 公開前に `cargo build --verbose && cargo test --verbose` を必須実行
+- 公開前に `cargo package --list` で同梱物を確認
+- 公開時は Rust crate のみを対象とし、`pkg/` の npm 公開手順は本スコープ外
+- `README.md` は利用者向け概要、公開運用詳細は上記4文書へ分離する
+
 ## ドキュメント体系
 
 - **[docs/architecture.md](../docs/architecture.md)** - システムアーキテクチャ、処理フロー、コンポーネント詳細、開発者ガイド
@@ -75,6 +91,10 @@ cargo run --example test_plugin_extended
 - **[docs/planned-features.md](../docs/planned-features.md)** - 実装予定機能の仕様
 - **[PLAN.md](../PLAN.md)** - 未実装機能と実装計画
 - **[README.md](../README.md)** - プロジェクト概要とユーザー向けドキュメント
+- **[PUBLISHING.md](../PUBLISHING.md)** - crates.io 公開手順
+- **[RELEASE.md](../RELEASE.md)** - リリース運用手順
+- **[CHANGELOG.md](../CHANGELOG.md)** - 変更履歴
+- **[SECURITY.md](../SECURITY.md)** - セキュリティポリシー
 
 ## 複数AI対応
 

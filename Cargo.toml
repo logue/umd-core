@@ -7,6 +7,11 @@ license = "MIT"
 authors = ["logue"]
 description = "Universal Markdown - A post-Markdown superset with Bootstrap 5 integration and extensible syntax"
 repository = "https://github.com/logue/umd-core"
+homepage = "https://github.com/logue/umd-core"
+documentation = "https://docs.rs/umd"
+readme = "README.md"
+keywords = ["markdown", "parser", "commonmark", "bootstrap", "wasm"]
+categories = ["parser-implementations", "text-processing", "wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

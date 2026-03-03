@@ -348,6 +348,13 @@ CENTER:
 - **[PLAN.md](PLAN.md)** - Implementation status and milestone tracking
 - **[.github/copilot-instructions.md](.github/copilot-instructions.md)** - AI agent quick reference for development
 
+## Publishing & Maintenance
+
+- **[PUBLISHING.md](PUBLISHING.md)** - crates.io publishing checklist and commands
+- **[RELEASE.md](RELEASE.md)** - SemVer and release operation guide
+- **[CHANGELOG.md](CHANGELOG.md)** - Project change history
+- **[SECURITY.md](SECURITY.md)** - Vulnerability reporting policy
+
 ---
 
 ## Architecture Overview
