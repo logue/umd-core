@@ -22,15 +22,16 @@ unicode-segmentation = "1.12.0" # Grapheme cluster handling
 html-escape = "0.2.13" # HTML escaping
 base64 = "0.22.1" # Base64 encoding for content protection
 serde_json = "1.0.149" # JSON serialization for definition lists
-syntect = "5.3.0" # Syntax highlighting (Sublime Text based)
 serde = { version = "1.0.228", features = ["derive"] } # Serialization
 uuid = { version = "1.21.0", features = [
   "v4",
+  "js",
 ] } # UUID generation for diagram IDs
 math-core = "0.5.2" # LaTeX to MathML Core conversion for &math/@math
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 mermaid-rs-renderer = { version = "0.2.0", default-features = false } # Mermaid SSR (native only)
+syntect = "5.3.0"                                                     # Syntax highlighting (native only)
 
 [dev-dependencies]
 insta = "1.46.3"             # Snapshot testing

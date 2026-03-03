@@ -7,8 +7,11 @@
 
 use once_cell::sync::Lazy;
 use regex::Regex;
+#[cfg(not(target_arch = "wasm32"))]
 use syntect::html::{ClassStyle, ClassedHTMLGenerator};
+#[cfg(not(target_arch = "wasm32"))]
 use syntect::parsing::SyntaxSet;
+#[cfg(not(target_arch = "wasm32"))]
 use syntect::util::LinesWithEndings;
 use uuid::Uuid;
 
@@ -26,6 +29,7 @@ static HTML_ATTR_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*\"([^\"]*)\""#).expect("valid html attr regex")
 });
 
+#[cfg(not(target_arch = "wasm32"))]
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 
 /// Process code blocks with syntax highlighting and metadata
@@ -213,27 +217,36 @@ fn render_mermaid_as_svg(mermaid_code: &str) -> Result<String, String> {
 }
 
 fn highlight_code_with_syntect(language: &str, source: &str) -> Option<String> {
-    let syntax = SYNTAX_SET
-        .find_syntax_by_token(language)
-        .or_else(|| SYNTAX_SET.find_syntax_by_name(language))
-        .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let syntax = SYNTAX_SET
+            .find_syntax_by_token(language)
+            .or_else(|| SYNTAX_SET.find_syntax_by_name(language))
+            .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
 
-    let mut generator = ClassedHTMLGenerator::new_with_class_style(
-        syntax,
-        &SYNTAX_SET,
-        ClassStyle::SpacedPrefixed { prefix: "syntect-" },
-    );
+        let mut generator = ClassedHTMLGenerator::new_with_class_style(
+            syntax,
+            &SYNTAX_SET,
+            ClassStyle::SpacedPrefixed { prefix: "syntect-" },
+        );
 
-    for line in LinesWithEndings::from(source) {
-        if generator
-            .parse_html_for_line_which_includes_newline(line)
-            .is_err()
-        {
-            return None;
+        for line in LinesWithEndings::from(source) {
+            if generator
+                .parse_html_for_line_which_includes_newline(line)
+                .is_err()
+            {
+                return None;
+            }
         }
+
+        Some(generator.finalize())
     }
 
-    Some(generator.finalize())
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = (language, source);
+        None
+    }
 }
 
 /// Inject Bootstrap CSS variables for diagram coloring

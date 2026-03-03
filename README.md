@@ -125,16 +125,16 @@ UMD code blocks use a Rust-first hybrid strategy with frontend fallback.
 
 ```mermaid
 flowchart TD
-    A[Fenced code block] --> B[comrak emits code class=language-xxx]
-    B --> C{language == mermaid}
-    C -->|Yes| D[Rust renders Mermaid SVG]
-    D --> E[figure.mermaid-diagram output]
-    C -->|No| F{Syntect supports language?}
-    F -->|Yes| G[Rust highlighted HTML]
-    G --> H[code.language-xxx.syntect-highlight + data-highlighted=true]
-    F -->|No| I[code.language-xxx (fallback)]
-    H --> J[skip client-side re-highlight]
-    I --> K[Prism/Highlight.js/Shiki can process]
+  A[Fenced code block] --> B[comrak parses code block]
+  B --> C{Mermaid language}
+  C -->|Yes| D[Rust renders Mermaid SVG]
+  D --> E[Output mermaid-diagram figure]
+  C -->|No| F{Syntect supported}
+  F -->|Yes| G[Rust applies syntax highlight]
+  G --> H[code with syntect and highlighted flag]
+  F -->|No| I[code keeps language class]
+  H --> J[Skip client rehighlight]
+  I --> K[Client highlighter can process]
 ```
 
 #### Frontend Integration Rule
