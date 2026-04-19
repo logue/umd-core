@@ -15,6 +15,8 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 3. **Universal Media Handling:**
    Redefining the standard image tag as a versatile "Media Tag." Whether it's an image, video, or audio, the parser intelligently determines the best output.
 
+[See aslo (Japanese)](https://qiita.com/logue/items/244d6d31a63e3509418f)
+
 ---
 
 ## Features
