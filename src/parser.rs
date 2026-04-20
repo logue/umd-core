@@ -46,6 +46,11 @@ pub struct ParserOptions {
     /// Base URL for resolving absolute paths (e.g., "/umd-core", "https://example.com/app")
     /// If set, absolute paths (starting with "/") will be prefixed with this base URL
     pub base_url: Option<String>,
+    /// Allow media type detection from fragment extension hints like `#.png`.
+    ///
+    /// Disabled by default for safer behavior; enable only when you trust
+    /// the source content and need extension-less URL fallback.
+    pub allow_fragment_extension_hint: bool,
     /// Icon configuration for media elements (video/audio fallback links, downloadable files)
     pub media_icons: MediaIcons,
 }
@@ -57,6 +62,7 @@ impl Default for ParserOptions {
             umd_extensions: true,
             max_heading_level: 5,
             base_url: None,
+            allow_fragment_extension_hint: false,
             media_icons: MediaIcons::default(),
         }
     }

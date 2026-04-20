@@ -14,6 +14,59 @@ pub enum MediaType {
     Downloadable,
 }
 
+fn media_type_from_extension(ext: &str) -> Option<MediaType> {
+    match ext {
+        // Video extensions
+        "mp4" | "webm" | "ogv" | "mov" | "avi" | "mkv" | "m4v" => Some(MediaType::Video),
+        // Audio extensions
+        "mp3" | "wav" | "ogg" | "oga" | "m4a" | "aac" | "flac" | "opus" | "weba" => {
+            Some(MediaType::Audio)
+        }
+        // Image extensions
+        "jpg" | "jpeg" | "png" | "gif" | "svg" | "webp" | "avif" | "bmp" | "ico" | "jxl"
+        | "tif" | "tiff" => Some(MediaType::Image),
+        // Downloadable file extensions
+        // Archive formats
+        "zip" | "tar" | "gz" | "7z" | "rar" | "bz2" | "xz" => Some(MediaType::Downloadable),
+        // Document formats
+        "pdf" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "odt" | "ods" | "odp" => {
+            Some(MediaType::Downloadable)
+        }
+        // Text formats
+        "txt" | "md" | "csv" | "json" | "xml" | "yaml" | "yml" | "toml" => {
+            Some(MediaType::Downloadable)
+        }
+        // Executable formats
+        "exe" | "dmg" | "deb" | "rpm" | "app" | "apk" | "msi" => Some(MediaType::Downloadable),
+        _ => None,
+    }
+}
+
+fn resolve_extension(url: &str, allow_fragment_extension_hint: bool) -> Option<String> {
+    // 1) Prefer path extension from the actual URL path.
+    let path = url.split('?').next()?.split('#').next()?;
+    if let Some(ext) = Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+    {
+        return Some(ext);
+    }
+
+    // 2) Optionally allow fragment hint extension (e.g. `#.png`) for extension-less URLs.
+    if !allow_fragment_extension_hint {
+        return None;
+    }
+
+    let fragment = url.split('#').nth(1)?;
+    let hinted = fragment.strip_prefix('.')?;
+    if hinted.is_empty() || !hinted.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return None;
+    }
+
+    Some(hinted.to_lowercase())
+}
+
 /// Detect media type from URL
 ///
 /// # Arguments
@@ -36,38 +89,16 @@ pub enum MediaType {
 /// assert_eq!(detect_media_type("file.unknown"), None);
 /// ```
 pub fn detect_media_type(url: &str) -> Option<MediaType> {
-    // Extract path without query parameters or fragments
-    let path = url.split('?').next()?.split('#').next()?;
+    detect_media_type_with_hint(url, false)
+}
 
-    // Get extension
-    let ext = Path::new(path).extension()?.to_str()?.to_lowercase();
-
-    match ext.as_str() {
-        // Video extensions
-        "mp4" | "webm" | "ogv" | "mov" | "avi" | "mkv" | "m4v" => Some(MediaType::Video),
-        // Audio extensions
-        "mp3" | "wav" | "ogg" | "oga" | "m4a" | "aac" | "flac" | "opus" | "weba" => {
-            Some(MediaType::Audio)
-        }
-        // Image extensions
-        "jpg" | "jpeg" | "png" | "gif" | "svg" | "webp" | "avif" | "bmp" | "ico" | "jxl" => {
-            Some(MediaType::Image)
-        }
-        // Downloadable file extensions
-        // Archive formats
-        "zip" | "tar" | "gz" | "7z" | "rar" | "bz2" | "xz" => Some(MediaType::Downloadable),
-        // Document formats
-        "pdf" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "odt" | "ods" | "odp" => {
-            Some(MediaType::Downloadable)
-        }
-        // Text formats
-        "txt" | "md" | "csv" | "json" | "xml" | "yaml" | "yml" | "toml" => {
-            Some(MediaType::Downloadable)
-        }
-        // Executable formats
-        "exe" | "dmg" | "deb" | "rpm" | "app" | "apk" | "msi" => Some(MediaType::Downloadable),
-        _ => None,
-    }
+/// Detect media type from URL with optional fragment extension hint support.
+pub fn detect_media_type_with_hint(
+    url: &str,
+    allow_fragment_extension_hint: bool,
+) -> Option<MediaType> {
+    let ext = resolve_extension(url, allow_fragment_extension_hint)?;
+    media_type_from_extension(ext.as_str())
 }
 
 /// Get MIME type for a file extension
@@ -80,19 +111,12 @@ pub fn detect_media_type(url: &str) -> Option<MediaType> {
 /// # Returns
 ///
 /// MIME type string
-fn get_mime_type(url: &str, media_type: &MediaType) -> String {
-    let path = url
-        .split('?')
-        .next()
-        .unwrap_or(url)
-        .split('#')
-        .next()
-        .unwrap_or(url);
-    let ext = Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_lowercase())
-        .unwrap_or_default();
+fn get_mime_type_with_hint(
+    url: &str,
+    media_type: &MediaType,
+    allow_fragment_extension_hint: bool,
+) -> String {
+    let ext = resolve_extension(url, allow_fragment_extension_hint).unwrap_or_default();
 
     match media_type {
         MediaType::Video => match ext.as_str() {
@@ -171,7 +195,18 @@ pub fn generate_media_html(
     media_type: &MediaType,
     icons: &crate::parser::MediaIcons,
 ) -> String {
-    let mime_type = get_mime_type(url, media_type);
+    generate_media_html_with_hint(url, alt, title, media_type, icons, false)
+}
+
+fn generate_media_html_with_hint(
+    url: &str,
+    alt: &str,
+    title: Option<&str>,
+    media_type: &MediaType,
+    icons: &crate::parser::MediaIcons,
+    allow_fragment_extension_hint: bool,
+) -> String {
+    let mime_type = get_mime_type_with_hint(url, media_type, allow_fragment_extension_hint);
     let title_attr = title
         .map(|t| format!(" title=\"{}\"", escape_html(t)))
         .unwrap_or_default();
@@ -260,10 +295,14 @@ fn escape_html(input: &str) -> String {
 /// use umd::parser::MediaIcons;
 ///
 /// let html = r#"<img src="video.mp4" alt="Demo" />"#;
-/// let result = transform_images_to_media(html, &MediaIcons::default());
+/// let result = transform_images_to_media(html, &MediaIcons::default(), false);
 /// assert!(result.contains("<video"));
 /// ```
-pub fn transform_images_to_media(html: &str, icons: &crate::parser::MediaIcons) -> String {
+pub fn transform_images_to_media(
+    html: &str,
+    icons: &crate::parser::MediaIcons,
+    allow_fragment_extension_hint: bool,
+) -> String {
     use regex::Regex;
 
     // Pattern to match <img> tags with src and alt attributes
@@ -278,8 +317,17 @@ pub fn transform_images_to_media(html: &str, icons: &crate::parser::MediaIcons) 
             let title = caps.get(3).map(|m| m.as_str());
 
             // Detect media type and generate appropriate HTML
-            if let Some(media_type) = detect_media_type(url) {
-                generate_media_html(url, alt, title, &media_type, icons)
+            if let Some(media_type) =
+                detect_media_type_with_hint(url, allow_fragment_extension_hint)
+            {
+                generate_media_html_with_hint(
+                    url,
+                    alt,
+                    title,
+                    &media_type,
+                    icons,
+                    allow_fragment_extension_hint,
+                )
             } else {
                 // Not a recognized media file, wrap in <picture> tag anyway
                 let title_attr = title
@@ -348,6 +396,42 @@ mod tests {
         assert_eq!(detect_media_type("video.mp4?v=123"), Some(MediaType::Video));
         assert_eq!(
             detect_media_type("image.png?size=large#anchor"),
+            Some(MediaType::Image)
+        );
+    }
+
+    #[test]
+    fn test_detect_fragment_extension_hint_opt_in() {
+        assert_eq!(
+            detect_media_type_with_hint("/assets/image#.png", false),
+            None
+        );
+        assert_eq!(
+            detect_media_type_with_hint("/assets/image#.png", true),
+            Some(MediaType::Image)
+        );
+    }
+
+    #[test]
+    fn test_detect_fragment_extension_hint_reject_non_extension() {
+        assert_eq!(
+            detect_media_type_with_hint("/assets/media#t=10", true),
+            None
+        );
+        assert_eq!(
+            detect_media_type_with_hint("/assets/image#section", true),
+            None
+        );
+    }
+
+    #[test]
+    fn test_detect_fragment_extension_hint_tiff() {
+        assert_eq!(
+            detect_media_type_with_hint("/assets/photo#.tiff", true),
+            Some(MediaType::Image)
+        );
+        assert_eq!(
+            detect_media_type_with_hint("/assets/photo#.tif", true),
             Some(MediaType::Image)
         );
     }
@@ -602,7 +686,8 @@ mod tests {
     #[test]
     fn test_transform_media_paragraph_to_figure() {
         let html = r#"<p><img src="image.png" alt="alt" title="Title" /></p>"#;
-        let transformed = transform_images_to_media(html, &crate::parser::MediaIcons::default());
+        let transformed =
+            transform_images_to_media(html, &crate::parser::MediaIcons::default(), false);
         assert!(transformed.contains(r#"<figure class="w-100">"#));
         assert!(transformed.contains("<picture"));
         assert!(transformed.contains("src=\"image.png\""));
@@ -611,10 +696,20 @@ mod tests {
     #[test]
     fn test_transform_inline_media_remains_inline() {
         let html = r#"<p>before <img src="image.png" alt="alt" /> after</p>"#;
-        let transformed = transform_images_to_media(html, &crate::parser::MediaIcons::default());
+        let transformed =
+            transform_images_to_media(html, &crate::parser::MediaIcons::default(), false);
         assert!(!transformed.contains("<figure>"));
         assert!(transformed.contains("before"));
         assert!(transformed.contains("after"));
         assert!(transformed.contains("<picture"));
+    }
+
+    #[test]
+    fn test_transform_fragment_extension_hint_opt_in() {
+        let html = r#"<p><img src="/assets/image#.png" alt="alt" /></p>"#;
+        let transformed =
+            transform_images_to_media(html, &crate::parser::MediaIcons::default(), true);
+        assert!(transformed.contains("<picture"));
+        assert!(transformed.contains("type=\"image/png\""));
     }
 }
