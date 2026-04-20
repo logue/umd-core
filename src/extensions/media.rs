@@ -158,8 +158,9 @@ fn get_mime_type(url: &str, media_type: &MediaType) -> String {
 ///
 /// ```
 /// use umd::extensions::media::{generate_media_html, MediaType};
+/// use umd::parser::MediaIcons;
 ///
-/// let html = generate_media_html("video.mp4", "Demo", Some("Product demo"), &MediaType::Video);
+/// let html = generate_media_html("video.mp4", "Demo", Some("Product demo"), &MediaType::Video, &MediaIcons::default());
 /// assert!(html.contains("<video"));
 /// assert!(html.contains("controls"));
 /// ```
@@ -168,6 +169,7 @@ pub fn generate_media_html(
     alt: &str,
     title: Option<&str>,
     media_type: &MediaType,
+    icons: &crate::parser::MediaIcons,
 ) -> String {
     let mime_type = get_mime_type(url, media_type);
     let title_attr = title
@@ -179,23 +181,25 @@ pub fn generate_media_html(
             let track_label = escape_html(alt);
             let display_text = if alt.is_empty() { url } else { alt };
             format!(
-                "<video controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  <track kind=\"captions\" label=\"{}\" />\n  <a href=\"{}\" download class=\"download-link video-fallback\">🎬 {}</a>\n</video>",
+                "<video controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  <track kind=\"captions\" label=\"{}\" />\n  <a href=\"{}\" download class=\"download-link video-fallback\">{} {}</a>\n</video>",
                 title_attr,
                 escape_html(url),
                 mime_type,
                 track_label,
                 escape_html(url),
+                icons.video,
                 escape_html(display_text)
             )
         }
         MediaType::Audio => {
             let display_text = if alt.is_empty() { url } else { alt };
             format!(
-                "<audio controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  <a href=\"{}\" download class=\"download-link audio-fallback\">🎵 {}</a>\n</audio>",
+                "<audio controls{}>\n  <source src=\"{}\" type=\"{}\" />\n  <a href=\"{}\" download class=\"download-link audio-fallback\">{} {}</a>\n</audio>",
                 title_attr,
                 escape_html(url),
                 mime_type,
                 escape_html(url),
+                icons.audio,
                 escape_html(display_text)
             )
         }
@@ -216,11 +220,10 @@ pub fn generate_media_html(
         MediaType::Downloadable => {
             let display_text = if alt.is_empty() { url } else { alt };
             format!(
-                "<a href=\"{}\" download class=\"download-link\"{}>
-  📄 {}
-</a>",
+                "<a href=\"{}\" download class=\"download-link\"{}>\n  {} {}\n</a>",
                 escape_html(url),
                 title_attr,
+                icons.download,
                 escape_html(display_text)
             )
         }
@@ -254,12 +257,13 @@ fn escape_html(input: &str) -> String {
 ///
 /// ```
 /// use umd::extensions::media::transform_images_to_media;
+/// use umd::parser::MediaIcons;
 ///
 /// let html = r#"<img src="video.mp4" alt="Demo" />"#;
-/// let result = transform_images_to_media(html);
+/// let result = transform_images_to_media(html, &MediaIcons::default());
 /// assert!(result.contains("<video"));
 /// ```
-pub fn transform_images_to_media(html: &str) -> String {
+pub fn transform_images_to_media(html: &str, icons: &crate::parser::MediaIcons) -> String {
     use regex::Regex;
 
     // Pattern to match <img> tags with src and alt attributes
@@ -275,7 +279,7 @@ pub fn transform_images_to_media(html: &str) -> String {
 
             // Detect media type and generate appropriate HTML
             if let Some(media_type) = detect_media_type(url) {
-                generate_media_html(url, alt, title, &media_type)
+                generate_media_html(url, alt, title, &media_type, icons)
             } else {
                 // Not a recognized media file, wrap in <picture> tag anyway
                 let title_attr = title
@@ -437,6 +441,7 @@ mod tests {
             "Demo video",
             Some("Product demo"),
             &MediaType::Video,
+            &crate::parser::MediaIcons::default(),
         );
         assert!(html.contains("<video controls"));
         assert!(html.contains("title=\"Product demo\""));
@@ -457,6 +462,7 @@ mod tests {
             "Background music",
             Some("Theme song"),
             &MediaType::Audio,
+            &crate::parser::MediaIcons::default(),
         );
         assert!(html.contains("<audio controls"));
         assert!(html.contains("title=\"Theme song\""));
@@ -471,8 +477,13 @@ mod tests {
 
     #[test]
     fn test_generate_image_html() {
-        let html =
-            generate_media_html("image.png", "Logo", Some("Company logo"), &MediaType::Image);
+        let html = generate_media_html(
+            "image.png",
+            "Logo",
+            Some("Company logo"),
+            &MediaType::Image,
+            &crate::parser::MediaIcons::default(),
+        );
         assert!(html.contains("<picture"));
         assert!(html.contains("title=\"Company logo\""));
         assert!(html.contains("srcset=\"image.png\""));
@@ -483,7 +494,13 @@ mod tests {
 
     #[test]
     fn test_generate_without_title() {
-        let html = generate_media_html("video.mp4", "Video", None, &MediaType::Video);
+        let html = generate_media_html(
+            "video.mp4",
+            "Video",
+            None,
+            &MediaType::Video,
+            &crate::parser::MediaIcons::default(),
+        );
         assert!(!html.contains("title="));
         assert!(html.contains("<video controls>"));
     }
@@ -495,6 +512,7 @@ mod tests {
             "Test <script>",
             Some("Title with \"quotes\""),
             &MediaType::Video,
+            &crate::parser::MediaIcons::default(),
         );
         assert!(html.contains("&amp;"));
         assert!(html.contains("&lt;"));
@@ -508,6 +526,7 @@ mod tests {
             "Research Report",
             Some("Annual Research"),
             &MediaType::Downloadable,
+            &crate::parser::MediaIcons::default(),
         );
         assert!(html.contains("<a href=\"document.pdf\" download class=\"download-link\""));
         assert!(html.contains("title=\"Annual Research\""));
@@ -516,20 +535,38 @@ mod tests {
 
     #[test]
     fn test_downloadable_empty_alt() {
-        let html = generate_media_html("archive.zip", "", None, &MediaType::Downloadable);
+        let html = generate_media_html(
+            "archive.zip",
+            "",
+            None,
+            &MediaType::Downloadable,
+            &crate::parser::MediaIcons::default(),
+        );
         assert!(html.contains("<a href=\"archive.zip\" download"));
         assert!(html.contains("📄 archive.zip")); // URL as fallback
     }
 
     #[test]
     fn test_video_empty_alt_fallback() {
-        let html = generate_media_html("video.mp4", "", None, &MediaType::Video);
+        let html = generate_media_html(
+            "video.mp4",
+            "",
+            None,
+            &MediaType::Video,
+            &crate::parser::MediaIcons::default(),
+        );
         assert!(html.contains("🎬 video.mp4")); // URL as fallback in download link
     }
 
     #[test]
     fn test_audio_empty_alt_fallback() {
-        let html = generate_media_html("audio.mp3", "", None, &MediaType::Audio);
+        let html = generate_media_html(
+            "audio.mp3",
+            "",
+            None,
+            &MediaType::Audio,
+            &crate::parser::MediaIcons::default(),
+        );
         assert!(html.contains("🎵 audio.mp3")); // URL as fallback in download link
     }
 
@@ -540,15 +577,32 @@ mod tests {
             "User Guide",
             None,
             &MediaType::Downloadable,
+            &crate::parser::MediaIcons::default(),
         );
         assert!(html.contains("href=\"document.pdf?version=2\""));
         assert!(html.contains("📄 User Guide"));
     }
 
     #[test]
+    fn test_custom_icons() {
+        let icons = crate::parser::MediaIcons {
+            video: r#"<i class="bi bi-camera-video"></i>"#.to_string(),
+            audio: r#"<i class="bi bi-music-note"></i>"#.to_string(),
+            download: r#"<i class="bi bi-file-earmark-arrow-down"></i>"#.to_string(),
+        };
+        let html = generate_media_html("video.mp4", "Demo", None, &MediaType::Video, &icons);
+        assert!(html.contains(r#"<i class="bi bi-camera-video"></i>"#));
+        assert!(!html.contains("🎬"));
+
+        let html = generate_media_html("doc.pdf", "Doc", None, &MediaType::Downloadable, &icons);
+        assert!(html.contains(r#"<i class="bi bi-file-earmark-arrow-down"></i>"#));
+        assert!(!html.contains("📄"));
+    }
+
+    #[test]
     fn test_transform_media_paragraph_to_figure() {
         let html = r#"<p><img src="image.png" alt="alt" title="Title" /></p>"#;
-        let transformed = transform_images_to_media(html);
+        let transformed = transform_images_to_media(html, &crate::parser::MediaIcons::default());
         assert!(transformed.contains(r#"<figure class="w-100">"#));
         assert!(transformed.contains("<picture"));
         assert!(transformed.contains("src=\"image.png\""));
@@ -557,7 +611,7 @@ mod tests {
     #[test]
     fn test_transform_inline_media_remains_inline() {
         let html = r#"<p>before <img src="image.png" alt="alt" /> after</p>"#;
-        let transformed = transform_images_to_media(html);
+        let transformed = transform_images_to_media(html, &crate::parser::MediaIcons::default());
         assert!(!transformed.contains("<figure>"));
         assert!(transformed.contains("before"));
         assert!(transformed.contains("after"));

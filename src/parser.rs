@@ -6,6 +6,34 @@
 use comrak::options::{ListStyleType, Plugins};
 use comrak::{Arena, Options, format_html_with_plugins, parse_document};
 
+/// Icon configuration for media fallback links
+///
+/// Values can include raw HTML (e.g. `<i class="bi bi-camera-video"></i>`).
+/// These values are inserted directly into the HTML output without sanitization —
+/// only use trusted, developer-supplied values here.
+#[derive(Debug, Clone)]
+pub struct MediaIcons {
+    /// Icon for video fallback download links.
+    /// Default: `"🎬"`
+    pub video: String,
+    /// Icon for audio fallback download links.
+    /// Default: `"🎵"`
+    pub audio: String,
+    /// Icon for downloadable file links.
+    /// Default: `"📄"`
+    pub download: String,
+}
+
+impl Default for MediaIcons {
+    fn default() -> Self {
+        Self {
+            video: "🎬".to_string(),
+            audio: "🎵".to_string(),
+            download: "📄".to_string(),
+        }
+    }
+}
+
 /// Parser configuration for Universal Markdown
 #[derive(Debug, Clone)]
 pub struct ParserOptions {
@@ -18,6 +46,8 @@ pub struct ParserOptions {
     /// Base URL for resolving absolute paths (e.g., "/umd-core", "https://example.com/app")
     /// If set, absolute paths (starting with "/") will be prefixed with this base URL
     pub base_url: Option<String>,
+    /// Icon configuration for media elements (video/audio fallback links, downloadable files)
+    pub media_icons: MediaIcons,
 }
 
 impl Default for ParserOptions {
@@ -27,6 +57,7 @@ impl Default for ParserOptions {
             umd_extensions: true,
             max_heading_level: 5,
             base_url: None,
+            media_icons: MediaIcons::default(),
         }
     }
 }

@@ -56,7 +56,7 @@ pub fn apply_extensions_with_headers(
 
     // Apply transformations in order
     // Note: Plugins are handled in conflict_resolver::postprocess_conflicts
-    result = media::transform_images_to_media(&result);
+    result = media::transform_images_to_media(&result, &options.media_icons);
     result = conflict_resolver::postprocess_conflicts(&result, header_map);
     result = emphasis::apply_umd_emphasis(&result);
     result = block_decorations::apply_block_placement(&result); // Apply block placement first
