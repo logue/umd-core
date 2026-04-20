@@ -90,3 +90,37 @@ fn test_base_url_with_mixed_links() {
     assert!(result.html.contains(r#"href="/app/docs""#));
     assert!(result.html.contains(r#"href="https://example.com""#));
 }
+
+#[test]
+fn test_idn_external_link_adds_warning_marker() {
+    let input = "[国際化ドメイン](https://日本.jp)";
+    let opts = ParserOptions::default();
+
+    let result = parse_with_frontmatter_opts(input, &opts);
+    assert!(result.html.contains("国際化ドメイン"));
+    assert!(result.html.contains(r#"class="umd-idn-warning-link""#));
+    assert!(result.html.contains(r#"data-idn-warning="true""#));
+    assert!(result.html.contains(r#"class="umd-idn-warning-icon""#));
+}
+
+#[test]
+fn test_ascii_external_link_has_no_warning_marker() {
+    let input = "[docs](https://example.com/docs)";
+    let opts = ParserOptions::default();
+
+    let result = parse_with_frontmatter_opts(input, &opts);
+    assert!(!result.html.contains("umd-idn-warning-link"));
+    assert!(!result.html.contains("data-idn-warning"));
+}
+
+#[test]
+fn test_relative_link_has_no_warning_marker() {
+    let input = "[docs](/docs)";
+    let mut opts = ParserOptions::default();
+    opts.base_url = Some("/app".to_string());
+
+    let result = parse_with_frontmatter_opts(input, &opts);
+    assert!(result.html.contains(r#"href="/app/docs""#));
+    assert!(!result.html.contains("umd-idn-warning-link"));
+    assert!(!result.html.contains("data-idn-warning"));
+}

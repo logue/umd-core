@@ -62,6 +62,24 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 - ✅ **XSS Protection**: Input HTML fully escaped, user input never directly embedded
 - ✅ **URL Sanitization**: Blocks dangerous schemes (`javascript:`, `data:`, `vbscript:`, `file:`)
 - ✅ **Safe Link Handling**: `<URL>` explicit markup only (bare URLs not auto-linked)
+- ✅ **IDN Visual Warning**: External `http/https` links with non-ASCII or punycode hosts get a warning marker (`class="umd-idn-warning-link"`, `data-idn-warning="true"`) and an inline warning icon
+
+Example CSS (minimal):
+
+```css
+a.umd-idn-warning-link {
+  text-decoration-thickness: 2px;
+}
+
+.umd-idn-warning-icon {
+  display: inline-block;
+  margin-left: 0.35em;
+  font-size: 0.9em;
+  line-height: 1;
+  color: #b45309;
+  vertical-align: text-top;
+}
+```
 
 ### Platform Support
 

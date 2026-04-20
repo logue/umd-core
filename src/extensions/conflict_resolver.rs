@@ -640,6 +640,114 @@ fn apply_custom_link_attributes(html: &str) -> String {
         .to_string()
 }
 
+fn extract_http_host(href: &str) -> Option<&str> {
+    let rest = if let Some(stripped) = href.strip_prefix("http://") {
+        stripped
+    } else if let Some(stripped) = href.strip_prefix("https://") {
+        stripped
+    } else {
+        return None;
+    };
+
+    let authority_end = rest
+        .find(|c| ['/', '?', '#'].contains(&c))
+        .unwrap_or(rest.len());
+    let authority = &rest[..authority_end];
+    if authority.is_empty() {
+        return None;
+    }
+
+    let host_port = authority
+        .rsplit_once('@')
+        .map_or(authority, |(_, host)| host);
+    if host_port.is_empty() {
+        return None;
+    }
+
+    if host_port.starts_with('[') {
+        let end = host_port.find(']')?;
+        return Some(&host_port[..=end]);
+    }
+
+    let host = host_port.split(':').next().unwrap_or("");
+    if host.is_empty() { None } else { Some(host) }
+}
+
+fn is_idn_host(host: &str) -> bool {
+    if host.starts_with('[') {
+        return false;
+    }
+
+    let has_non_ascii = host.chars().any(|c| !c.is_ascii());
+    let has_percent_encoded = host.contains('%');
+    let has_punycode_label = host
+        .split('.')
+        .any(|label| label.to_ascii_lowercase().starts_with("xn--"));
+
+    has_non_ascii || has_percent_encoded || has_punycode_label
+}
+
+fn should_warn_idn_link(href: &str) -> bool {
+    extract_http_host(href).is_some_and(is_idn_host)
+}
+
+fn apply_idn_link_warnings(html: &str) -> String {
+    let link_pattern =
+        Regex::new(r#"(?s)<a\s+([^>]*\bhref=(?:\"([^\"]+)\"|'([^']+)')[^>]*)>(.*?)</a>"#).unwrap();
+    let class_double_pattern = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
+    let class_single_pattern = Regex::new(r"class='([^']*)'").unwrap();
+
+    link_pattern
+        .replace_all(html, |caps: &Captures| {
+            let mut attrs = caps[1].to_string();
+            let href = caps.get(2).or_else(|| caps.get(3)).map_or("", |m| m.as_str());
+            let mut content = caps[4].to_string();
+
+            if !should_warn_idn_link(href) {
+                return caps[0].to_string();
+            }
+
+            if let Some(class_caps) = class_double_pattern.captures(&attrs) {
+                let existing = class_caps.get(1).map_or("", |m| m.as_str());
+                let mut class_list: Vec<String> =
+                    existing.split_whitespace().map(|s| s.to_string()).collect();
+                if !class_list.iter().any(|c| c == "umd-idn-warning-link") {
+                    class_list.push("umd-idn-warning-link".to_string());
+                }
+                let merged = class_list.join(" ");
+                attrs = class_double_pattern
+                    .replace(&attrs, format!("class=\"{}\"", merged))
+                    .to_string();
+            } else if let Some(class_caps) = class_single_pattern.captures(&attrs) {
+                let existing = class_caps.get(1).map_or("", |m| m.as_str());
+                let mut class_list: Vec<String> =
+                    existing.split_whitespace().map(|s| s.to_string()).collect();
+                if !class_list.iter().any(|c| c == "umd-idn-warning-link") {
+                    class_list.push("umd-idn-warning-link".to_string());
+                }
+                let merged = class_list.join(" ");
+                attrs = class_single_pattern
+                    .replace(&attrs, format!("class='{}'", merged))
+                    .to_string();
+            } else {
+                attrs.push_str(" class=\"umd-idn-warning-link\"");
+            }
+
+            if !attrs.contains("data-idn-warning=") {
+                attrs.push_str(" data-idn-warning=\"true\"");
+            }
+
+            if !content.contains("umd-idn-warning-icon") {
+                content.push_str(
+                    " <span class=\"umd-idn-warning-icon\" role=\"img\" aria-label=\"Internationalized domain warning\">&#9888;</span>",
+                );
+            }
+
+            format!("<a {}>{}</a>", attrs, content)
+        })
+        .to_string()
+}
+
 pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
     use crate::extensions::block_decorations;
 
@@ -982,6 +1090,9 @@ pub fn postprocess_conflicts(html: &str, header_map: &HeaderIdMap) -> String {
 
     // Apply custom link attributes: [text](url){id class}
     result = apply_custom_link_attributes(&result);
+
+    // Add a visual warning marker for external links that use IDN or punycode hosts.
+    result = apply_idn_link_warnings(&result);
 
     // Apply indeterminate task list markers before other HTML transforms
     result = apply_tasklist_indeterminate(&result);
@@ -1398,6 +1509,58 @@ mod tests {
 
         assert!(output.contains(r#"id="home-link""#));
         assert!(output.contains(r#"class="existing new""#));
+    }
+
+    #[test]
+    fn test_idn_warning_for_unicode_domain() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<a href="https://日本.jp">Site</a>"#;
+        let output = postprocess_conflicts(input, &header_map);
+
+        assert!(output.contains(r#"class="umd-idn-warning-link""#));
+        assert!(output.contains(r#"data-idn-warning="true""#));
+        assert!(output.contains(r#"class="umd-idn-warning-icon""#));
+    }
+
+    #[test]
+    fn test_idn_warning_for_punycode_domain() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<a href="https://xn--wgv71a.jp">Site</a>"#;
+        let output = postprocess_conflicts(input, &header_map);
+
+        assert!(output.contains(r#"class="umd-idn-warning-link""#));
+        assert!(output.contains(r#"data-idn-warning="true""#));
+    }
+
+    #[test]
+    fn test_idn_warning_for_percent_encoded_host() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<a href="https://%E6%97%A5%E6%9C%AC.jp">Site</a>"#;
+        let output = postprocess_conflicts(input, &header_map);
+
+        assert!(output.contains(r#"class="umd-idn-warning-link""#));
+        assert!(output.contains(r#"data-idn-warning="true""#));
+    }
+
+    #[test]
+    fn test_no_idn_warning_for_ascii_domain() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<a href="https://example.com">Site</a>"#;
+        let output = postprocess_conflicts(input, &header_map);
+
+        assert!(!output.contains("umd-idn-warning-link"));
+        assert!(!output.contains("data-idn-warning"));
+        assert!(!output.contains("umd-idn-warning-icon"));
+    }
+
+    #[test]
+    fn test_no_idn_warning_for_relative_link() {
+        let header_map = HeaderIdMap::new();
+        let input = r#"<a href="/docs">Docs</a>"#;
+        let output = postprocess_conflicts(input, &header_map);
+
+        assert!(!output.contains("umd-idn-warning-link"));
+        assert!(!output.contains("data-idn-warning"));
     }
 }
 

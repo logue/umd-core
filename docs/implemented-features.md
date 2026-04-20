@@ -218,6 +218,31 @@ code .inline-code-color {
 
 **注意**: 裸のURL（`http://example.com`）は自動リンク化されません。`<URL>` 形式で明示的にマークアップする必要があります。これは誤検出を防ぎ、意図したリンクのみを有効化するための仕様です。
 
+**IDN警告表示**: 外部リンク（`http/https` で host を持つURL）のうち、host に非ASCII文字を含むか punycode ラベル（`xn--`）を含む場合、出力HTMLのリンクに警告マーカーが追加されます。
+
+- `class="umd-idn-warning-link"`
+- `data-idn-warning="true"`
+- リンク末尾に警告アイコン要素（`<span class="umd-idn-warning-icon" ...>`）
+
+相対リンク（`/docs` など）や `mailto:` はこの警告対象外です。
+
+最小CSS例:
+
+```css
+a.umd-idn-warning-link {
+  text-decoration-thickness: 2px;
+}
+
+.umd-idn-warning-icon {
+  display: inline-block;
+  margin-left: 0.35em;
+  font-size: 0.9em;
+  line-height: 1;
+  color: #b45309;
+  vertical-align: text-top;
+}
+```
+
 ### 強調
 
 ```markdown
