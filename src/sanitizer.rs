@@ -155,6 +155,102 @@ fn is_disallowed_blank_char(ch: char) -> bool {
         || ('\u{2066}'..='\u{2069}').contains(&ch) // LRI, RLI, FSI, PDI
 }
 
+/// Returns true for ASCII C0 control characters (except TAB, LF, CR) and DEL.
+///
+/// Removed:
+/// - U+0000–U+0008: NUL, SOH, STX, ETX, EOT, ENQ, ACK, BEL, BS
+/// - U+000B: VT (vertical tab)
+/// - U+000C: FF (form feed)
+/// - U+000E–U+001F: SO through US
+/// - U+007F: DEL
+///
+/// Preserved:
+/// - U+0009 (TAB), U+000A (LF), U+000D (CR) — required for Markdown formatting
+fn is_ascii_control_char(ch: char) -> bool {
+    let c = ch as u32;
+    matches!(c, 0x00..=0x08 | 0x0B | 0x0C | 0x0E..=0x1F | 0x7F)
+}
+
+/// Remove ASCII control characters from markup source while preserving content
+/// inside fenced code blocks (` ``` ` / `~~~`).
+///
+/// Plugin content is already base64-encoded by the conflict resolver before
+/// this function is called, so plugin markers are safe without special handling.
+///
+/// # Arguments
+///
+/// * `input` - Preprocessed Markdown source (after conflict resolution)
+///
+/// # Returns
+///
+/// Source with control characters removed from non-code-block regions.
+///
+/// # Examples
+///
+/// ```
+/// use umd::sanitizer::remove_ascii_control_chars_from_markup;
+///
+/// let input = "hello\x01world";
+/// assert_eq!(remove_ascii_control_chars_from_markup(input), "helloworld");
+///
+/// // Content inside code blocks is preserved
+/// let with_fence = "text\n```\nhello\x01world\n```\n";
+/// let result = remove_ascii_control_chars_from_markup(with_fence);
+/// assert!(result.contains("hello\x01world"));
+/// ```
+pub fn remove_ascii_control_chars_from_markup(input: &str) -> std::borrow::Cow<'_, str> {
+    // Fast path: no control chars present
+    if !input.chars().any(is_ascii_control_char) {
+        return std::borrow::Cow::Borrowed(input);
+    }
+
+    let ends_with_newline = input.ends_with('\n');
+    let mut result = String::with_capacity(input.len());
+    let mut in_code_block = false;
+    let mut code_fence_char = '`';
+
+    for line in input.lines() {
+        let trimmed = line.trim_start();
+
+        // Detect fenced code block boundaries (``` or ~~~)
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            let fence_char = if trimmed.starts_with("```") { '`' } else { '~' };
+            if !in_code_block {
+                in_code_block = true;
+                code_fence_char = fence_char;
+            } else if fence_char == code_fence_char {
+                in_code_block = false;
+            }
+            // Fence lines are always preserved as-is
+            result.push_str(line);
+            result.push('\n');
+            continue;
+        }
+
+        if in_code_block {
+            // Inside code block: preserve everything including control chars
+            result.push_str(line);
+            result.push('\n');
+            continue;
+        }
+
+        // Outside code block: strip control chars
+        for c in line.chars() {
+            if !is_ascii_control_char(c) {
+                result.push(c);
+            }
+        }
+        result.push('\n');
+    }
+
+    // Restore trailing-newline state (lines() strips it)
+    if !ends_with_newline && result.ends_with('\n') {
+        result.pop();
+    }
+
+    std::borrow::Cow::Owned(result)
+}
+
 /// Checks if the character sequence starting with '&' is a valid HTML entity
 ///
 /// Valid entities are:
@@ -415,5 +511,56 @@ mod tests {
         assert_eq!(sanitize_url("java\u{200B}script:alert(1)"), "#blocked-url");
         assert_eq!(sanitize_url("data:\u{FEFF}text/html,test"), "#blocked-url");
         assert_eq!(sanitize_url("java\u{202E}script:alert(1)"), "#blocked-url");
+    }
+
+    // --- remove_ascii_control_chars_from_markup ---
+
+    #[test]
+    fn test_ascii_control_chars_removed_from_text() {
+        // NUL, SOH, BEL, BS, VT, FF, SO, DEL
+        let input = "hello\x00\x01\x07\x08\x0B\x0C\x0E\x7Fworld";
+        assert_eq!(remove_ascii_control_chars_from_markup(input), "helloworld");
+    }
+
+    #[test]
+    fn test_ascii_control_chars_preserved_tab_lf_cr() {
+        // TAB, LF, CR must be preserved
+        let input = "col1\tcol2\nline2\r\nline3";
+        let result = remove_ascii_control_chars_from_markup(input);
+        assert!(result.contains('\t'));
+        assert!(result.contains('\n'));
+    }
+
+    #[test]
+    fn test_ascii_control_chars_preserved_inside_code_fence() {
+        let input = "text\n```\nhello\x01world\n```\nafter";
+        let result = remove_ascii_control_chars_from_markup(input);
+        // Control char inside code block must survive
+        assert!(result.contains("hello\x01world"));
+        // Regular text outside is cleaned
+        assert!(result.contains("text"));
+        assert!(result.contains("after"));
+    }
+
+    #[test]
+    fn test_ascii_control_chars_removed_outside_code_fence() {
+        let input = "be\x01fore\n```\nclean\n```\naf\x01ter";
+        let result = remove_ascii_control_chars_from_markup(input);
+        assert!(result.contains("before"));
+        assert!(result.contains("after"));
+    }
+
+    #[test]
+    fn test_ascii_control_fast_path_no_change() {
+        let input = "hello world\n\ttab here";
+        // Should return Borrowed (no allocation)
+        assert_eq!(remove_ascii_control_chars_from_markup(input), input);
+    }
+
+    #[test]
+    fn test_tilde_fence_also_protected() {
+        let input = "~~~\nhello\x01world\n~~~\n";
+        let result = remove_ascii_control_chars_from_markup(input);
+        assert!(result.contains("hello\x01world"));
     }
 }

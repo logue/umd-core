@@ -235,6 +235,12 @@ pub fn parse_with_frontmatter_opts(input: &str, options: &parser::ParserOptions)
     // Step 4: Pre-process to resolve syntax conflicts and extract custom header IDs
     let (preprocessed, header_map) = extensions::conflict_resolver::preprocess_conflicts(&content);
 
+    // Step 4.5: Remove ASCII control characters (U+0000-U+001F except TAB/LF/CR, and U+007F)
+    // from non-code-block regions. Plugin content is already base64-encoded by Step 4,
+    // so plugin markers are inherently safe. Plugin authors are responsible for any
+    // further sanitization of their plugin's content.
+    let preprocessed = sanitizer::remove_ascii_control_chars_from_markup(&preprocessed);
+
     // Step 5: Sanitize input
     let sanitized = sanitizer::sanitize(&preprocessed);
 

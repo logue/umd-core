@@ -48,3 +48,8 @@ This policy covers the Rust crate in this repository. External integrations and 
 - Homograph-risk mitigation for external links:
   - For `http/https` links with non-ASCII hostnames or `xn--` punycode labels, UMD adds a visual warning marker (`class="umd-idn-warning-link"`, `data-idn-warning="true"`) and a warning icon element.
   - This is a visual warning and does not block the link.
+- ASCII control characters are stripped from document text before parsing:
+  - Removed: `U+0000`–`U+0008`, `U+000B`, `U+000C`, `U+000E`–`U+001F`, `U+007F` (DEL)
+  - Preserved: `U+0009` (TAB), `U+000A` (LF), `U+000D` (CR) — required for Markdown formatting
+  - Content inside fenced code blocks (` ``` ` / `~~~`) is **exempt** from this removal, as control characters may be intentional (e.g., terminal escape sequences in examples)
+  - Plugin content is base64-encoded by the conflict resolver before this step, so literal control characters in plugin content are inherently safe from reaching the output unsanitized. However, **plugin authors are responsible for sanitizing their plugin's content** before rendering it on the server side.
