@@ -1298,12 +1298,26 @@ GitHub Flavored Markdown互換のアラート:
 
 ### URL Sanitization
 
+#### 入力正規化（不可視文字の除去）
+
+URLの検査前に、以下の不可視文字を削除:
+
+- `U+200B` (Zero Width Space)
+- `U+200C` (Zero Width Non-Joiner)
+- `U+200D` (Zero Width Joiner)
+- `U+FEFF` (Zero Width No-Break Space / BOM)
+- `U+3164` (Hangul Filler)
+
+空白文字として許可するのは、半角スペース（`U+0020`）と全角スペース（`U+3000`）のみ。
+
 以下のスキームをブロック:
 
 - `javascript:` - XSS攻撃
 - `data:` - Base64エンコードスクリプト
 - `vbscript:` - VBScript実行
 - `file:` - ローカルファイルアクセス（デフォルト）
+
+検出は、正規化後の文字列に対するプレフィックス一致（`javascript:`, `data:`, `vbscript:`, `file:`）で行います。
 
 **注**: `file:`スキームはセキュリティ上の理由でデフォルトでブロックされますが、スタンドアロンアプリケーション（オフラインヘルプシステムなど）での使用を想定した設定オプションの追加を検討中です（[planned-features.md](planned-features.md)を参照）。
 
@@ -1325,6 +1339,17 @@ GitHub Flavored Markdown互換のアラート:
 - 標準プロトコル: `http:`, `https:`, `mailto:`, `tel:`, `ftp:`
 - カスタムアプリスキーム: `spotify:`, `discord:`, `vscode:`, `steam:` など
 - 相対パス: `/path`, `./path`, `#anchor`
+
+#### ホモグラフ（IDN）警告
+
+外部リンク（`http/https`）の host に非ASCII文字または punycode ラベル（`xn--`）を含む場合、
+リンクに警告マーカーを付与します。
+
+- `class="umd-idn-warning-link"`
+- `data-idn-warning="true"`
+- リンク末尾に警告アイコン要素（`<span class="umd-idn-warning-icon" ...>`）
+
+この警告は視覚的注意喚起であり、リンクはブロックしません。
 
 ---
 

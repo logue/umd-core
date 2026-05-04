@@ -101,6 +101,8 @@ Output HTML + Frontmatter + Footnotes
 
 - 全てのHTMLタグをエスケープ (`<tag>` → `&lt;tag&gt;`)
 - HTMLエンティティ（`&nbsp;`, `&lt;`等）は保持
+- 許可されない不可視文字（`U+200B`, `U+200C`, `U+200D`, `U+FEFF`, `U+3164`）を削除
+- 許可する空白は半角スペース（`U+0020`）と全角スペース（`U+3000`）のみ
 - XSS攻撃の防止
 
 #### 7. comrak Parser
@@ -147,6 +149,7 @@ Output HTML + Frontmatter + Footnotes
 - HTML安全化モジュール
 - ユーザー入力のHTMLエスケープ
 - エンティティの保持ロジック
+- 不可視文字の除去（システム共通ルール）
 - XSS脆弱性の防止
 
 ### src/frontmatter.rs
@@ -554,6 +557,18 @@ cargo run --example test_table_colspan
 
 ### URL Sanitization
 
+#### 入力正規化
+
+URLスキーム判定の前に、以下の不可視文字を削除:
+
+- `U+200B` (Zero Width Space)
+- `U+200C` (Zero Width Non-Joiner)
+- `U+200D` (Zero Width Joiner)
+- `U+FEFF` (Zero Width No-Break Space / BOM)
+- `U+3164` (Hangul Filler)
+
+※ 許可する空白は半角スペース（`U+0020`）と全角スペース（`U+3000`）のみ。
+
 #### 禁止するスキーム（ブラックリスト方式）
 
 XSS対策のため、以下のスキームをブロック:
@@ -574,9 +589,21 @@ XSS対策のため、以下のスキームをブロック:
 - カスタムアプリスキーム: `spotify:`, `steam:`, `discord:`, `slack:`, `zoom:`, `vscode:` 等
 - その他: 相対パス、ルート相対パス、アンカー（`#`）
 
+#### ホモグラフ（IDN）警告
+
+外部リンク（`http/https`）で、host に非ASCII文字または punycode ラベル（`xn--`）を含む場合、
+リンクに以下の警告マーカーを付与:
+
+- `class="umd-idn-warning-link"`
+- `data-idn-warning="true"`
+- リンク末尾に警告アイコン要素（`<span class="umd-idn-warning-icon" ...>`）
+
+この対策は視覚警告であり、リンク自体はブロックしない。
+
 #### 検出方法
 
-正規表現で`^(javascript|data|vbscript|file):`を検出（大文字小文字区別なし）
+入力を`trim()` + 小文字化したうえで、`javascript:`, `data:`, `vbscript:`, `file:`の
+プレフィックス一致で検出（大文字小文字区別なし）。
 
 #### 処理
 

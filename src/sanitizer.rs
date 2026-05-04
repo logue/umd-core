@@ -54,7 +54,8 @@ use std::borrow::Cow;
 /// assert_eq!(sanitize_url("spotify:track:123"), "spotify:track:123"); // Custom app schemes allowed
 /// ```
 pub fn sanitize_url(url: &str) -> Cow<'_, str> {
-    let url_lower = url.trim().to_lowercase();
+    let normalized = remove_disallowed_blank_chars(url);
+    let url_lower = normalized.trim().to_lowercase();
 
     // Check for dangerous schemes (case-insensitive)
     // TODO: Consider adding ParserOptions.allow_file_scheme configuration
@@ -67,10 +68,11 @@ pub fn sanitize_url(url: &str) -> Cow<'_, str> {
         return Cow::Borrowed("#blocked-url");
     }
 
-    Cow::Borrowed(url)
+    normalized
 }
 
 /// Sanitizes input text by escaping HTML tags while preserving HTML entities
+/// and removing disallowed invisible blank-like characters.
 ///
 /// # Arguments
 ///
@@ -79,6 +81,7 @@ pub fn sanitize_url(url: &str) -> Cow<'_, str> {
 /// # Returns
 ///
 /// A sanitized string with HTML tags escaped but entities preserved
+/// (while removing disallowed invisible blank-like characters).
 ///
 /// # Examples
 ///
@@ -95,13 +98,16 @@ pub fn sanitize_url(url: &str) -> Cow<'_, str> {
 /// assert_eq!(output, "Hello&nbsp;World &lt;tag&gt;");
 /// ```
 pub fn sanitize(input: &str) -> Cow<'_, str> {
+    let normalized = remove_disallowed_blank_chars(input);
+    let source = normalized.as_ref();
+
     // Check if input contains any characters that need escaping
-    if !input.contains(&['<', '>', '&'][..]) {
-        return Cow::Borrowed(input);
+    if !source.contains(&['<', '>', '&'][..]) {
+        return normalized;
     }
 
-    let mut result = String::with_capacity(input.len() + 32);
-    let mut chars = input.chars().peekable();
+    let mut result = String::with_capacity(source.len() + 32);
+    let mut chars = source.chars().peekable();
 
     while let Some(ch) = chars.next() {
         match ch {
@@ -122,6 +128,30 @@ pub fn sanitize(input: &str) -> Cow<'_, str> {
     }
 
     Cow::Owned(result)
+}
+
+fn remove_disallowed_blank_chars(input: &str) -> Cow<'_, str> {
+    if !input.chars().any(is_disallowed_blank_char) {
+        return Cow::Borrowed(input);
+    }
+
+    let filtered: String = input
+        .chars()
+        .filter(|&ch| !is_disallowed_blank_char(ch))
+        .collect();
+
+    Cow::Owned(filtered)
+}
+
+fn is_disallowed_blank_char(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{200B}' // Zero Width Space
+            | '\u{200C}' // Zero Width Non-Joiner
+            | '\u{200D}' // Zero Width Joiner
+            | '\u{FEFF}' // Zero Width No-Break Space / BOM
+            | '\u{3164}' // Hangul Filler
+    )
 }
 
 /// Checks if the character sequence starting with '&' is a valid HTML entity
@@ -229,6 +259,18 @@ mod tests {
     fn test_no_html() {
         let input = "Hello World";
         assert_eq!(sanitize(input), "Hello World");
+    }
+
+    #[test]
+    fn test_remove_disallowed_blank_like_chars() {
+        let input = "A\u{200B}B\u{200C}C\u{200D}D\u{FEFF}E\u{3164}F";
+        assert_eq!(sanitize(input), "ABCDEF");
+    }
+
+    #[test]
+    fn test_preserve_allowed_spaces_only() {
+        let input = "A B　C";
+        assert_eq!(sanitize(input), "A B　C");
     }
 
     #[test]
@@ -351,5 +393,19 @@ mod tests {
             sanitize_url("  https://example.com  "),
             "  https://example.com  "
         );
+    }
+
+    #[test]
+    fn test_sanitize_url_removes_disallowed_blank_like_chars() {
+        assert_eq!(
+            sanitize_url("https://exa\u{200B}mple.com/\u{3164}path"),
+            "https://example.com/path"
+        );
+    }
+
+    #[test]
+    fn test_sanitize_url_blocks_scheme_after_normalization() {
+        assert_eq!(sanitize_url("java\u{200B}script:alert(1)"), "#blocked-url");
+        assert_eq!(sanitize_url("data:\u{FEFF}text/html,test"), "#blocked-url");
     }
 }
