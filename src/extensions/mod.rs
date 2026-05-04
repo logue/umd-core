@@ -58,7 +58,7 @@ pub fn apply_extensions_with_headers(
     // Note: Plugins are handled in conflict_resolver::postprocess_conflicts
     result = media::transform_images_to_media(
         &result,
-        &options.media_icons,
+        &options.icons,
         options.allow_fragment_extension_hint,
     );
     result = conflict_resolver::postprocess_conflicts(&result, header_map);
@@ -73,7 +73,7 @@ pub fn apply_extensions_with_headers(
     }
 
     // Restore protected code sections
-    restore_code_sections(&result, &placeholders)
+    restore_code_sections(&result, &placeholders, &options.icons.color_swatch)
 }
 
 /// Protect code blocks and inline code from transformation
@@ -110,7 +110,11 @@ fn protect_code_sections(html: &str) -> (String, Vec<String>) {
 }
 
 /// Restore protected code sections
-fn restore_code_sections(html: &str, placeholders: &[String]) -> String {
+fn restore_code_sections(
+    html: &str,
+    placeholders: &[String],
+    color_swatch_icon_html: &str,
+) -> String {
     use regex::Regex;
 
     let mut result = html.to_string();
@@ -124,7 +128,7 @@ fn restore_code_sections(html: &str, placeholders: &[String]) -> String {
             let original = placeholders.get(index).map(|s| s.as_str()).unwrap_or("");
 
             if section_type == "INLINE_CODE" {
-                enhance_inline_code_color_sample(original)
+                enhance_inline_code_color_sample(original, color_swatch_icon_html)
             } else {
                 original.to_string()
             }
@@ -137,7 +141,10 @@ fn restore_code_sections(html: &str, placeholders: &[String]) -> String {
     result
 }
 
-fn enhance_inline_code_color_sample(inline_code_html: &str) -> String {
+fn enhance_inline_code_color_sample(
+    inline_code_html: &str,
+    color_swatch_icon_html: &str,
+) -> String {
     use once_cell::sync::Lazy;
     use regex::Regex;
 
@@ -193,14 +200,15 @@ fn enhance_inline_code_color_sample(inline_code_html: &str) -> String {
     }
 
     format!(
-        r#"<code{}>{}<span class="inline-code-color" style="background-color: {};"></span></code>"#,
-        attrs, content, color_text
+        r#"<code{}><span class="inline-code-color" style="background-color: {};">{}</span>{}</code>"#,
+        attrs, color_text, color_swatch_icon_html, content
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::ParserOptions;
 
     #[test]
     fn test_umd_syntax_integration() {
@@ -208,5 +216,26 @@ mod tests {
         let output = apply_extensions(input);
         assert!(output.contains("<b>bold</b>"));
         assert!(output.contains("<i>italic</i>"));
+    }
+
+    #[test]
+    fn test_inline_code_color_swatch_is_rendered_before_color_text() {
+        let input = "<p><code>#FF5733</code></p>";
+        let output = apply_extensions(input);
+        assert!(output.contains(
+            r#"<code><span class="inline-code-color" style="background-color: #FF5733;"><span class="bi bi-palette-fill" aria-hidden="true"></span></span>#FF5733</code>"#
+        ));
+    }
+
+    #[test]
+    fn test_inline_code_color_swatch_icon_is_configurable() {
+        let input = "<p><code>#FF5733</code></p>";
+        let header_map = conflict_resolver::HeaderIdMap::new();
+        let mut options = ParserOptions::default();
+        options.icons.color_swatch =
+            r#"<span class="my-swatch-icon" aria-hidden="true"></span>"#.to_string();
+
+        let output = apply_extensions_with_headers(input, &header_map, &options);
+        assert!(output.contains(r#"<span class="my-swatch-icon" aria-hidden="true"></span>"#));
     }
 }

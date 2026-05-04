@@ -6,30 +6,39 @@
 use comrak::options::{ListStyleType, Plugins};
 use comrak::{Arena, Options, format_html_with_plugins, parse_document};
 
-/// Icon configuration for media fallback links
+/// Icon markup configuration
 ///
-/// Values can include raw HTML (e.g. `<i class="bi bi-camera-video"></i>`).
+/// Values can include raw HTML (e.g. `<span class="bi bi-camera-video-fill"></span>`).
 /// These values are inserted directly into the HTML output without sanitization —
 /// only use trusted, developer-supplied values here.
 #[derive(Debug, Clone)]
-pub struct MediaIcons {
+pub struct Icons {
     /// Icon for video fallback download links.
-    /// Default: `"🎬"`
+    /// Default: `<span class="bi bi-camera-video-fill" aria-hidden="true"></span>`
     pub video: String,
     /// Icon for audio fallback download links.
-    /// Default: `"🎵"`
+    /// Default: `<span class="bi bi-music-note-beamed" aria-hidden="true"></span>`
     pub audio: String,
     /// Icon for downloadable file links.
-    /// Default: `"📄"`
+    /// Default: `<span class="bi bi-file-earmark-arrow-down-fill" aria-hidden="true"></span>`
     pub download: String,
+    /// Icon markup rendered inside the inline color swatch.
+    /// Default: `<span class="bi bi-palette-fill" aria-hidden="true"></span>`
+    pub color_swatch: String,
 }
 
-impl Default for MediaIcons {
+impl Default for Icons {
     fn default() -> Self {
         Self {
-            video: "🎬".to_string(),
-            audio: "🎵".to_string(),
-            download: "📄".to_string(),
+            video: r#"<span class="bi bi-camera-video-fill" aria-hidden="true"></span>"#
+                .to_string(),
+            audio: r#"<span class="bi bi-music-note-beamed" aria-hidden="true"></span>"#
+                .to_string(),
+            download:
+                r#"<span class="bi bi-file-earmark-arrow-down-fill" aria-hidden="true"></span>"#
+                    .to_string(),
+            color_swatch: r#"<span class="bi bi-palette-fill" aria-hidden="true"></span>"#
+                .to_string(),
         }
     }
 }
@@ -51,8 +60,8 @@ pub struct ParserOptions {
     /// Disabled by default for safer behavior; enable only when you trust
     /// the source content and need extension-less URL fallback.
     pub allow_fragment_extension_hint: bool,
-    /// Icon configuration for media elements (video/audio fallback links, downloadable files)
-    pub media_icons: MediaIcons,
+    /// Icon configuration (media fallback links and inline code enhancements)
+    pub icons: Icons,
 }
 
 impl Default for ParserOptions {
@@ -63,7 +72,7 @@ impl Default for ParserOptions {
             max_heading_level: 5,
             base_url: None,
             allow_fragment_extension_hint: false,
-            media_icons: MediaIcons::default(),
+            icons: Icons::default(),
         }
     }
 }
@@ -101,7 +110,7 @@ pub fn parse_to_html(input: &str, options: &ParserOptions) -> String {
         comrak_options.extension.autolink = true;
         comrak_options.extension.tasklist = true;
         comrak_options.extension.footnotes = true; // Enable footnotes
-        comrak_options.extension.header_ids = None; // Disable automatic IDs, we'll add them ourselves
+        comrak_options.extension.header_id_prefix = None; // Disable automatic IDs, we'll add them ourselves
     }
 
     // Render options
