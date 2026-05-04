@@ -61,7 +61,7 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 
 - ✅ **XSS Protection**: Input HTML fully escaped, user input never directly embedded
 - ✅ **URL Sanitization**: Blocks dangerous schemes (`javascript:`, `data:`, `vbscript:`, `file:`)
-- ✅ **Invisible Character Sanitization**: Removes disallowed invisible blank-like chars (`U+200B`, `U+200C`, `U+200D`, `U+FEFF`, `U+3164`) from text/URL input
+- ✅ **Invisible Character Sanitization**: Removes disallowed invisible blank-like chars (`U+200B`, `U+200C`, `U+200D`, `U+FEFF`, `U+3164`) and BiDi control chars (`U+202A`-`U+202E`, `U+2066`-`U+2069`) from text/URL input
 - ✅ **Allowed Blank Characters**: Only half-width space (`U+0020`) and full-width space (`U+3000`) are preserved
 - ✅ **Safe Link Handling**: `<URL>` explicit markup only (bare URLs not auto-linked)
 - ✅ **IDN Visual Warning**: External `http/https` links with non-ASCII or punycode hosts get a warning marker (`class="umd-idn-warning-link"`, `data-idn-warning="true"`) and an inline warning icon
@@ -470,8 +470,9 @@ cargo test --test bootstrap_integration  # Integration tests only
 
 - ✅ **Input Sanitization**: All user input HTML-escaped before parsing
 - ✅ **Scheme Blocklist**: Dangerous URL schemes blocked (`javascript:`, `data:`, etc.)
-- ✅ **Invisible Character Removal**: `U+200B`, `U+200C`, `U+200D`, `U+FEFF`, and `U+3164` are removed during sanitization
+- ✅ **Invisible Character Removal**: `U+200B`, `U+200C`, `U+200D`, `U+FEFF`, `U+3164`, `U+202A`-`U+202E`, and `U+2066`-`U+2069` are removed during sanitization
 - ✅ **Allowed Spaces Policy**: Only `U+0020` (half-width space) and `U+3000` (full-width space) are treated as allowed blank characters
+- ✅ **Directional Text Guidance**: For BiDi presentation, use UMD syntax (`&bdi(text);`, `&bdo(ltr){text};`, `&bdo(rtl){text};`) instead of raw BiDi control characters
 - ✅ **Homograph Visual Warning**: External `http/https` links with non-ASCII or punycode hosts are marked with IDN warning attributes and icon (visual warning, not blocked)
 - ✅ **Plugin Safety**: Plugins output to `<template>` for server-side processing (no direct HTML execution)
 - ⚠️ **XSS Risk Mitigation**: Recommend server-side validation of plugin content before rendering

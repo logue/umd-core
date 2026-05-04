@@ -151,7 +151,8 @@ fn is_disallowed_blank_char(ch: char) -> bool {
             | '\u{200D}' // Zero Width Joiner
             | '\u{FEFF}' // Zero Width No-Break Space / BOM
             | '\u{3164}' // Hangul Filler
-    )
+    ) || ('\u{202A}'..='\u{202E}').contains(&ch) // LRE, RLE, PDF, LRO, RLO
+        || ('\u{2066}'..='\u{2069}').contains(&ch) // LRI, RLI, FSI, PDI
 }
 
 /// Checks if the character sequence starting with '&' is a valid HTML entity
@@ -265,6 +266,12 @@ mod tests {
     fn test_remove_disallowed_blank_like_chars() {
         let input = "A\u{200B}B\u{200C}C\u{200D}D\u{FEFF}E\u{3164}F";
         assert_eq!(sanitize(input), "ABCDEF");
+    }
+
+    #[test]
+    fn test_remove_bidi_control_chars() {
+        let input = "A\u{202A}B\u{202E}C\u{2066}D\u{2069}E";
+        assert_eq!(sanitize(input), "ABCDE");
     }
 
     #[test]
@@ -407,5 +414,6 @@ mod tests {
     fn test_sanitize_url_blocks_scheme_after_normalization() {
         assert_eq!(sanitize_url("java\u{200B}script:alert(1)"), "#blocked-url");
         assert_eq!(sanitize_url("data:\u{FEFF}text/html,test"), "#blocked-url");
+        assert_eq!(sanitize_url("java\u{202E}script:alert(1)"), "#blocked-url");
     }
 }

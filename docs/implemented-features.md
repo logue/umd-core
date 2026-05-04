@@ -1307,6 +1307,8 @@ URLの検査前に、以下の不可視文字を削除:
 - `U+200D` (Zero Width Joiner)
 - `U+FEFF` (Zero Width No-Break Space / BOM)
 - `U+3164` (Hangul Filler)
+- `U+202A`-`U+202E` (LRE, RLE, PDF, LRO, RLO)
+- `U+2066`-`U+2069` (LRI, RLI, FSI, PDI)
 
 空白文字として許可するのは、半角スペース（`U+0020`）と全角スペース（`U+3000`）のみ。
 

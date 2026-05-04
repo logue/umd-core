@@ -102,6 +102,7 @@ Output HTML + Frontmatter + Footnotes
 - 全てのHTMLタグをエスケープ (`<tag>` → `&lt;tag&gt;`)
 - HTMLエンティティ（`&nbsp;`, `&lt;`等）は保持
 - 許可されない不可視文字（`U+200B`, `U+200C`, `U+200D`, `U+FEFF`, `U+3164`）を削除
+- BiDi制御文字（`U+202A`-`U+202E`, `U+2066`-`U+2069`）を削除
 - 許可する空白は半角スペース（`U+0020`）と全角スペース（`U+3000`）のみ
 - XSS攻撃の防止
 
@@ -566,6 +567,11 @@ URLスキーム判定の前に、以下の不可視文字を削除:
 - `U+200D` (Zero Width Joiner)
 - `U+FEFF` (Zero Width No-Break Space / BOM)
 - `U+3164` (Hangul Filler)
+- `U+202A`-`U+202E` (LRE, RLE, PDF, LRO, RLO)
+- `U+2066`-`U+2069` (LRI, RLI, FSI, PDI)
+
+BiDi方向制御が必要なケースでは、不可視制御文字を直接入力せず、
+UMD記法の `&bdi(text);` または `&bdo(ltr){text};` / `&bdo(rtl){text};` を使用する。
 
 ※ 許可する空白は半角スペース（`U+0020`）と全角スペース（`U+3000`）のみ。
 
