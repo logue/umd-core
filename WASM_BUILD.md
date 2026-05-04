@@ -55,13 +55,13 @@ This is **bold** and *italic* text.
     <div id="output"></div>
 
     <script type="module">
-      import init, { parse_markdown } from "./pkg/umd.js";
+      import init, { parse } from "./pkg/umd.js";
 
       await init();
 
       window.parseWiki = function () {
         const input = document.getElementById("input").value;
-        const html = parse_markdown(input);
+        const html = parse(input);
         document.getElementById("output").innerHTML = html;
       };
     </script>
@@ -72,7 +72,7 @@ This is **bold** and *italic* text.
 ### Node.jsから使用
 
 ```javascript
-import init, { parse_markdown } from "./pkg/umd.js";
+import init, { parse } from "./pkg/umd.js";
 
 async function main() {
   await init();
@@ -86,7 +86,7 @@ This is **bold** and *italic* text.
 - List item 2
 `;
 
-  const html = parse_markdown(input);
+  const html = parse(input);
   console.log(html);
 }
 
@@ -96,11 +96,11 @@ main();
 ### TypeScript
 
 ```typescript
-import init, { parse_markdown } from "./pkg/umd.js";
+import init, { parse } from "./pkg/umd.js";
 
 async function parseMarkdown(source: string): Promise<string> {
   await init();
-  return parse_markdown(source);
+  return parse(source);
 }
 
 // 使用例

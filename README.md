@@ -230,12 +230,24 @@ Build WASM module:
 Use in JavaScript:
 
 ```javascript
-import init, { parse_markdown } from "./pkg/umd.js";
+import init, { parse } from "./pkg/umd.js";
 
 async function main() {
   await init();
-  const html = parse_markdown("# Hello from WASM");
+  const html = parse("# Hello from WASM");
+  const htmlWithOptions = parse(
+    "[Guide](/docs)",
+    JSON.stringify({
+      baseUrl: "/app",
+      allowFragmentExtensionHint: true,
+      icons: {
+        colorSwatch:
+          '<span class="bi bi-eyedropper" aria-hidden="true"></span>',
+      },
+    }),
+  );
   console.log(html);
+  console.log(htmlWithOptions);
 }
 
 main();

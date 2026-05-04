@@ -34,12 +34,13 @@
 //! This library can be compiled to WebAssembly for use in browsers:
 //!
 //! ```javascript
-//! import init, { parse_markdown } from './umd.js';
+//! import init, { parse } from './umd.js';
 //!
 //! await init();
-//! const html = parse_markdown('# Hello World');
+//! const html = parse('# Hello World');
 //! ```
 
+use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 pub mod extensions;
@@ -84,6 +85,74 @@ pub struct ParseResult {
 /// ```
 pub fn parse(input: &str) -> String {
     let result = parse_with_frontmatter(input);
+    if let Some(footnotes) = result.footnotes {
+        format!("{}\n{}", result.html, footnotes)
+    } else {
+        result.html
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WasmIconsOptions {
+    video: Option<String>,
+    audio: Option<String>,
+    download: Option<String>,
+    color_swatch: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WasmParseOptions {
+    gfm_extensions: Option<bool>,
+    umd_extensions: Option<bool>,
+    max_heading_level: Option<u8>,
+    base_url: Option<String>,
+    allow_fragment_extension_hint: Option<bool>,
+    icons: Option<WasmIconsOptions>,
+}
+
+fn parse_with_options_json(input: &str, options_json: Option<&str>) -> String {
+    let mut options = parser::ParserOptions::default();
+
+    if let Some(raw_json) = options_json {
+        let trimmed = raw_json.trim();
+        if !trimmed.is_empty() {
+            if let Ok(raw) = serde_json::from_str::<WasmParseOptions>(trimmed) {
+                if let Some(value) = raw.gfm_extensions {
+                    options.gfm_extensions = value;
+                }
+                if let Some(value) = raw.umd_extensions {
+                    options.umd_extensions = value;
+                }
+                if let Some(value) = raw.max_heading_level {
+                    options.max_heading_level = value;
+                }
+                if let Some(value) = raw.base_url {
+                    options.base_url = Some(value);
+                }
+                if let Some(value) = raw.allow_fragment_extension_hint {
+                    options.allow_fragment_extension_hint = value;
+                }
+                if let Some(icons) = raw.icons {
+                    if let Some(value) = icons.video {
+                        options.icons.video = value;
+                    }
+                    if let Some(value) = icons.audio {
+                        options.icons.audio = value;
+                    }
+                    if let Some(value) = icons.download {
+                        options.icons.download = value;
+                    }
+                    if let Some(value) = icons.color_swatch {
+                        options.icons.color_swatch = value;
+                    }
+                }
+            }
+        }
+    }
+
+    let result = parse_with_frontmatter_opts(input, &options);
     if let Some(footnotes) = result.footnotes {
         format!("{}\n{}", result.html, footnotes)
     } else {
@@ -216,6 +285,16 @@ fn extract_footnotes(html: &str) -> (String, Option<String>) {
 ///
 /// This is the main entry point when using the library from JavaScript/WebAssembly.
 ///
+/// The second argument is optional JSON options in camelCase.
+///
+/// Supported options:
+/// - `gfmExtensions`: boolean
+/// - `umdExtensions`: boolean
+/// - `maxHeadingLevel`: number
+/// - `baseUrl`: string
+/// - `allowFragmentExtensionHint`: boolean
+/// - `icons`: object with `video`, `audio`, `download`, `colorSwatch`
+///
 /// # Arguments
 ///
 /// * `input` - The Universal Markdown source text
@@ -227,21 +306,21 @@ fn extract_footnotes(html: &str) -> (String, Option<String>) {
 /// # JavaScript Example
 ///
 /// ```javascript
-/// import init, { parse_markdown } from './umd.js';
+/// import init, { parse } from './umd.js';
 ///
 /// await init();
-/// const html = parse_markdown('# Hello World\n\nThis is **bold** text.');
+/// const html = parse('# Hello World\n\nThis is **bold** text.');
+/// const html2 = parse('# Link\n\n[docs](/docs)', JSON.stringify({
+///   baseUrl: '/app',
+///   icons: {
+///     colorSwatch: '<span class="bi bi-eyedropper" aria-hidden="true"></span>'
+///   }
+/// }));
 /// console.log(html);
 /// ```
-#[wasm_bindgen]
-pub fn parse_markdown(input: &str) -> String {
-    parse(input)
-}
-
-/// Legacy alias for backward compatibility
-#[wasm_bindgen]
-pub fn parse_wiki(input: &str) -> String {
-    parse(input)
+#[wasm_bindgen(js_name = parse)]
+pub fn parse_wasm(input: &str, options_json: Option<String>) -> String {
+    parse_with_options_json(input, options_json.as_deref())
 }
 
 #[cfg(test)]
@@ -261,5 +340,24 @@ mod tests {
         let output = parse(input);
         assert!(!output.contains("<script>"));
         assert!(output.contains("&lt;script&gt;"));
+    }
+
+    #[test]
+    fn test_parse_with_options_json_base_url() {
+        let input = "[docs](/guide)";
+        let output = parse_with_options_json(input, Some(r#"{"baseUrl":"/app"}"#));
+        assert!(output.contains(r#"href="/app/guide""#));
+    }
+
+    #[test]
+    fn test_parse_with_options_json_icon_override() {
+        let input = "`#ff0000`";
+        let output = parse_with_options_json(
+            input,
+            Some(
+                r#"{"icons":{"colorSwatch":"<span class=\"my-icon\" aria-hidden=\"true\"></span>"}}"#,
+            ),
+        );
+        assert!(output.contains(r#"<span class="my-icon" aria-hidden="true"></span>"#));
     }
 }

@@ -24,7 +24,7 @@ exclude = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2.118" # WASM bindings
+wasm-bindgen = "0.2.120" # WASM bindings
 comrak = "0.52.0" # Markdown parser (GFM)
 ammonia = "4.1.2" # HTML sanitization
 maud = "0.27.0" # Type-safe HTML generation
@@ -42,13 +42,13 @@ uuid = { version = "1.23.1", features = [
 math-core = "0.6.0" # LaTeX to MathML Core conversion for &math/@math
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-mermaid-rs-renderer = { version = "0.2.1", default-features = false } # Mermaid SSR (native only)
+mermaid-rs-renderer = { version = "0.2.2", default-features = false } # Mermaid SSR (native only)
 syntect = "5.3.0"                                                     # Syntax highlighting (native only)
 
 [dev-dependencies]
 insta = "1.47.2"             # Snapshot testing
 criterion = "0.8.2"          # Benchmarking
-wasm-bindgen-test = "0.3.62" # WASM testing
+wasm-bindgen-test = "0.3.70" # WASM testing
 
 [profile.release]
 opt-level = "z"   # Optimize for size
