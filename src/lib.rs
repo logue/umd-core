@@ -107,6 +107,7 @@ struct WasmParseOptions {
     gfm_extensions: Option<bool>,
     umd_extensions: Option<bool>,
     max_heading_level: Option<u8>,
+    max_inline_nesting: Option<u8>,
     base_url: Option<String>,
     allow_fragment_extension_hint: Option<bool>,
     icons: Option<WasmIconsOptions>,
@@ -127,6 +128,9 @@ fn parse_with_options_json(input: &str, options_json: Option<&str>) -> String {
                 }
                 if let Some(value) = raw.max_heading_level {
                     options.max_heading_level = value;
+                }
+                if let Some(value) = raw.max_inline_nesting {
+                    options.max_inline_nesting = Some(value);
                 }
                 if let Some(value) = raw.base_url {
                     options.base_url = Some(value);
@@ -291,6 +295,7 @@ fn extract_footnotes(html: &str) -> (String, Option<String>) {
 /// - `gfmExtensions`: boolean
 /// - `umdExtensions`: boolean
 /// - `maxHeadingLevel`: number
+/// - `maxInlineNesting`: number (recommended: 3-5)
 /// - `baseUrl`: string
 /// - `allowFragmentExtensionHint`: boolean
 /// - `icons`: object with `video`, `audio`, `download`, `colorSwatch`
@@ -312,6 +317,7 @@ fn extract_footnotes(html: &str) -> (String, Option<String>) {
 /// const html = parse('# Hello World\n\nThis is **bold** text.');
 /// const html2 = parse('# Link\n\n[docs](/docs)', JSON.stringify({
 ///   baseUrl: '/app',
+///   maxInlineNesting: 4,
 ///   icons: {
 ///     colorSwatch: '<span class="bi bi-eyedropper" aria-hidden="true"></span>'
 ///   }
@@ -359,5 +365,22 @@ mod tests {
             ),
         );
         assert!(output.contains(r#"<span class="my-icon" aria-hidden="true"></span>"#));
+    }
+
+    #[test]
+    fn test_parse_with_options_json_inline_nesting_limit() {
+        let input = "&color(blue){&abbr(t){x};};";
+        let output_from_json = parse_with_options_json(input, Some(r#"{"maxInlineNesting":1}"#));
+
+        let mut options = parser::ParserOptions::default();
+        options.max_inline_nesting = Some(1);
+        let expected = parse_with_frontmatter_opts(input, &options);
+        let expected_html = if let Some(footnotes) = expected.footnotes {
+            format!("{}\n{}", expected.html, footnotes)
+        } else {
+            expected.html
+        };
+
+        assert_eq!(output_from_json, expected_html);
     }
 }

@@ -224,6 +224,18 @@ fn map_badge_type(badge_type: &str) -> String {
 ///
 /// HTML with inline decorations applied
 pub fn apply_inline_decorations(html: &str) -> String {
+    apply_inline_decorations_with_limit(html, Some(5))
+}
+
+/// Apply inline decoration functions to HTML with configurable nesting limit.
+///
+/// If nested inline decoration functions exceed `max_inline_nesting`,
+/// only the over-limit inline decoration blocks are disabled and wrapped in
+/// `<span class="umd-error-deep-recursive">...</span>` as a fail-safe.
+pub fn apply_inline_decorations_with_limit(
+    html: &str,
+    max_inline_nesting: Option<usize>,
+) -> String {
     let mut result = html.to_string();
 
     // Decode HTML entities for UMD inline syntax
@@ -252,6 +264,10 @@ pub fn apply_inline_decorations(html: &str) -> String {
     result = result.replace("&amp;bdo(", "&bdo(");
     result = result.replace("&amp;wbr", "&wbr");
     result = result.replace("&amp;br", "&br");
+
+    if let Some(limit) = max_inline_nesting.filter(|limit| *limit > 0) {
+        result = neutralize_over_limit_inline_decorations(&result, limit);
+    }
 
     // Apply %%text%% → <s>text</s> (LukiWiki strikethrough)
     result = LUKIWIKI_STRIKETHROUGH
@@ -423,6 +439,168 @@ pub fn apply_inline_decorations(html: &str) -> String {
     result
 }
 
+fn inline_decoration_nesting_depth(input: &str) -> usize {
+    let bytes = input.as_bytes();
+    let mut i = 0usize;
+    let mut stack: Vec<bool> = Vec::new();
+    let mut limited_depth = 0usize;
+    let mut max_limited_depth = 0usize;
+
+    while i < bytes.len() {
+        if let Some((name, next_index)) = parse_inline_block_start(input, i) {
+            let limited = is_limited_inline_name(name);
+            stack.push(limited);
+            if limited {
+                limited_depth += 1;
+                max_limited_depth = max_limited_depth.max(limited_depth);
+            }
+            i = next_index;
+            continue;
+        }
+
+        if i + 1 < bytes.len() && bytes[i] == b'}' && bytes[i + 1] == b';' && !stack.is_empty() {
+            if stack.pop().unwrap_or(false) {
+                limited_depth = limited_depth.saturating_sub(1);
+            }
+            i += 2;
+            continue;
+        }
+
+        i += 1;
+    }
+
+    max_limited_depth
+}
+
+fn neutralize_over_limit_inline_decorations(input: &str, max_inline_nesting: usize) -> String {
+    let bytes = input.as_bytes();
+    let mut i = 0usize;
+    let mut stack: Vec<bool> = Vec::new();
+    let mut limited_depth = 0usize;
+    let mut output = String::with_capacity(input.len() + 16);
+
+    while i < bytes.len() {
+        if let Some((name, next_index)) = parse_inline_block_start(input, i) {
+            let limited = is_limited_inline_name(name);
+            let over_limit = limited && limited_depth >= max_inline_nesting;
+
+            if over_limit {
+                if let Some(end_index) = find_inline_block_end(input, i) {
+                    let escaped = html_escape::encode_safe(&input[i..end_index])
+                        .replace('{', "&#123;")
+                        .replace('}', "&#125;");
+                    output.push_str(r#"<span class="umd-error-deep-recursive">"#);
+                    output.push_str(&escaped);
+                    output.push_str("</span>");
+                    i = end_index;
+                    continue;
+                }
+
+                let escaped = html_escape::encode_safe("&");
+                output.push_str(escaped.as_ref());
+                i += 1;
+                continue;
+            }
+
+            output.push_str(&input[i..next_index]);
+            stack.push(limited);
+            if limited {
+                limited_depth += 1;
+            }
+
+            i = next_index;
+            continue;
+        }
+
+        if i + 1 < bytes.len() && bytes[i] == b'}' && bytes[i + 1] == b';' && !stack.is_empty() {
+            if stack.pop().unwrap_or(false) {
+                limited_depth = limited_depth.saturating_sub(1);
+            }
+        }
+
+        let ch = input[i..]
+            .chars()
+            .next()
+            .expect("valid UTF-8 char boundary");
+        output.push(ch);
+        i += ch.len_utf8();
+    }
+
+    output
+}
+
+fn find_inline_block_end(input: &str, start: usize) -> Option<usize> {
+    let mut i = parse_inline_block_start(input, start)?.1;
+    let bytes = input.as_bytes();
+    let mut depth = 1usize;
+
+    while i < bytes.len() {
+        if parse_inline_block_start(input, i).is_some() {
+            depth += 1;
+            i = parse_inline_block_start(input, i)?.1;
+            continue;
+        }
+
+        if i + 1 < bytes.len() && bytes[i] == b'}' && bytes[i + 1] == b';' {
+            depth -= 1;
+            i += 2;
+            if depth == 0 {
+                return Some(i);
+            }
+            continue;
+        }
+
+        let ch = input[i..].chars().next()?;
+        i += ch.len_utf8();
+    }
+
+    None
+}
+
+fn parse_inline_block_start(input: &str, start: usize) -> Option<(&str, usize)> {
+    let bytes = input.as_bytes();
+    if bytes.get(start).copied() != Some(b'&') {
+        return None;
+    }
+
+    let mut j = start + 1;
+    while j < bytes.len() && bytes[j].is_ascii_alphabetic() {
+        j += 1;
+    }
+
+    if j <= start + 1 {
+        return None;
+    }
+
+    let name = &input[start + 1..j];
+
+    if bytes.get(j).copied() == Some(b'{') {
+        return Some((name, j + 1));
+    }
+
+    if bytes.get(j).copied() != Some(b'(') {
+        return None;
+    }
+
+    let mut k = j + 1;
+    while k < bytes.len() && bytes[k] != b')' {
+        k += 1;
+    }
+
+    if k < bytes.len() && bytes.get(k + 1).copied() == Some(b'{') {
+        return Some((name, k + 2));
+    }
+
+    None
+}
+
+fn is_limited_inline_name(name: &str) -> bool {
+    matches!(
+        name,
+        "badge" | "color" | "size" | "lang" | "abbr" | "ruby" | "time" | "data" | "bdo" | "spoiler"
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -430,16 +608,26 @@ mod tests {
     #[test]
     fn test_map_color_blue() {
         let result = map_color("blue", false);
-        assert!(result.is_some(), "blue should be recognized as a valid color");
+        assert!(
+            result.is_some(),
+            "blue should be recognized as a valid color"
+        );
         let (is_class, class_or_style) = result.unwrap();
         assert!(is_class, "blue should be recognized as a Bootstrap class");
-        assert_eq!(class_or_style, "text-blue", "Expected text-blue, got {}", class_or_style);
+        assert_eq!(
+            class_or_style, "text-blue",
+            "Expected text-blue, got {}",
+            class_or_style
+        );
     }
 
     #[test]
     fn test_map_color_hex() {
         let result = map_color("#FF5733", false);
-        assert!(result.is_some(), "#FF5733 should be recognized as a valid HEX color");
+        assert!(
+            result.is_some(),
+            "#FF5733 should be recognized as a valid HEX color"
+        );
         let (is_class, value) = result.unwrap();
         assert!(!is_class, "HEX color should not be a Bootstrap class");
         assert_eq!(value, "#FF5733", "Expected #FF5733, got {}", value);
@@ -450,10 +638,16 @@ mod tests {
         // HTML color names like "white" or "black" are not in Bootstrap color list
         // and should be rejected
         let result = map_color("white", false);
-        assert!(result.is_none(), "HTML color name 'white' should be rejected");
+        assert!(
+            result.is_none(),
+            "HTML color name 'white' should be rejected"
+        );
 
         let result = map_color("black", false);
-        assert!(result.is_none(), "HTML color name 'black' should be rejected");
+        assert!(
+            result.is_none(),
+            "HTML color name 'black' should be rejected"
+        );
     }
 
     #[test]
@@ -478,7 +672,11 @@ mod tests {
         let input = "&color(cyan,yellow){cyan on yellow};";
         let output = apply_inline_decorations(input);
         // cyan and yellow are Bootstrap custom colors
-        assert!(output.contains(r#"class="text-cyan bg-yellow""#), "Expected both colors as classes, got: {}", output);
+        assert!(
+            output.contains(r#"class="text-cyan bg-yellow""#),
+            "Expected both colors as classes, got: {}",
+            output
+        );
     }
 
     #[test]
@@ -487,7 +685,11 @@ mod tests {
         let input = "&color(white,black){white on black};";
         let output = apply_inline_decorations(input);
         // Invalid colors should be ignored, text remains as-is
-        assert_eq!(output, "white on black", "Invalid colors should be ignored, got: {}", output);
+        assert_eq!(
+            output, "white on black",
+            "Invalid colors should be ignored, got: {}",
+            output
+        );
     }
 
     #[test]
@@ -495,7 +697,11 @@ mod tests {
         // Test with HEX color
         let input = "&color(#FF5733){Custom hex color};";
         let output = apply_inline_decorations(input);
-        assert!(output.contains(r#"style="color: #FF5733""#), "Expected HEX color as inline style, got: {}", output);
+        assert!(
+            output.contains(r#"style="color: #FF5733""#),
+            "Expected HEX color as inline style, got: {}",
+            output
+        );
     }
 
     #[test]
@@ -641,6 +847,40 @@ mod tests {
         let input = "&badge(danger){[Error](/error)};";
         let output = apply_inline_decorations(input);
         assert!(output.contains("<a href=\"/error\" class=\"badge bg-danger\">Error</a>"));
+    }
+
+    #[test]
+    fn test_inline_nesting_depth_detection() {
+        let input = "&color(blue){&abbr(text){content};};";
+        assert_eq!(inline_decoration_nesting_depth(input), 2);
+    }
+
+    #[test]
+    fn test_inline_nesting_depth_ignores_plugin_names() {
+        let input = "&color(blue){&plugin(arg){content};};";
+        assert_eq!(inline_decoration_nesting_depth(input), 1);
+    }
+
+    #[test]
+    fn test_inline_nesting_limit_blocks_expansion_when_exceeded() {
+        let input = "&color(blue){&abbr(text){content};};";
+        let output = apply_inline_decorations_with_limit(input, Some(1));
+        assert!(output.contains(r#"<span class="text-blue">"#));
+        assert!(output.contains(
+            r#"<span class="umd-error-deep-recursive">&amp;abbr(text)&#123;content&#125;;</span>"#
+        ));
+        assert!(!output.contains("<abbr"));
+    }
+
+    #[test]
+    fn test_inline_nesting_limit_disables_only_exceeded_marker() {
+        let input = "&color(red){ok}; and &color(blue){&abbr(text){content};};";
+        let output = apply_inline_decorations_with_limit(input, Some(1));
+        assert!(output.contains(r#"<span class="text-red">ok</span>"#));
+        assert!(output.contains(
+            r#"<span class="umd-error-deep-recursive">&amp;abbr(text)&#123;content&#125;;</span>"#
+        ));
+        assert!(!output.contains("<abbr title="));
     }
 
     #[test]

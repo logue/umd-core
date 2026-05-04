@@ -65,6 +65,7 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 - ✅ **Allowed Blank Characters**: Only half-width space (`U+0020`) and full-width space (`U+3000`) are preserved
 - ✅ **Safe Link Handling**: `<URL>` explicit markup only (bare URLs not auto-linked)
 - ✅ **IDN Visual Warning**: External `http/https` links with non-ASCII or punycode hosts get a warning marker (`class="umd-idn-warning-link"`, `data-idn-warning="true"`) and an inline warning icon
+- ✅ **Inline Nesting Depth Limit**: Inline decoration functions (`&color()`, `&badge()`, `&ruby()`, etc.) are limited in nesting depth (default: 5). Over-limit blocks are not expanded and are wrapped in `<span class="umd-error-deep-recursive">` for visual identification. Plugin names (`&fn()`) are **not** counted toward the limit.
 
 Example CSS (minimal):
 
@@ -80,6 +81,12 @@ a.umd-idn-warning-link {
   line-height: 1;
   color: #b45309;
   vertical-align: text-top;
+}
+
+/* Visualize over-limit inline decorations in development */
+.umd-error-deep-recursive {
+  outline: 2px dashed red;
+  background-color: rgba(255, 0, 0, 0.05);
 }
 ```
 
@@ -475,6 +482,7 @@ cargo test --test bootstrap_integration  # Integration tests only
 - ✅ **Directional Text Guidance**: For BiDi presentation, use UMD syntax (`&bdi(text);`, `&bdo(ltr){text};`, `&bdo(rtl){text};`) instead of raw BiDi control characters
 - ✅ **Homograph Visual Warning**: External `http/https` links with non-ASCII or punycode hosts are marked with IDN warning attributes and icon (visual warning, not blocked)
 - ✅ **Plugin Safety**: Plugins output to `<template>` for server-side processing (no direct HTML execution)
+- ✅ **Inline Nesting Depth Limit**: Protects against deeply-nested inline decoration abuse. Over-limit blocks are rendered as `<span class="umd-error-deep-recursive">` (unprocessed, escaped). Default limit is 5; configurable via `maxInlineNesting` option (recommended: 3–5).
 - ⚠️ **XSS Risk Mitigation**: Recommend server-side validation of plugin content before rendering
 
 ---

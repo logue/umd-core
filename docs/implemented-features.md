@@ -896,6 +896,58 @@ SIZE(1.5): COLOR(primary): CENTER: 強調テキスト
 
 ---
 
+### インライン装飾のネスト深度制限
+
+インライン装飾関数の無制限ネストによる処理負荷攻撃を防ぐため、ネスト深度に上限を設けています。
+
+#### 制限対象の装飾名
+
+以下のインライン装飾名がネスト深度のカウント対象です:
+
+`badge` / `color` / `size` / `lang` / `abbr` / `ruby` / `time` / `data` / `bdo` / `spoiler`
+
+プラグイン名（`&fn()` 形式）はカウント対象外です。
+
+#### デフォルト設定
+
+- デフォルトのネスト深度上限: **5**
+- 推奨設定範囲: 3〜5
+- `maxInlineNesting` オプションで変更可能（`0` または `null` で無制限）
+
+#### 上限超過時の挙動
+
+ネスト深度が上限を超えた装飾ブロックは**展開されず**、そのまま `<span class="umd-error-deep-recursive">` でラップされます。ラップ内では `&`・`{`・`}` がHTMLエスケープされます。
+
+**例**: `maxInlineNesting=1` のとき
+
+```umd
+&color(blue){&abbr(text){content};};
+```
+
+↓
+
+```html
+<span class="text-blue"
+  ><span class="umd-error-deep-recursive"
+    >&amp;abbr(text)&#123;content&#125;;</span
+  ></span
+>
+```
+
+外側の `&color()` は正常に展開され、内側の `&abbr()` のみが無効化されます。
+
+#### 推奨CSS
+
+```css
+/* 開発時の視認性向上 */
+.umd-error-deep-recursive {
+  outline: 2px dashed red;
+  background-color: rgba(255, 0, 0, 0.05);
+}
+```
+
+---
+
 ## プラグインシステム
 
 Universal Markdownは拡張可能なプラグインシステムを提供します。

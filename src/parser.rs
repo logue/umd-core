@@ -60,6 +60,11 @@ pub struct ParserOptions {
     /// Disabled by default for safer behavior; enable only when you trust
     /// the source content and need extension-less URL fallback.
     pub allow_fragment_extension_hint: bool,
+    /// Maximum allowed nesting depth for inline UMD decoration functions.
+    ///
+    /// When exceeded, inline decoration expansion is skipped as a fail-safe.
+    /// Use `None` to disable this limit.
+    pub max_inline_nesting: Option<u8>,
     /// Icon configuration (media fallback links and inline code enhancements)
     pub icons: Icons,
 }
@@ -72,6 +77,7 @@ impl Default for ParserOptions {
             max_heading_level: 5,
             base_url: None,
             allow_fragment_extension_hint: false,
+            max_inline_nesting: Some(5),
             icons: Icons::default(),
         }
     }

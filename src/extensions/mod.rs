@@ -65,7 +65,10 @@ pub fn apply_extensions_with_headers(
     result = emphasis::apply_umd_emphasis(&result);
     result = block_decorations::apply_block_placement(&result); // Apply block placement first
     result = block_decorations::apply_block_decorations(&result);
-    result = inline_decorations::apply_inline_decorations(&result);
+    result = inline_decorations::apply_inline_decorations_with_limit(
+        &result,
+        options.max_inline_nesting.map(usize::from),
+    );
 
     // Apply base URL resolution to links
     if let Some(base_url) = &options.base_url {
