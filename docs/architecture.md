@@ -692,4 +692,4 @@ XSS対策のため、以下のスキームをブロック:
 
 ## ライセンス
 
-MIT License
+Apache License 2.0

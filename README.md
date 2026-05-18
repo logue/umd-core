@@ -2,7 +2,7 @@
 
 A next-generation Markdown parser built with Rust, combining CommonMark compliance (~75%+), Bootstrap 5 integration, semantic HTML generation, and an extensible plugin system. Maintains backward compatibility with UMD legacy syntax.
 
-**Status**: Production-ready | **Latest Update**: 2026-03-03 | **License**: MIT
+**Status**: Production-ready | **Latest Update**: 2026-03-03 | **License**: Apache-2.0
 
 ## 🧩 Philosophy
 
@@ -522,7 +522,7 @@ Contributions welcome! Please:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+Apache License 2.0 - see [LICENSE](LICENSE) for details
 
 ## 🎨 Crafted for Developers
 
