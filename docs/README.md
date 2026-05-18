@@ -1,6 +1,6 @@
 # ドキュメント索引
 
-**最終更新**: 2026年3月3日
+**最終更新**: 2026年5月18日
 
 Universal Markdown (UMD) の主要ドキュメントへの入口です。
 
@@ -9,6 +9,14 @@ Universal Markdown (UMD) の主要ドキュメントへの入口です。
 - **まず全体像を把握したい** → [README.md](../README.md)
 - **実装アーキテクチャを確認したい** → [architecture.md](architecture.md)
 - **実装済み仕様を確認したい** → [implemented-features.md](implemented-features.md)
+- **基本Markdown機能を確認したい** → [basic-markdown-features.md](basic-markdown-features.md)
+- **UMD拡張構文を確認したい** → [umd-extensions.md](umd-extensions.md)
+- **コメント構文の仕様を確認したい** → [comment-syntax.md](comment-syntax.md)
+- **メディアタグ変換の仕様を確認したい** → [media-tags.md](media-tags.md)
+- **プラグイン仕様を確認したい** → [plugin-system.md](plugin-system.md)
+- **テーブル機能を確認したい** → [table-features.md](table-features.md)
+- **実行時機能（フロントマター・脚注）を確認したい** → [runtime-features.md](runtime-features.md)
+- **セキュリティ仕様を確認したい** → [security-features.md](security-features.md)
 - **未実装/提案仕様を確認したい** → [planned-features.md](planned-features.md)
 - **テンプレートエンジン仕様の詳細を確認したい** → [template-engine-spec.md](template-engine-spec.md)
 - **実装計画・進捗を確認したい** → [PLAN.md](../PLAN.md)
