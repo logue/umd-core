@@ -29,6 +29,189 @@ Universal Markdown のプラグイン構文と出力形式です。
 
 バックエンド側（Nuxt/Laravel 等）で再パースして最終描画する設計です。
 
+## 実際の出力例
+
+### インラインプラグイン
+
+入力:
+
+```umd
+&badge(primary){New};
+&hint(info);
+&clear;
+```
+
+出力例:
+
+```html
+<template class="umd-plugin umd-plugin-badge">
+  <data value="0">primary</data>
+  New
+</template>
+<template class="umd-plugin umd-plugin-hint">info</template>
+<template class="umd-plugin umd-plugin-clear"></template>
+```
+
+### ブロックプラグイン
+
+入力:
+
+```umd
+@card(info){{
+  **Markdown** content
+}}
+
+@toc(2)
+```
+
+出力例:
+
+```html
+<template class="umd-plugin umd-plugin-card">
+  <data value="0">info</data>
+  **Markdown** content
+</template>
+<template class="umd-plugin umd-plugin-toc">2</template>
+```
+
+### 標準プラグイン（直接HTML出力）
+
+入力:
+
+```umd
+@detail(詳細, open){{
+  内容
+}}
+@clear()
+```
+
+出力例:
+
+```html
+<details open>
+  <summary>詳細</summary>
+  内容
+</details>
+<div class="clearfix"></div>
+```
+
+## TypeScript でのパース例
+
+以下は UMD の HTML 出力から `template.umd-plugin` を抽出し、
+関数名・引数・コンテンツを取り出す最小実装例です。
+
+```ts
+type UmdPluginNode = {
+  name: string;
+  args: string[];
+  content: string;
+  rawClass: string;
+};
+
+export function parseUmdPlugins(html: string): UmdPluginNode[] {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const templates = Array.from(
+    doc.querySelectorAll<HTMLTemplateElement>("template.umd-plugin"),
+  );
+
+  return templates.map((tpl) => {
+    const rawClass = tpl.getAttribute("class") ?? "";
+    const classes = rawClass.split(/\s+/).filter(Boolean);
+    const pluginClass = classes.find(
+      (c) => c.startsWith("umd-plugin-") && c !== "umd-plugin",
+    );
+    const name =
+      pluginClass ? pluginClass.replace("umd-plugin-", "") : "unknown";
+
+    const argNodes = Array.from(tpl.content.querySelectorAll("data[value]"));
+    const args = argNodes
+      .sort(
+        (a, b) =>
+          Number(a.getAttribute("value")) - Number(b.getAttribute("value")),
+      )
+      .map((n) => n.textContent ?? "");
+
+    const fragment = tpl.content.cloneNode(true) as DocumentFragment;
+    fragment.querySelectorAll("data[value]").forEach((n) => n.remove());
+    const content = (fragment.textContent ?? "").trim();
+
+    return { name, args, content, rawClass };
+  });
+}
+```
+
+補足:
+
+- `content` は UMD 出力時にエスケープされているため、`textContent` 取得で元のテキスト表現を扱えます。
+- 標準プラグイン（`@detail`, `@clear`, `@table`）は `template` を経由しないケースがあるため、別ルートで処理します。
+
+## PHP でのパース例
+
+以下は `DOMDocument + DOMXPath` で `template.umd-plugin` を抽出する例です。
+
+```php
+<?php
+
+function parseUmdPlugins(string $html): array
+{
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    libxml_use_internal_errors(true);
+    $doc->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+
+    $xpath = new DOMXPath($doc);
+    $nodes = $xpath->query("//template[contains(concat(' ', normalize-space(@class), ' '), ' umd-plugin ')]");
+
+    $result = [];
+    foreach ($nodes as $template) {
+        $class = $template->attributes?->getNamedItem('class')?->nodeValue ?? '';
+        $classes = preg_split('/\s+/', trim($class));
+
+        $name = 'unknown';
+        foreach ($classes as $c) {
+            if (str_starts_with($c, 'umd-plugin-') && $c !== 'umd-plugin') {
+                $name = substr($c, strlen('umd-plugin-'));
+                break;
+            }
+        }
+
+        $args = [];
+        foreach ($template->childNodes as $child) {
+            if ($child->nodeName === 'data' && $child->attributes?->getNamedItem('value')) {
+                $idx = (int)$child->attributes->getNamedItem('value')->nodeValue;
+                $args[$idx] = $child->textContent ?? '';
+            }
+        }
+        ksort($args);
+        $args = array_values($args);
+
+        $contentParts = [];
+        foreach ($template->childNodes as $child) {
+            if ($child->nodeName === 'data' && $child->attributes?->getNamedItem('value')) {
+                continue;
+            }
+            $contentParts[] = $doc->saveHTML($child);
+        }
+
+        $content = html_entity_decode(trim(implode('', $contentParts)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        $result[] = [
+            'name' => $name,
+            'args' => $args,
+            'content' => $content,
+            'rawClass' => $class,
+        ];
+    }
+
+    return $result;
+}
+```
+
+補足:
+
+- 配列インデックスは `<data value="index">` を優先して復元します。
+- 実運用では、`name` ごとにハンドラを分岐し、許可されたプラグインのみ実行してください。
+
 ## 標準プラグイン
 
 - `@detail(summary[, open])`

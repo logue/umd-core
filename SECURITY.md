@@ -34,14 +34,12 @@ This policy covers the Rust crate in this repository. External integrations and 
 
 - Input HTML is always escaped before parsing.
 - Dangerous URL schemes are blocked: `javascript:`, `data:`, `vbscript:`, `file:`.
-- Disallowed invisible blank-like characters are removed from text and URL inputs:
+- Outside fenced code blocks, suspicious invisible characters (including control and BiDi control characters) are removed from text and URL inputs:
   - `U+200B`, `U+200C`, `U+200D`, `U+FEFF`, `U+3164`
   - `U+202A`-`U+202E` (LRE, RLE, PDF, LRO, RLO)
   - `U+2066`-`U+2069` (LRI, RLI, FSI, PDI)
 - For directional text use-cases, use UMD inline syntax instead of raw BiDi control characters:
-  - `&bdi(text);` for bidirectional isolation
-  - `&bdo(ltr){text};` / `&bdo(rtl){text};` for explicit direction
-  - If you intended notation like `&bdi(ltf){bar};`, use `&bdo(ltr){bar};` in current UMD syntax.
+  - `&bdi(ltr){content};` (or `rtl`) for bidirectional isolation with explicit direction
 - Allowed blank characters are only:
   - `U+0020` (half-width space)
   - `U+3000` (full-width space)

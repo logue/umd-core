@@ -2,7 +2,7 @@
 
 A next-generation Markdown parser built with Rust, combining CommonMark compliance (~75%+), Bootstrap 5 integration, semantic HTML generation, and an extensible plugin system. Maintains backward compatibility with UMD legacy syntax.
 
-**Status**: Production-ready | **Latest Update**: 2026-03-03 | **License**: Apache-2.0
+**Status**: Production-ready | **Latest Update**: 2026-05-18 | **License**: Apache-2.0
 
 ## 🧩 Philosophy
 
@@ -15,7 +15,7 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 3. **Universal Media Handling:**
    Redefining the standard image tag as a versatile "Media Tag." Whether it's an image, video, or audio, the parser intelligently determines the best output.
 
-[See aslo (Japanese)](https://qiita.com/logue/items/244d6d31a63e3509418f)
+[See also (Japanese)](https://qiita.com/logue/items/244d6d31a63e3509418f)
 
 ---
 
@@ -47,7 +47,7 @@ A next-generation Markdown parser built with Rust, combining CommonMark complian
 
 - ✅ **Plugin System**: Inline (`&function(args){content};`) and block (`@function(args){{ content }}`) modes
 - ✅ **Frontmatter**: YAML/TOML metadata (separate from HTML output)
-- ✅ **Footnotes**: Structured data output (processed server-side by Nuxt/Laravel)
+- ✅ **Footnotes**: Footnotes section is separated from body HTML in `ParseResult` and can be rendered server-side
 - ✅ **Custom Header IDs**: `# Header {#custom-id}` syntax
 
 ### Advanced Features
@@ -191,7 +191,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-umd = { path = "./umd", version = "0.1" }
+umd = { path = "./umd", version = "0.1.1" }
 ```
 
 ### Basic Usage
@@ -352,16 +352,76 @@ code .inline-code-color {
 ### Plugins
 
 ```umd
-&highlight(yellow){Important text}; → <template class="umd-plugin umd-plugin-highlight">
-<data value="0">yellow</data>
-Important text
-</template>
+&badge(primary){New};
+@card(info){{
+  **Markdown** content
+}}
+```
 
-@detail(Click to expand){{Hidden}} → <template class="umd-plugin umd-plugin-detail">
-<data value="0">Click to expand</data>
-Hidden
+Output (example):
+
+```html
+<template class="umd-plugin umd-plugin-badge">
+  <data value="0">primary</data>
+  New
+</template>
+<template class="umd-plugin umd-plugin-card">
+  <data value="0">info</data>
+  **Markdown** content
 </template>
 ```
+
+Standard plugins may output direct HTML instead of `<template>`:
+
+```umd
+@detail(Click to expand, open){{
+  Hidden content
+}}
+@clear()
+```
+
+```html
+<details open>
+  <summary>Click to expand</summary>
+  Hidden content
+</details>
+<div class="clearfix"></div>
+```
+
+TypeScript parsing snippet:
+
+```ts
+const doc = new DOMParser().parseFromString(html, "text/html");
+const plugins = [...doc.querySelectorAll("template.umd-plugin")].map((tpl) => {
+  const cls = tpl.getAttribute("class") ?? "";
+  const name =
+    cls
+      .split(/\s+/)
+      .find((c) => c.startsWith("umd-plugin-") && c !== "umd-plugin")
+      ?.replace("umd-plugin-", "") ?? "unknown";
+  const args = [...tpl.content.querySelectorAll("data[value]")]
+    .sort(
+      (a, b) =>
+        Number(a.getAttribute("value")) - Number(b.getAttribute("value")),
+    )
+    .map((n) => n.textContent ?? "");
+  return { name, args };
+});
+```
+
+PHP parsing snippet:
+
+```php
+$doc = new DOMDocument();
+@$doc->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+$xp = new DOMXPath($doc);
+$nodes = $xp->query("//template[contains(concat(' ', normalize-space(@class), ' '), ' umd-plugin ')]");
+foreach ($nodes as $tpl) {
+    // read class="umd-plugin umd-plugin-..." and child <data value="...">
+}
+```
+
+See full examples: [`docs/plugin-system.md`](docs/plugin-system.md)
 
 ### Tables with Cell Spanning
 
