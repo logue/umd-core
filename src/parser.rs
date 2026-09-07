@@ -196,7 +196,6 @@ pub fn parse_to_html(input: &str, options: &ParserOptions) -> String {
     // Enable extensions
     if options.gfm_extensions {
         comrak_options.extension.strikethrough = true;
-        comrak_options.extension.tagfilter = true; // Disallow dangerous HTML tags
         comrak_options.extension.table = true;
         comrak_options.extension.autolink = true;
         comrak_options.extension.tasklist = true;
