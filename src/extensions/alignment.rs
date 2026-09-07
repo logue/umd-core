@@ -103,12 +103,90 @@ pub(crate) fn cell_alignment_prefixes() -> impl Iterator<Item = (&'static str, &
     VERTICAL_ALIGN.iter().chain(TEXT_ALIGN.iter()).copied()
 }
 
-/// Apply block placement prefixes to tables and block plugins
+/// Merge extra classes into a tag's existing `class="..."` attribute (or add
+/// one if absent), de-duplicating against classes already present. Shared by
+/// `apply_block_placement` and `apply_pending_code_block_placement` — both
+/// attach placement classes to an already-rendered element rather than
+/// wrapping it in a new one.
+pub(crate) fn merge_class_into_tag(tag_html: &str, extra_classes: &str) -> String {
+    let class_re = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
+
+    if let Some(caps) = class_re.captures(tag_html) {
+        let existing = caps.get(1).map_or("", |m| m.as_str());
+        let mut merged: Vec<String> = if existing.trim().is_empty() {
+            Vec::new()
+        } else {
+            existing.split_whitespace().map(|s| s.to_string()).collect()
+        };
+
+        for class_name in extra_classes.split_whitespace() {
+            if !merged.iter().any(|c| c == class_name) {
+                merged.push(class_name.to_string());
+            }
+        }
+
+        class_re
+            .replace(tag_html, format!(r#"class="{}""#, merged.join(" ")))
+            .to_string()
+    } else {
+        tag_html.replacen('>', &format!(r#" class="{}">"#, extra_classes), 1)
+    }
+}
+
+/// Placement class for an element that is naturally full-width by default
+/// (tables, code block figures) — START/CENTER/END need an explicit
+/// shrink-to-content (`umd-block-auto`) before a margin utility can align it,
+/// unlike media elements which shrink to their intrinsic size on their own.
+fn placement_class_for_block(placement: &str) -> &'static str {
+    match placement {
+        "START" => "umd-block-auto",
+        "CENTER" => "umd-block-center",
+        "END" => "umd-block-auto umd-block-end",
+        "JUSTIFY" => "umd-block-justify",
+        _ => "",
+    }
+}
+
+// A fenced code block interrupts the paragraph before it (unlike UMD's raw
+// pipe-table/plugin syntax, which comrak treats as plain paragraph text), so
+// by the time this module runs, code is still its `<!--CODE_BLOCK_n-->`
+// placeholder (see `fence::protect`) sitting right after a sibling `<p>`, not
+// nested inside it. This tags the placeholder with the requested placement so
+// `apply_pending_code_block_placement` can apply it once the placeholder has
+// become a real `<figure class="umd-code-block">` at the end of the pipeline.
+static CODE_BLOCK_PLACEMENT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(?s)<p>\s*(START|CENTER|END|JUSTIFY):\s*</p>\s*(<!--CODE_BLOCK_\d+-->)"#).unwrap()
+});
+
+/// Merge a placement recorded by `CODE_BLOCK_PLACEMENT` into the
+/// `<figure class="umd-code-block">` that the placeholder it wraps has since
+/// become. Must run after `fence::code_block::process_code_blocks`.
+pub(crate) fn apply_pending_code_block_placement(html: &str) -> String {
+    static PENDING: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r#"(?s)<div data-umd-code-placement="(START|CENTER|END|JUSTIFY)">\s*(<figure\b[^>]*\bclass="[^"]*\bumd-code-block\b[^"]*"[^>]*>[\s\S]*?</figure>)\s*</div>"#,
+        )
+        .unwrap()
+    });
+
+    PENDING
+        .replace_all(html, |caps: &Captures| {
+            let placement = &caps[1];
+            let figure = &caps[2];
+            merge_class_into_tag(figure, placement_class_for_block(placement))
+        })
+        .to_string()
+}
+
+/// Apply block placement prefixes to tables, block plugins, media, and code
+/// blocks.
 ///
 /// Handles START:/CENTER:/END:/JUSTIFY: prefixes followed by newline
-/// for UMD tables and block plugins (@function). Logical-direction names
-/// (matching block_decoration.rs's paragraph alignment and
-/// scss/utilities/text.scss), not physical LEFT:/RIGHT:.
+/// for UMD tables and block plugins (@function), and (via
+/// `CODE_BLOCK_PLACEMENT`/`apply_pending_code_block_placement`) preceding a
+/// fenced code block. Logical-direction names (matching
+/// block_decoration.rs's paragraph alignment and scss/utilities/text.scss),
+/// not physical LEFT:/RIGHT:.
 ///
 /// # Arguments
 ///
@@ -118,40 +196,14 @@ pub(crate) fn cell_alignment_prefixes() -> impl Iterator<Item = (&'static str, &
 ///
 /// HTML with block placement applied (`umd-*` reference-CSS classes)
 pub fn apply_block_placement(html: &str) -> String {
-    fn merge_class_attr(tag_html: &str, extra_classes: &str) -> String {
-        let class_re = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
-
-        if let Some(caps) = class_re.captures(tag_html) {
-            let existing = caps.get(1).map_or("", |m| m.as_str());
-            let mut merged: Vec<String> = if existing.trim().is_empty() {
-                Vec::new()
-            } else {
-                existing.split_whitespace().map(|s| s.to_string()).collect()
-            };
-
-            for class_name in extra_classes.split_whitespace() {
-                if !merged.iter().any(|c| c == class_name) {
-                    merged.push(class_name.to_string());
-                }
-            }
-
-            class_re
-                .replace(tag_html, format!(r#"class=\"{}\""#, merged.join(" ")))
-                .to_string()
-        } else {
-            tag_html.replacen('>', &format!(r#" class=\"{}\">"#, extra_classes), 1)
-        }
-    }
-
-    fn placement_class_for_block(placement: &str) -> &'static str {
-        match placement {
-            "START" => "umd-block-auto",
-            "CENTER" => "umd-block-center",
-            "END" => "umd-block-auto umd-block-end",
-            "JUSTIFY" => "umd-block-justify",
-            _ => "",
-        }
-    }
+    let with_code_block_placement = CODE_BLOCK_PLACEMENT
+        .replace_all(html, |caps: &Captures| {
+            format!(
+                r#"<div data-umd-code-placement="{}">{}</div>"#,
+                &caps[1], &caps[2]
+            )
+        })
+        .to_string();
 
     let media_block_placement = Regex::new(
         r#"(?s)<p>\s*(START|CENTER|END|JUSTIFY):\s*\n\s*(<picture[\s\S]*?</picture>|<video[\s\S]*?</video>|<audio[\s\S]*?</audio>|<a href="[^"]+" download class="download-link[^"]*"[^>]*>[\s\S]*?</a>)\s*</p>"#,
@@ -159,7 +211,7 @@ pub fn apply_block_placement(html: &str) -> String {
     .unwrap();
 
     let with_media_placement = media_block_placement
-        .replace_all(html, |caps: &regex::Captures| {
+        .replace_all(&with_code_block_placement, |caps: &regex::Captures| {
             let placement = &caps[1];
             let media = &caps[2];
 
@@ -191,11 +243,11 @@ pub fn apply_block_placement(html: &str) -> String {
             let placement_class = placement_class_for_block(placement);
 
             if block.starts_with("<table") {
-                return merge_class_attr(block, placement_class);
+                return merge_class_into_tag(block, placement_class);
             }
 
             if block.starts_with("<template") && block.contains("umd-plugin") {
-                return merge_class_attr(block, placement_class);
+                return merge_class_into_tag(block, placement_class);
             }
 
             block.to_string()
@@ -216,11 +268,11 @@ pub fn apply_block_placement(html: &str) -> String {
                 let placement_class = placement_class_for_block(placement);
 
                 if block.starts_with("<table") {
-                    return merge_class_attr(block, placement_class);
+                    return merge_class_into_tag(block, placement_class);
                 }
 
                 if block.starts_with("<template") && block.contains("umd-plugin") {
-                    return merge_class_attr(block, placement_class);
+                    return merge_class_into_tag(block, placement_class);
                 }
 
                 block.to_string()

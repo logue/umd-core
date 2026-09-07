@@ -40,8 +40,8 @@ def hello():
 **出力形式（タイトルあり）:**
 
 ```html
-<figure class="code-block code-block-python">
-  <figcaption class="code-title">example.py</figcaption>
+<figure class="umd-code-block">
+  <figcaption class="umd-code-filename">example.py</figcaption>
   <pre><code class="language-python">...</code></pre>
 </figure>
 ```
@@ -49,7 +49,7 @@ def hello():
 **出力形式（タイトルなし）:**
 
 ```html
-<figure class="code-block code-block-python">
+<figure class="umd-code-block">
   <pre><code class="language-python">...</code></pre>
 </figure>
 ```
@@ -60,7 +60,6 @@ def hello():
 - タイトルはファイル名に限定されない（任意のテキスト可能）
 - `<figcaption>`はタイトルがあるときのみ出力（省略可能）
 - セマンティックな`<figure>`でラップ
-- CSS で`code-block-{language}`クラスで言語別スタイリング可能
 
 ### 3. **Mermaid図対応** ✅
 
@@ -75,7 +74,7 @@ graph TD
 
 ```html
 <figure
-  class="code-block code-block-mermaid mermaid-diagram"
+  class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram"
   id="mermaid-{uuid}"
   data-mermaid-source="graph TD..."
 >
@@ -96,11 +95,11 @@ graph TD
 
 ```html
 <figure
-  class="code-block code-block-mermaid mermaid-diagram"
+  class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram"
   id="mermaid-{uuid}"
   data-mermaid-source="graph TD..."
 >
-  <figcaption class="code-title">システムフロー</figcaption>
+  <figcaption class="umd-code-title">システムフロー</figcaption>
   <svg>
     <!-- mermaid-rs-renderer生成のSVG -->
   </svg>
@@ -144,7 +143,7 @@ examples/
 3. **他の拡張処理** → UMD固有の装飾やプラグイン処理
 4. **コード復元** → `process_code_blocks()` でコードを復元
 5. **コードブロック処理**
-   - Mermaid検出と `<figure class="code-block code-block-mermaid">` でラップ
+   - Mermaid検出と `<figure class="umd-code-block umd-code-block-mermaid">` でラップ
    - Rust側で `mermaid-rs-renderer` を使ってSVGに変換
    - タイトル検出と `<figure>` でラップ（タイトルなしの場合は省略可能）
    - 言語クラスを `class="language-*"` に統一
@@ -176,7 +175,7 @@ r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
 ### Mermaid SVG（Rust側で事前レンダリング）
 
 - `mermaid-rs-renderer` で Rust 側で SVG に変換
-- SVG は `<figure class="code-block code-block-mermaid">` の中に埋め込み
+- SVG は `<figure class="umd-code-block umd-code-block-mermaid">` の中に埋め込み
 - JavaScript は不要（SEO対応済み）
 - Bootstrap CSS 変数で自動的にダークモード対応
 
@@ -203,20 +202,20 @@ fn inject_bootstrap_colors(svg: &str) -> String {
 ### Bootstrap統合スタイリング
 
 ```css
-.code-block {
+.umd-code-block {
   border: 1px solid var(--bs-border-color);
   border-radius: 0.25rem;
   overflow: hidden;
 }
 
-.code-block figcaption.code-title {
+.umd-code-block figcaption.umd-code-title {
   background-color: var(--bs-secondary);
   padding: 0.5rem 1rem;
   border-radius: 0.25rem 0.25rem 0 0;
   color: var(--bs-secondary-color);
 }
 
-.mermaid-diagram {
+.umd-mermaid-diagram {
   margin: 1rem 0;
   padding: 1rem;
   background-color: var(--bs-body-bg);
@@ -224,13 +223,13 @@ fn inject_bootstrap_colors(svg: &str) -> String {
   border-radius: 0.25rem;
 }
 
-.mermaid-diagram svg {
+.umd-mermaid-diagram svg {
   max-width: 100%;
   height: auto;
 }
 
 /* ダークモード対応 */
-[data-bs-theme="dark"] .mermaid-diagram {
+[data-bs-theme="dark"] .umd-mermaid-diagram {
   background-color: var(--bs-gray-900);
 }
 ```

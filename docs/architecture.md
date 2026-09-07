@@ -498,8 +498,10 @@ umd/
 ファイル: `src/extensions/fence/`
 
 - `code_block.rs`: 言語別シンタックスハイライト（`language-*` クラス）、
-  Mermaid図（`<figure class="code-block code-block-mermaid mermaid-diagram">...</figure>` でラップ）、
-  プレーンテキスト（言語指定なし → `<pre>...</pre>`）
+  Mermaid図（`<figure class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram">...</figure>` でラップ）。
+  `language-*`（フロント側ハイライトライブラリ向け）を除き、出力クラスはすべて`umd-`プレフィックス付き。
+  言語指定の有無・ファイル名の有無に関わらず、常に`<figure class="umd-code-block">`でラップされる
+  （`alignment::apply_pending_code_block_placement`経由でSTART:/CENTER:/END:/JUSTIFY:装飾子に対応）
 - `normalize.rs`: フェンス情報文字列の正規化（`` ```lang:filename ``）
 - `protect.rs`: コード区間の保護・復元（インラインコードの色スウォッチ検出を含む）
 - 仕様: `pre`タグには`lang`属性を付与しない（言語情報は`code.language-*`へ統一）

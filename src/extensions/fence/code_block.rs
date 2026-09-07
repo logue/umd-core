@@ -54,7 +54,7 @@ static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines
 ///
 /// Language-specific: `<pre><code class="language-rust">content</code></pre>` (unchanged)
 ///
-/// Mermaid diagram: `<figure class="code-block code-block-mermaid mermaid-diagram">SVG content</figure>`
+/// Mermaid diagram: `<figure class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram">SVG content</figure>`
 pub fn process_code_blocks(html: &str) -> String {
     // First handle Mermaid diagrams if present
     let html = process_mermaid_blocks(html);
@@ -69,7 +69,7 @@ pub fn process_code_blocks(html: &str) -> String {
 /// comrak outputs: `<pre><code class="language-mermaid">...</code></pre>`
 fn process_mermaid_blocks(html: &str) -> String {
     // Check if mermaid is present (but not already wrapped)
-    if !html.contains("language-mermaid") || html.contains("mermaid-diagram") {
+    if !html.contains("language-mermaid") || html.contains("umd-mermaid-diagram") {
         return html.to_string();
     }
 
@@ -83,7 +83,7 @@ fn process_mermaid_blocks(html: &str) -> String {
                 Ok(svg) => {
                     let diagram_id = Uuid::new_v4().to_string();
                     format!(
-                        "<figure class=\"code-block code-block-mermaid mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}</figure>",
+                        "<figure class=\"umd-code-block umd-code-block-mermaid umd-mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}</figure>",
                         &diagram_id[..8],
                         html_escape::encode_double_quoted_attribute(code_text),
                         svg
@@ -92,7 +92,7 @@ fn process_mermaid_blocks(html: &str) -> String {
                 Err(error) => {
                     let escaped_error = html_escape::encode_double_quoted_attribute(&error);
                     format!(
-                        "<figure class=\"code-block code-block-mermaid mermaid-diagram\"><pre class=\"mermaid-error\" data-error=\"{}\"><code class=\"language-mermaid\">{}</code></pre></figure>",
+                        "<figure class=\"umd-code-block umd-code-block-mermaid umd-mermaid-diagram\"><pre class=\"umd-mermaid-error\" data-error=\"{}\"><code class=\"language-mermaid\">{}</code></pre></figure>",
                         escaped_error,
                         code
                     )
@@ -137,7 +137,7 @@ fn process_syntax_highlighted_blocks(html: &str) -> String {
                 let decoded = decode_html_entities(code);
                 match highlight_code_with_syntect(lang, &decoded) {
                     Some(highlighted) => format!(
-                        "<pre><code class=\"language-{} syntect-highlight\" data-highlighted=\"true\">{}</code></pre>",
+                        "<pre><code class=\"language-{} umd-syntect-highlight\" data-highlighted=\"true\">{}</code></pre>",
                         lang, highlighted
                     ),
                     None => format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code),
@@ -146,16 +146,23 @@ fn process_syntax_highlighted_blocks(html: &str) -> String {
                 format!("<pre>{}</pre>", code)
             };
 
-            if let Some(filename) = filename {
-                let escaped_filename = html_escape::encode_text(&filename);
-                format!(
-                    "<figure class=\"code-block\"><figcaption class=\"code-filename\">{}</figcaption>{}</figure>",
-                    escaped_filename,
-                    rendered_block
-                )
-            } else {
-                rendered_block
-            }
+            // Always wrap in `<figure class="umd-code-block">`, with or
+            // without a filename, so every code block interoperates with the
+            // START:/CENTER:/END:/JUSTIFY: placement decorators the same way
+            // tables and media do (see alignment::apply_pending_code_block_placement).
+            let figcaption = filename
+                .map(|filename| {
+                    format!(
+                        "<figcaption class=\"umd-code-filename\">{}</figcaption>",
+                        html_escape::encode_text(&filename)
+                    )
+                })
+                .unwrap_or_default();
+
+            format!(
+                "<figure class=\"umd-code-block\">{}{}</figure>",
+                figcaption, rendered_block
+            )
         })
         .to_string()
 }
@@ -357,7 +364,8 @@ mod tests {
         let html = "<pre><code class=\"language-rust\">fn main() {}</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("language-rust"));
-        assert!(result.contains("syntect-highlight"));
+        assert!(result.contains("umd-syntect-highlight"));
+        assert!(result.contains("umd-code-block"));
         assert!(result.contains("data-highlighted=\"true\""));
         assert!(result.contains("fn"));
         assert!(result.contains("main"));
@@ -368,8 +376,10 @@ mod tests {
         // Plain text block (no language attribute): <pre><code>text</code></pre>
         let html = "<pre><code>plain text</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("<pre>plain text</pre>"));
-        assert!(!result.contains("<code>"));
+        assert_eq!(
+            result,
+            "<figure class=\"umd-code-block\"><pre>plain text</pre></figure>"
+        );
     }
 
     #[test]
@@ -378,8 +388,8 @@ mod tests {
         let html =
             "<pre><code class=\"language-mermaid\">graph TD\n    A[Start] --> B[End]</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("code-block-mermaid"));
-        assert!(result.contains("mermaid-diagram"));
+        assert!(result.contains("umd-code-block-mermaid"));
+        assert!(result.contains("umd-mermaid-diagram"));
         assert!(result.contains("data-mermaid-source"));
         assert!(result.contains("<svg"));
     }
@@ -388,7 +398,7 @@ mod tests {
     fn test_mermaid_parse_error_fallback() {
         let html = "<pre><code class=\"language-mermaid\">graph TD\n  A --&gt;</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("mermaid-error") || result.contains("mermaid-diagram"));
+        assert!(result.contains("umd-mermaid-error") || result.contains("umd-mermaid-diagram"));
     }
 
     #[test]
@@ -447,8 +457,8 @@ mod tests {
     fn test_code_block_with_filename_and_language() {
         let html = "<pre><code class=\"language-rust\" data-meta=\"umd-filename:src/main.rs\">fn main() {}</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("<figure class=\"code-block\">"));
-        assert!(result.contains("<figcaption class=\"code-filename\">"));
+        assert!(result.contains("<figure class=\"umd-code-block\">"));
+        assert!(result.contains("<figcaption class=\"umd-code-filename\">"));
         assert!(result.contains("src/main.rs"));
         assert!(result.contains("language-rust"));
     }
@@ -457,7 +467,7 @@ mod tests {
     fn test_code_block_with_filename_without_language() {
         let html = "<pre><code class=\"language-umd-nolang\" data-meta=\"umd-filename:config.yml\">key: value</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("<figure class=\"code-block\">"));
+        assert!(result.contains("<figure class=\"umd-code-block\">"));
         assert!(result.contains("config.yml"));
         assert!(result.contains("<pre>key: value</pre>"));
         assert!(!result.contains("language-umd-nolang"));

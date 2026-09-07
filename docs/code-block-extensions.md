@@ -36,10 +36,14 @@ fn main() {
 **出力HTML:**
 
 ```html
-<pre><code class="language-rust syntect-highlight" data-highlighted="true">fn main() {
+<figure class="umd-code-block">
+  <pre><code class="language-rust umd-syntect-highlight" data-highlighted="true">fn main() {
     println!("Hello, World!");
 }</code></pre>
+</figure>
 ```
+
+すべてのコードブロックは、ファイル名の有無やシンタックスハイライトの成否に関わらず `<figure class="umd-code-block">` でラップされます（詳細は後述の「コードブロックのラップと配置」を参照）。
 
 #### ハイブリッド方式（処理フロー）
 
@@ -55,10 +59,10 @@ flowchart TD
   A[Markdown fenced code] --> B[comrak: code class=language-xxx]
   B --> C{言語は mermaid?}
   C -->|Yes| D[Rust: MermaidをSVG化]
-  D --> E[figure.mermaid-diagram を出力]
+  D --> E[figure.umd-mermaid-diagram を出力]
   C -->|No| F{Syntectでハイライト可能?}
   F -->|Yes| G[Rust: ハイライトHTML生成]
-  G --> H[code class="language-xxx syntect-highlight"\ndata-highlighted="true"]
+  G --> H[code class="language-xxx umd-syntect-highlight"\ndata-highlighted="true"]
   F -->|No| I[code class="language-xxx" のまま出力]
   H --> J[フロント側ハイライト対象から除外]
   I --> K[フロント側で Prism/HLJS/Shiki が処理]
@@ -81,9 +85,9 @@ fn main() {
 **出力HTML:**
 
 ```html
-<figure class="code-block code-block-rust">
-  <figcaption class="code-filename">main.rs</figcaption>
-  <pre><code class="language-rust syntect-highlight" data-highlighted="true">fn main() {
+<figure class="umd-code-block">
+  <figcaption class="umd-code-filename">main.rs</figcaption>
+  <pre><code class="language-rust umd-syntect-highlight" data-highlighted="true">fn main() {
     println!("Hello, World!");
 }</code></pre>
 </figure>
@@ -92,8 +96,7 @@ fn main() {
 **利点:**
 
 - `<figure>`要素で意味的なラッピング
-- `<figcaption>`でファイル名を表示
-- CSSで`code-block-{language}`クラスを使用して言語別スタイリング可能
+- `<figcaption>`でファイル名を表示（ファイル名がない場合も`<figure class="umd-code-block">`自体は常に出力されます）
 
 ### 3. Mermaid図のレンダリング対応
 
@@ -113,7 +116,7 @@ graph TD
 
 ```html
 <figure
-  class="code-block code-block-mermaid mermaid-diagram"
+  class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram"
   id="mermaid-{uuid}"
   data-mermaid-source="graph TD..."
 >
@@ -139,11 +142,11 @@ graph TD
 
 ```html
 <figure
-  class="code-block code-block-mermaid mermaid-diagram"
+  class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram"
   id="mermaid-{uuid}"
   data-mermaid-source="graph TD..."
 >
-  <figcaption class="code-title">システムフロー</figcaption>
+  <figcaption class="umd-code-title">システムフロー</figcaption>
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
     <!-- Bootstrap CSS変数でスタイル付けされたSVG要素 -->
   </svg>
@@ -160,6 +163,27 @@ graph TD
 - ✅ タイトルは省略可能（` ```mermaid: タイトル ` で指定）
 - ✅ ブロック型プラグイン（CENTER: など）との連携可能
 
+### コードブロックのラップと配置
+
+`language-`（Prism/Highlight.js/Shiki などフロント側ハイライトライブラリが処理対象を判定するための標準クラス）を除き、コードブロックが出力するクラスはすべて`umd-`プレフィックス付きです。ファイル名の有無や言語指定の有無に関わらず、コードブロック（プレーンテキスト・シンタックスハイライト・Mermaid図のいずれも）は常に`<figure class="umd-code-block">`でラップされます。
+
+これにより、UMDテーブルやメディア要素と同様に、直前の行に置いた`START:`/`CENTER:`/`END:`/`JUSTIFY:`装飾子でブロックを寄せられます。
+
+````markdown
+CENTER:
+```rust
+fn main() {}
+```
+````
+
+```html
+<figure class="umd-code-block umd-block-center">
+  <pre><code class="language-rust umd-syntect-highlight" data-highlighted="true">...</code></pre>
+</figure>
+```
+
+装飾子を指定しない場合のデフォルトはJUSTIFY相当（コンテナ幅いっぱいに広がるブロック要素としての自然な挙動）です。
+
 ## フロントエンド対応
 
 ### Mermaid図
@@ -172,7 +196,7 @@ graph TD
 
 ```javascript
 // Mermaidコードをデバッグ表示
-document.querySelectorAll("figure.mermaid-diagram").forEach((figure) => {
+document.querySelectorAll("figure.umd-mermaid-diagram").forEach((figure) => {
   const source = figure.getAttribute("data-mermaid-source");
   console.log("Mermaid source:", source);
 });
@@ -266,7 +290,7 @@ pre code {
 }
 
 /* figcaption スタイル */
-.code-block figcaption {
+.umd-code-block figcaption {
   background-color: var(--bs-gray-200, #e9ecef);
   color: var(--bs-gray-800, #343a40);
   padding: 0.5rem 1rem;
@@ -275,7 +299,7 @@ pre code {
   font-weight: 500;
 }
 
-.code-block {
+.umd-code-block {
   margin: 1rem 0;
   border-radius: 0.25rem;
   overflow: hidden;

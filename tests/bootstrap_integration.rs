@@ -322,7 +322,7 @@ fn test_end_prefix_places_media_end() {
 fn test_mermaid_code_block_rendered_as_svg() {
     let input = "```mermaid\nflowchart TD\n  A[Start] --> B[End]\n```";
     let output = parse(input);
-    assert!(output.contains("mermaid-diagram"));
+    assert!(output.contains("umd-mermaid-diagram"));
     assert!(output.contains("<svg"));
     assert!(!output.contains("language-mermaid"));
 }
@@ -332,9 +332,21 @@ fn test_code_block_syntax_highlighted_with_syntect() {
     let input = "```rust\nfn main() {\n    println!(\"hello\");\n}\n```";
     let output = parse(input);
     assert!(output.contains("language-rust"));
-    assert!(output.contains("syntect-highlight"));
+    assert!(output.contains("umd-syntect-highlight"));
     assert!(output.contains("data-highlighted=\"true\""));
     assert!(output.contains("syntect-"));
+}
+
+#[test]
+fn test_plain_code_block_wrapped_in_umd_code_block_figure() {
+    let input = "```\nplain text\n```";
+    let output = parse(input);
+    assert!(
+        output.contains(r#"<figure class="umd-code-block">"#),
+        "output: {}",
+        output
+    );
+    assert!(output.contains("plain text"), "output: {}", output);
 }
 
 #[test]
@@ -342,12 +354,12 @@ fn test_code_block_with_filename_uses_figure_caption() {
     let input = "```rust:src/main.rs\nfn main() {\n    println!(\"hello\");\n}\n```";
     let output = parse(input);
     assert!(
-        output.contains(r#"<figure class="code-block">"#),
+        output.contains(r#"<figure class="umd-code-block">"#),
         "output: {}",
         output
     );
     assert!(
-        output.contains(r#"<figcaption class="code-filename">src/main.rs</figcaption>"#),
+        output.contains(r#"<figcaption class="umd-code-filename">src/main.rs</figcaption>"#),
         "output: {}",
         output
     );
@@ -359,7 +371,7 @@ fn test_code_block_with_filename_without_language() {
     let input = "```:config.yml\nkey: value\n```";
     let output = parse(input);
     assert!(
-        output.contains(r#"<figure class="code-block">"#),
+        output.contains(r#"<figure class="umd-code-block">"#),
         "output: {}",
         output
     );
@@ -367,6 +379,40 @@ fn test_code_block_with_filename_without_language() {
     assert!(output.contains("<pre>key: value"), "output: {}", output);
     assert!(
         !output.contains("language-umd-nolang"),
+        "output: {}",
+        output
+    );
+}
+
+#[test]
+fn test_start_prefix_places_code_block_at_start() {
+    let input = "START:\n```rust\nfn main() {}\n```";
+    let output = parse(input);
+    assert!(
+        output.contains(r#"<figure class="umd-code-block umd-block-auto">"#),
+        "output: {}",
+        output
+    );
+    assert!(!output.contains("START:"), "output: {}", output);
+}
+
+#[test]
+fn test_center_prefix_places_code_block_centered() {
+    let input = "CENTER:\n```rust\nfn main() {}\n```";
+    let output = parse(input);
+    assert!(
+        output.contains(r#"<figure class="umd-code-block umd-block-center">"#),
+        "output: {}",
+        output
+    );
+}
+
+#[test]
+fn test_end_prefix_places_code_block_at_end() {
+    let input = "END:\n```rust\nfn main() {}\n```";
+    let output = parse(input);
+    assert!(
+        output.contains(r#"<figure class="umd-code-block umd-block-auto umd-block-end">"#),
         "output: {}",
         output
     );

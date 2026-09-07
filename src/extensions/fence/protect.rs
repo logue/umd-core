@@ -65,6 +65,11 @@ pub(crate) fn restore_code_sections(
     // Apply code block enhancements (syntax highlighting, Mermaid, filenames)
     result = code_block::process_code_blocks(&result);
 
+    // Merge any START:/CENTER:/END:/JUSTIFY: placement recorded by
+    // alignment::apply_block_placement onto the figure the code block
+    // placeholder above just became.
+    result = crate::extensions::alignment::apply_pending_code_block_placement(&result);
+
     result
 }
 
