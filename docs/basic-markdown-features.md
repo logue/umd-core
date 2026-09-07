@@ -38,9 +38,10 @@ Universal Markdown が提供する基本 Markdown 機能の実装一覧です。
 ## 実装の主担当
 
 - `src/parser.rs`
-- `src/extensions/code_block.rs`
+- `src/extensions/fence/code_block.rs`（シンタックスハイライト・Mermaid・ファイル名）
+- `src/extensions/fence/normalize.rs`（`lang:filename` 記法の正規化）
+- `src/extensions/fence/protect.rs`（コード区間の保護・カラーサンプル検出）
 - `src/extensions/conflict_resolver.rs`
-- `src/extensions/preprocessor.rs`
 
 ## 主なテスト
 

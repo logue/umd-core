@@ -109,8 +109,13 @@ GFM Alert 風の `> [!TYPE]` ブロック引用を、`<aside class="umd-note umd
 
 ## 実装の主担当
 
-- `src/extensions/inline_decorations.rs`
-- `src/extensions/block_decorations.rs`
+- `src/extensions/inline/notation.rs`（`%%text%%`、`||text||`、`__text__`）
+- `src/extensions/plugins/inline.rs`（`&math`/`&popover`を含む標準インライン
+  プラグイン、`&function()`の保護・復元）
+- `src/extensions/plugins/block.rs`（`@math`/`@popover`を含む標準ブロック
+  プラグイン）
+- `src/extensions/block_decoration.rs`（`COLOR()`/`SIZE()`/`TRUNCATE:`）
+- `src/extensions/alignment.rs`（`START`/`CENTER`/`END`/`JUSTIFY`等の配置）
 - `src/extensions/conflict_resolver.rs`
 - `src/extensions/nested_blocks.rs`
 

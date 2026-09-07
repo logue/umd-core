@@ -71,7 +71,7 @@
 - 🔮 フロントマターのTSON対応（区切り文字 `***`）
 - 🔮 ボトムマター仕様策定
 - 🔮 AAプラグイン（決め打ちフォント指定によるアスキーアート表示、例: MS Pゴシック）— 文字幅依存が強くリファレンスCSS/コアの責務にできないためプラグインとして分離
-- 🔮 Mermaid SVGの色トークン対応 — `mermaid-rs-renderer`は各要素に`fill="#hex"`等のリテラル色を焼き込むため、`.umd-color-*`のようなCSSクラスでは上書きできない。現状は`src/extensions/code_block.rs`の`inject_bootstrap_colors`がBootstrap既定6色のHEXのみ`var(--bs-*, #hex)`に後置換する場当たり的な対応。恒久対応は (1) この置換をUMDの色トークン・全色相に拡張するか、(2) `mermaid-rs-renderer`のTheme/ThemeVariables設定に`var(...)`文字列を直接渡してレンダリングさせる（SVGシリアライザが素通しするか要検証）
+- 🔮 Mermaid SVGの色トークン対応 — `mermaid-rs-renderer`は各要素に`fill="#hex"`等のリテラル色を焼き込むため、`.umd-color-*`のようなCSSクラスでは上書きできない。現状は`src/extensions/fence/code_block.rs`の`inject_umd_color_variables`がBootstrap既定6色のHEXのみ`var(--umd-color-*, #hex)`に後置換する場当たり的な対応。恒久対応は (1) この置換をUMDの色トークン・全色相に拡張するか、(2) `mermaid-rs-renderer`のTheme/ThemeVariables設定に`var(...)`文字列を直接渡してレンダリングさせる（SVGシリアライザが素通しするか要検証）
 
 ---
 
@@ -122,10 +122,10 @@ content
 
 ### 実装計画
 
-- [x] `::: 記法` の字句解析・構文解析実装（`src/extensions/plugin_markers.rs` の `protect_colon_block_plugins`）
-- [x] 既存プラグインシステムとの統合（`@table` / `@math` / `@popover` / `@clear` と同一の後処理ロジックを共有、`src/extensions/conflict_resolver.rs`）
+- [x] `::: 記法` の字句解析・構文解析実装（`src/extensions/plugins/block.rs` の `protect_colon_block_plugins`）
+- [x] 既存プラグインシステムとの統合（`@table` / `@math` / `@popover` / `@clear` と同一の後処理ロジックを共有、`src/extensions/plugins/block.rs`）
 - [x] 入れ子検出・エラーハンドリング実装（最初に現れる `:::` のみの行で閉じることで、入れ子部分は生テキストとして無害化）
-- [x] テスト suite 追加（`plugin_markers` 単体テスト、`tests/conflict_resolution.rs` の統合テスト）
+- [x] テスト suite 追加（`plugins::block` 単体テスト、`tests/conflict_resolution.rs` の統合テスト）
 - [x] ドキュメント更新（[docs/plugin-system.md](docs/plugin-system.md) / [docs/block-plugins.md](docs/block-plugins.md)）
 
 ---
@@ -468,7 +468,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 | `V-CENTER:` | `vertical-align: middle`     | 旧 `MIDDLE:`                                                              |
 | `BASELINE:` | `vertical-align: baseline`   | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
 
-**2026年9月実装済み**: `src/extensions/block_decorations.rs`の`ALIGN_EXTRACT`/`VALIGN_EXTRACT`（および`map_text_align`/`map_vertical_align`、`apply_block_decorations_with_options`の行頭ガード）を上表の記法に更新し、`conflict_resolver.rs`の`block_decoration_prefix`（プリプロセス時の保護用正規表現）も追随。旧`LEFT`/`RIGHT`/`TOP`/`MIDDLE`/`BOTTOM`は段落装飾としては非対応になった（エイリアスなし、完全な置き換え）。ただし`apply_block_placement`（テーブル/プラグインのブロック配置ラッパー）と`table/umd/decorations.rs`（テーブルセル装飾）は物理名称のまま — これらはテーブル関連としてスコープ外（意図的に保留）。
+**2026年9月実装済み**: 段落装飾のALIGN_EXTRACT/VALIGN_EXTRACT・`apply_block_placement`（テーブル/プラグインのブロック配置ラッパー）・`table/umd/decorations.rs`（テーブルセル装飾）のすべてを上表の論理名記法に統一済み（旧`LEFT`/`RIGHT`/`TOP`/`MIDDLE`/`BOTTOMはエイリアスなしで完全に置き換え）。その後の記法別モジュール整理（後述）で、これらのマッピング・共有プレフィックス表は`src/extensions/alignment.rs`に集約され、`block_decoration.rs`（COLOR/SIZE/TRUNCATE）・`table/umd/decorations.rs`・GFMテーブルセル配置処理はいずれもそこを参照する構成になった。
 
 ### 検討事項（脱Bootstrap化）
 
@@ -493,8 +493,9 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 - 発見: ある標準プラグインの中に別の標準プラグインをネストした場合（例: `&color(blue){&size(sm){x};};`）、外側のマーカー正規表現が内側の呼び出しを非展開のまま生テキストとして飲み込むため、`inline_decorations.rs`側の“二回目の掃引”（`apply_inline_decorations_with_limit_and_options`、`mod.rs`でマーカー復元の後に実行）が実際にそれを展開している。このためこのファイルの`&color()`/`&size()`のマッピングロジックは见かけ上デッドコードではなく、ネスト時にのみ効くセカンドパスとして機能していた
 - 対応: `conflict_resolver.rs`に`"spoiler"`ケースを追加（`umd-spoiler`クラス、content版・argsonly版の両方）。`map_color_value_with_options`/`map_font_size_value`を`pub(crate)`化し、`inline_decorations.rs`側のローカル重複実装を削除して同じ関数を呼び出すよう統一（二重実装によるドリフトを恒久的に防止）。Discord風`||text||`スポイラーの出力クラスも`spoiler`→`umd-spoiler`に修正
 - 命名: `convert_inline_decoration_to_html`系3関数を`convert_standard_inline_plugin_to_html`系に改名し、ブロック型標準プラグイン（`@table`/`@math`/`@popover`/`@clear`/`@detail`）と対になる「インライン標準プラグイン」という位置づけを明示（docs: [plugin-system.md](docs/plugin-system.md) / [inline-plugins.md](docs/inline-plugins.md)）
-- 未着手: `dfn`/`kbd`/`samp`/`var`/`cite`/`q`/`small`/`bdi`/`ruby`/`time`/`data`/`bdo`/`sup`/`sub`は設定オプションを持たない単純な文字列組み立てのため二重実装のドリフトリスクは低いが、`inline_decorations.rs`にまだ個別正規表現のコピーが残っている（統合の余地あり）
-- 未着手: `src/extensions/plugins.rs`（`apply_plugin_syntax`）はどこからも呼ばれていない完全なデッドコード（実際のプラグイン処理は`plugin_markers.rs`+`conflict_resolver.rs`が担当）。`docs/plugin-system.md`の「実装の主担当」に記載が残っているが未整理
+- 未着手: `dfn`/`kbd`/`samp`/`var`/`cite`/`q`/`small`/`bdi`/`ruby`/`time`/`data`/`bdo`/`sup`/`sub`は設定オプションを持たない単純な文字列組み立てのため二重実装のドリフトリスクは低いが、個別正規表現のコピーが残っている（統合の余地あり）
+- 解決済み（2026年9月・記法別モジュール整理）: `conflict_resolver.rs`の一次パスと`inline_decorations.rs`の二次スイープを`src/extensions/plugins/inline.rs`に統合。同一ファイル内の関数呼び出しになったため`map_color_value_with_options`/`map_font_size_value`の`pub(crate)`公開は不要になった（両者とも`plugins/inline.rs`のプライベート関数）
+- 解決済み（2026年9月・記法別モジュール整理）: 完全なデッドコードだった`src/extensions/plugins.rs`（`apply_plugin_syntax`）を削除。実際のプラグイン処理は`src/extensions/plugins/inline.rs`（インライン）と`src/extensions/plugins/block.rs`（ブロック）が担当。`docs/plugin-system.md`の「実装の主担当」も更新済み
 
 ### テーブルのクラス改称（2026年9月実装済み）
 
@@ -657,7 +658,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 1. **ブロック装飾の複合処理最適化**
    - 現状: 各プレフィックスが個別に `<p>` タグ生成
    - 目標: 統一正規表現で1つのタグに統合
-   - ファイル: `src/extensions/block_decorations.rs`, `conflict_resolver.rs`
+   - ファイル: `src/extensions/block_decoration.rs`, `src/extensions/alignment.rs`, `conflict_resolver.rs`
 
 2. **テーブル装飾の統一**
    - セル装飾関数の標準化

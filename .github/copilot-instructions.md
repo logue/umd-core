@@ -17,15 +17,16 @@ frontmatter抽出 → 前処理 → 競合保護 → サニタイズ → comrak�
 
 ## 何をどこで変更するか（クイックリファレンス）
 
-| 対象機能                               | ファイル                               | テスト                           |
-| -------------------------------------- | -------------------------------------- | -------------------------------- |
-| 構文競合、UMD仕様                      | `src/extensions/conflict_resolver.rs`  | `tests/conflict_resolution.rs`   |
-| インライン装飾 (`&color`, `&ruby` 等)  | `src/extensions/inline_decorations.rs` | `tests/bootstrap_integration.rs` |
-| ブロック装飾 (`COLOR()`, `CENTER:` 等) | `src/extensions/block_decorations.rs`  | `tests/bootstrap_integration.rs` |
-| プラグイン (`&fn()`, `@fn()`)          | `src/extensions/plugins.rs`            | `tests/ *`                       |
-| コードブロック                         | `src/extensions/code_block.rs`         | `tests/bootstrap_integration.rs` |
-| テーブル拡張                           | `src/extensions/table/umd/*`           | `examples/test_table_*.rs`       |
-| メディア自動検出                       | `src/extensions/media.rs`              | `tests/bootstrap_integration.rs` |
+| 対象機能                               | ファイル                                          | テスト                           |
+| -------------------------------------- | -------------------------------------------------- | -------------------------------- |
+| 構文競合、UMD仕様                      | `src/extensions/conflict_resolver.rs`              | `tests/conflict_resolution.rs`   |
+| インライン表記 (`''bold''`, `%%`, `\|\|` 等) | `src/extensions/inline/*`                    | `tests/bootstrap_integration.rs` |
+| フェンス表記 (コードブロック)          | `src/extensions/fence/*`                           | `tests/bootstrap_integration.rs` |
+| 位置揃え表記 (`CENTER:`, `V-START:` 等)| `src/extensions/alignment.rs`                      | `tests/bootstrap_integration.rs` |
+| ブロック装飾 (`COLOR()`, `SIZE()` 等)  | `src/extensions/block_decoration.rs`               | `tests/bootstrap_integration.rs` |
+| インライン/ブロックプラグイン (`&fn()`, `@fn()`) | `src/extensions/plugins/*`               | `tests/ *`                       |
+| テーブル拡張                           | `src/extensions/table/*`                           | `examples/test_table_*.rs`       |
+| メディア自動検出                       | `src/extensions/media.rs`                          | `tests/bootstrap_integration.rs` |
 
 詳細は `docs/architecture.md` の「何をどこで変更するか」セクション参照。
 

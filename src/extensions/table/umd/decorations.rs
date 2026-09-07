@@ -83,20 +83,15 @@ pub fn parse_cell_content(cell: &mut Cell) {
         }
     }
 
-    // Parse alignment prefixes
-    for (prefix, class) in &[
-        ("V-START:", "umd-v-start"),
-        ("V-CENTER:", "umd-v-center"),
-        ("V-END:", "umd-v-end"),
-        ("BASELINE:", "umd-v-baseline"),
-        ("END:", "umd-end"),
-        ("CENTER:", "umd-center"),
-        ("START:", "umd-start"),
-        ("JUSTIFY:", "umd-justify"),
-    ] {
-        if remaining.starts_with(prefix) {
+    // Parse alignment prefixes (keyword/class table shared with the rest of
+    // the alignment scope — see src/extensions/alignment.rs)
+    for (keyword, class) in crate::extensions::alignment::cell_alignment_prefixes() {
+        if let Some(stripped) = remaining
+            .strip_prefix(keyword)
+            .and_then(|rest| rest.strip_prefix(':'))
+        {
             cell.classes.push(class.to_string());
-            remaining = remaining.strip_prefix(prefix).unwrap().trim().to_string();
+            remaining = stripped.trim().to_string();
         }
     }
 

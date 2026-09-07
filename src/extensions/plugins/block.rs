@@ -1,115 +1,19 @@
-//! Plugin syntax marker processing
+//! Block plugin notation: `@function(args){{content}}` / `@function(args){content}`
+//! / `@function(args)` and the `::: 記法` colon-fence variant.
 //!
-//! This module handles the conversion of plugin syntax into safe markers
-//! that won't be affected by Markdown parsing.
+//! Like `plugins::inline`, this module owns both the "protect" step
+//! (`protect_block_plugins` / `protect_colon_block_plugins`, run before
+//! Markdown parsing) and the "restore" step (`restore_markers`, run during
+//! `conflict_resolver::postprocess_conflicts_with_options`) for block-level
+//! plugin syntax. Recognized ("standard") function names (`math`, `popover`,
+//! `clear`) get real HTML; anything else falls back to a generic
+//! `<template class="umd-plugin-*">`.
 
 use base64::{Engine as _, engine::general_purpose};
 use once_cell::sync::Lazy;
-use regex::Regex;
-use std::collections::HashSet;
+use regex::{Captures, Regex};
 
-/// HTML entities that should NOT be treated as plugins
-fn html_entities() -> HashSet<&'static str> {
-    [
-        "lt", "gt", "amp", "nbsp", "quot", "apos", "ndash", "mdash", "hellip", "copy", "reg",
-        "trade", "times", "divide", "plusmn", "le", "ge", "ne", "asymp", "equiv", "forall",
-        "exist", "empty", "nabla", "isin", "notin", "ni", "prod", "sum", "minus", "lowast",
-        "radic", "prop", "infin", "ang", "and", "or", "cap", "cup", "int", "there4", "sim", "cong",
-        "sub", "sup", "nsub", "sube", "supe", "oplus", "otimes", "perp", "sdot", "lceil", "rceil",
-        "lfloor", "rfloor", "lang", "rang", "loz", "spades", "clubs", "hearts", "diams", "alpha",
-        "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa", "lambda",
-        "mu", "nu", "xi", "omicron", "pi", "rho", "sigma", "tau", "upsilon", "phi", "chi", "psi",
-        "omega", "Iuml", "iuml", "Uuml", "uuml", "Auml", "auml", "Ouml", "ouml", "Euml", "euml",
-        "Aring", "aring", "AElig", "aelig", "Ccedil", "ccedil", "Eth", "eth", "Ntilde", "ntilde",
-        "Oslash", "oslash", "Thorn", "thorn", "szlig", "yuml", "Agrave", "agrave", "Aacute",
-        "aacute", "Acirc", "acirc", "Atilde", "atilde", "Egrave", "egrave", "Eacute", "eacute",
-        "Ecirc", "ecirc", "Igrave", "igrave", "Iacute", "iacute", "Icirc", "icirc", "Ograve",
-        "ograve", "Oacute", "oacute", "Ocirc", "ocirc", "Otilde", "otilde", "Ugrave", "ugrave",
-        "Uacute", "uacute", "Ucirc", "ucirc", "Yacute", "yacute", "cent", "pound", "curren", "yen",
-        "brvbar", "sect", "uml", "ordf", "laquo", "not", "shy", "macr", "deg", "sup2", "sup3",
-        "acute", "micro", "para", "middot", "cedil", "sup1", "ordm", "raquo", "frac14", "frac12",
-        "frac34", "iquest", "ensp", "emsp", "thinsp", "zwnj", "zwj", "lrm", "rlm",
-    ]
-    .iter()
-    .copied()
-    .collect()
-}
-
-/// Protect inline plugin syntax by converting to markers
-///
-/// Converts various inline plugin patterns into safe markers:
-/// - `&function{content};` → marker with content
-/// - `&function(args){content};` → marker with args and content
-/// - `&function(args);` → marker with args
-/// - `&function;` → marker (excluding HTML entities)
-pub fn protect_inline_plugins(input: &str) -> String {
-    let mut result = input.to_string();
-
-    // Protect inline plugins with content but no args: &function{content};
-    let inline_plugin_noargs_content = Regex::new(r"&(\w+)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
-    result = inline_plugin_noargs_content
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-            let content = &caps[2];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{INLINE_PLUGIN:{}::{}:INLINE_PLUGIN}}}}",
-                function, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins: &function(args){content};
-    let inline_plugin = Regex::new(r"&(\w+)\(([^)]*)\)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
-    result = inline_plugin
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-            let args = &caps[2];
-            let content = &caps[3];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{INLINE_PLUGIN:{}:{}:{}:INLINE_PLUGIN}}}}",
-                function, args, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins (args only): &function(args);
-    let inline_plugin_argsonly = Regex::new(r"&(\w+)\(([^)]*)\);").unwrap();
-    result = inline_plugin_argsonly
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-            let args = &caps[2];
-            format!(
-                "{{{{INLINE_PLUGIN_ARGSONLY:{}:{}:INLINE_PLUGIN_ARGSONLY}}}}",
-                function, args
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins (no args): &function;
-    // Function name must start with a letter to avoid conflicts with HTML entities
-    let inline_plugin_noargs = Regex::new(r"&([a-zA-Z]\w*);").unwrap();
-    let entities = html_entities();
-
-    result = inline_plugin_noargs
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-
-            // Skip HTML entities
-            if entities.contains(function) {
-                return caps[0].to_string();
-            }
-
-            format!(
-                "{{{{INLINE_PLUGIN_NOARGS:{}:INLINE_PLUGIN_NOARGS}}}}",
-                function
-            )
-        })
-        .to_string();
-
-    result
-}
+use super::{escape_html_text, render_args_as_data, render_math_html, render_popover_html};
 
 /// Protect block plugin syntax by converting to markers
 ///
@@ -234,31 +138,156 @@ pub fn protect_colon_block_plugins(input: &str) -> String {
     result
 }
 
+/// Restore `{{BLOCK_PLUGIN...}}`/`{{COLON_BLOCK_PLUGIN...}}` markers left by
+/// `protect_block_plugins`/`protect_colon_block_plugins`.
+///
+/// Called from `conflict_resolver::postprocess_conflicts_with_options` at
+/// the same point the three marker-restoration regex blocks used to run
+/// inline — see that function for the surrounding restore order.
+pub(crate) fn restore_markers(html: &str) -> String {
+    let mut result = html.to_string();
+
+    // Restore block plugins
+    let block_plugin_marker =
+        Regex::new(r"\{\{BLOCK_PLUGIN:(\w+):([\s\S]*?):([\s\S]*?):BLOCK_PLUGIN\}\}").unwrap();
+    result = block_plugin_marker
+        .replace_all(&result, |caps: &Captures| {
+            let function = &caps[1];
+            let args = &caps[2];
+            let encoded_content = &caps[3];
+
+            // Decode base64 to get original content
+            let content = general_purpose::STANDARD
+                .decode(encoded_content.as_bytes())
+                .ok()
+                .and_then(|bytes| String::from_utf8(bytes).ok())
+                .unwrap_or_else(|| encoded_content.to_string());
+
+            if function == "math" {
+                let formula = if content.trim().is_empty() {
+                    args
+                } else {
+                    &content
+                };
+                if let Some(mathml) = render_math_html(formula, true) {
+                    return mathml;
+                }
+            }
+
+            if function == "popover" {
+                return render_popover_html(args, &content);
+            }
+
+            let args_html = render_args_as_data(args);
+            let escaped_content = escape_html_text(&content);
+
+            if escaped_content.is_empty() {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                    function, args_html
+                )
+            } else {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>",
+                    function, args_html, escaped_content
+                )
+            }
+        })
+        .to_string();
+
+    // Restore colon block plugins (`::: 記法`)
+    let colon_block_plugin_marker =
+        Regex::new(r"\{\{COLON_BLOCK_PLUGIN:(\w+):([\s\S]*?):([\s\S]*?):COLON_BLOCK_PLUGIN\}\}")
+            .unwrap();
+    result = colon_block_plugin_marker
+        .replace_all(&result, |caps: &Captures| {
+            let function = &caps[1];
+            let args = &caps[2];
+            let encoded_content = &caps[3];
+
+            // Decode base64 to get original content
+            let content = general_purpose::STANDARD
+                .decode(encoded_content.as_bytes())
+                .ok()
+                .and_then(|bytes| String::from_utf8(bytes).ok())
+                .unwrap_or_else(|| encoded_content.to_string());
+
+            if function == "clear" && args.trim().is_empty() && content.trim().is_empty() {
+                return "<div class=\"clearfix\"></div>".to_string();
+            }
+
+            if function == "math" {
+                let formula = if content.trim().is_empty() {
+                    args
+                } else {
+                    &content
+                };
+                if let Some(mathml) = render_math_html(formula, true) {
+                    return mathml;
+                }
+            }
+
+            if function == "popover" {
+                return render_popover_html(args, &content);
+            }
+
+            let args_html = render_args_as_data(args);
+            let escaped_content = escape_html_text(&content);
+
+            if escaped_content.is_empty() {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                    function, args_html
+                )
+            } else {
+                format!(
+                    "<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>",
+                    function, args_html, escaped_content
+                )
+            }
+        })
+        .to_string();
+
+    // Restore block plugins (args only, no content)
+    let block_plugin_argsonly_marker =
+        Regex::new(r"\{\{BLOCK_PLUGIN_ARGSONLY:(\w+):([\s\S]*?):BLOCK_PLUGIN_ARGSONLY\}\}")
+            .unwrap();
+    result = block_plugin_argsonly_marker
+        .replace_all(&result, |caps: &Captures| {
+            let function = &caps[1];
+            let encoded_args = &caps[2];
+
+            // Decode base64 to get original args
+            let args = general_purpose::STANDARD
+                .decode(encoded_args.as_bytes())
+                .ok()
+                .and_then(|bytes| String::from_utf8(bytes).ok())
+                .unwrap_or_else(|| encoded_args.to_string());
+
+            if function == "clear" && args.trim().is_empty() {
+                return "<div class=\"clearfix\"></div>".to_string();
+            }
+
+            if function == "math" {
+                if let Some(mathml) = render_math_html(&args, true) {
+                    return mathml;
+                }
+            }
+
+            let args_html = render_args_as_data(&args);
+            format!(
+                "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                function, args_html
+            )
+        })
+        .to_string();
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_protect_inline_plugin_with_content() {
-        let input = "&test{content};";
-        let output = protect_inline_plugins(input);
-        assert!(output.contains("INLINE_PLUGIN:test::"));
-        assert!(!output.contains("&test"));
-    }
-
-    #[test]
-    fn test_protect_inline_plugin_with_args_and_content() {
-        let input = "&test(arg1,arg2){content};";
-        let output = protect_inline_plugins(input);
-        assert!(output.contains("INLINE_PLUGIN:test:arg1,arg2:"));
-    }
-
-    #[test]
-    fn test_skip_html_entities() {
-        let input = "&lt; &gt; &amp;";
-        let output = protect_inline_plugins(input);
-        assert_eq!(input, output); // Should remain unchanged
-    }
 
     #[test]
     fn test_protect_block_plugin_multiline() {
@@ -337,5 +366,20 @@ mod tests {
         assert!(output.contains("COLON_BLOCK_PLUGIN:outer:args:"));
         // The leftover closing line for the (never-matched) outer block remains
         assert!(output.trim_end().ends_with(":::"));
+    }
+
+    #[test]
+    fn test_restore_clear_from_colon_block() {
+        let protected = protect_colon_block_plugins(":::clear\n:::");
+        let output = restore_markers(&protected);
+        assert_eq!(output, "<div class=\"clearfix\"></div>");
+    }
+
+    #[test]
+    fn test_restore_generic_template_fallback() {
+        let protected = protect_block_plugins("@youtube(dQw4w9WgXcQ)");
+        let output = restore_markers(&protected);
+        assert!(output.contains("<template class=\"umd-plugin umd-plugin-youtube\">"));
+        assert!(output.contains("<data value=\"0\">dQw4w9WgXcQ</data>"));
     }
 }

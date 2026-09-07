@@ -275,13 +275,17 @@ function parseUmdPlugins(string $html): array
 
 ## 実装の主担当
 
-- `src/extensions/plugins.rs`
-- `src/extensions/plugin_markers.rs`
-- `src/extensions/conflict_resolver.rs`
+- `src/extensions/plugins/inline.rs`（`&function(...)`の保護・復元、標準
+  インラインプラグインの実HTML化、二次スイープ）
+- `src/extensions/plugins/block.rs`（`@function(...)`/`::: 記法`の保護・復元）
+- `src/extensions/plugins/mod.rs`（両者共有のヘルパー、`&math`/`@math`の
+  MathML変換、`&popover`/`@popover`のレンダリング）
+- `src/extensions/conflict_resolver.rs`（マーカー方式の前処理・後処理フロー
+  への組み込み）
 
 ## 主なテスト
 
 - `tests/bootstrap_integration.rs`
 - `tests/conflict_resolution.rs`（`::: 記法` の統合テストを含む）
 - `examples/test_plugin_extended.rs`
-- `src/extensions/plugin_markers.rs` の単体テスト（`::: 記法` の字句解析）
+- `src/extensions/plugins/block.rs` の単体テスト（`::: 記法` の字句解析）

@@ -10,7 +10,7 @@
 `<template class="umd-plugin-{name}">` へのフォールバックを経由せず、直接
 セマンティックなHTMLを出力する）です。ブロック型の標準プラグイン
 （`@math` / `@popover` / `@clear` / `@detail`。[plugin-system.md](plugin-system.md)参照）
-のインライン版にあたる位置づけで、実装は `src/extensions/conflict_resolver.rs`
+のインライン版にあたる位置づけで、実装は `src/extensions/plugins/inline.rs`
 の `convert_standard_inline_plugin_to_html`（および `argsonly`/`noargs` 版）
 に一箇所に集約されています。
 これら以外の未知の関数名は標準プラグインではないため、汎用の

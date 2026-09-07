@@ -168,56 +168,86 @@ Output HTML + Frontmatter + Footnotes
 
 ### src/extensions/
 
-- UMD拡張機能モジュール群
+- UMD拡張機能モジュール群。6つの記法スコープ（インライン表記／フェンス表記／
+  テーブル表記／位置揃え表記／インラインプラグイン表記／ブロックプラグイン
+  表記）ごとにディレクトリ／ファイルを分け、`conflict_resolver.rs` はどの
+  スコープにも属さない競合解決処理（ヘッダーID・リンク属性・IDN警告・GFM
+  アラート・タスクリスト・base_url）の統括のみを担当する。パイプラインの
+  呼び出し順序自体は `mod.rs`/`conflict_resolver.rs` に残したまま、各スコープ
+  の実装だけをモジュールへ委譲している（後述「パイプライン処理順序」参照）。
 
 #### src/extensions/conflict_resolver.rs
 
-- 構文衝突解決
-- マーカーベース前処理・後処理
-- カスタムヘッダーID処理
+- 構文衝突解決の統括（マーカーベース前処理・後処理、カスタムヘッダーID処理、
+  リンク属性・IDN警告・GFMアラート・base_url解決）
+- 各スコープの protect/restore は `plugins::inline`/`plugins::block`・
+  `block_decoration`・`alignment`・`table::gfm` を呼び出すだけ
 
-#### src/extensions/emphasis.rs
+#### src/extensions/inline/ （インライン表記）
 
-- UMD強調構文: `''bold''`, `'''italic'''`
-- 視覚的タグ（`<b>`, `<i>`）を生成
+- `emphasis.rs`: UMD強調構文 `''bold''` / `'''italic'''` → `<b>`/`<i>`
+- `notation.rs`: プラグインではない素のインライン記法
+  — `%%text%%` → `<s>`（取り消し線）、`||text||` → `<span class="umd-spoiler">`
+    （Discordスポイラー）、`__text__` → `<u>`（Discord風下線、pre/postprocess）
 
-#### src/extensions/block_decorations.rs
+#### src/extensions/fence/ （フェンス表記）
 
-- ブロック装飾プレフィックス: `COLOR()`, `SIZE()`, `CENTER:` 等
-- Bootstrapクラスへのマッピング
+- `code_block.rs`: シンタックスハイライト・Mermaid図・ファイル名付きコード
+  ブロックの本処理
+- `normalize.rs`: フェンス情報文字列の正規化（`` ```lang:filename `` 記法）
+- `protect.rs`: コードブロック・インラインコードを他パスの変換から保護し、
+  復元時に `code_block` の処理とインラインコードの色スウォッチ検出を実行
 
-#### src/extensions/inline_decorations.rs
-
-- インライン装飾関数: `&color()`, `&size()`, `&ruby()` 等
-- セマンティックHTML要素の生成
-- 取り消し線: `%%text%%` → `<s>text</s>`
-- ネスト深度制限 (`apply_inline_decorations_with_limit`): 上限を超えたブロックは展開せず `<span class="umd-error-deep-recursive">` でラップ。`&`・`{`・`}` はHTMLエスケープ済み
-
-#### src/extensions/plugins.rs
-
-- プラグインシステム実装
-- インライン型: `&function(...)`
-- ブロック型: `@function(...)`
-- `<template>`タグによるSSR最適化
-
-#### src/extensions/table/
+#### src/extensions/table/ （テーブル表記）
 
 - テーブル機能統合モジュール
+- `gfm.rs`: GFMテーブルへの既定クラス付与、`table::umd` が抽出したUMD
+  テーブルマーカーの復元
+- `umd/parser.rs`: UMDテーブルパーサー、セル連結検出
+- `umd/cell_spanning.rs`: colspan/rowspan処理（`|>` 横連結、`|^` 縦連結）
+- `umd/decorations.rs`: テーブルセル装飾（色・サイズ、配置は `alignment.rs`
+  の共有プレフィックス表を使用）
 
-##### src/extensions/table/umd/parser.rs
+#### src/extensions/alignment.rs （位置揃え表記）
 
-- UMDテーブルパーサー
-- セル連結検出
+- 段落の `START`/`CENTER`/`END`/`JUSTIFY`（インライン方向）と
+  `V-START`/`V-CENTER`/`V-END`/`BASELINE`（ブロック方向）のマッピング
+- `apply_block_placement`: テーブル/ブロックプラグイン/メディアのブロック
+  配置ラッパー（`START:` 等が単独行にある場合）
+- `process_table_cell_alignment`: GFMテーブルセルの `V-START:` 等プレフィックス
+- UMDテーブルセル装飾（`table/umd/decorations.rs`）が使う配置プレフィックス
+  表も本モジュールが提供
 
-##### src/extensions/table/umd/cell_spanning.rs
+#### src/extensions/block_decoration.rs
 
-- colspan/rowspan処理
-- `|>` (横連結), `|^` (縦連結)
+- ブロック装飾プレフィックス: `COLOR()`, `SIZE()`, `TRUNCATE:`（位置揃え
+  スコープではないためここに残る。位置揃えプレフィックスの合成は
+  `alignment.rs` に委譲。色・サイズの値テーブルとマッピングは
+  `decoration_values.rs` に委譲）
 
-##### src/extensions/table/umd/decorations.rs
+#### src/extensions/decoration_values.rs
 
-- テーブルセル装飾
-- 配置、色、サイズ等のスタイリング
+- `COLOR()`/`&color()` の色パレット、`SIZE()`/`&size()` のキーワードサイズ
+  （`xs`/`sm`/`lg`/`xl`）を定数テーブルとして一元管理し、両記法（ブロック
+  装飾・インラインプラグイン）から共有される唯一のマッピング実装を提供
+- 段落装飾（`block_decoration.rs`）とインラインプラグイン（`plugins/inline.rs`）
+  それぞれが独自に色/サイズ一覧を複製していたのを統合したもの
+
+#### src/extensions/plugins/ （インライン/ブロックプラグイン表記）
+
+- `mod.rs`: 両スコープ共有ヘルパー（HTML/引数エスケープ、`&math`/`&popover`
+  のレンダリング）
+- `inline.rs`: `&function(args){content};` の保護（`protect_inline_plugins`）・
+  復元（`restore_markers`）、および二次スイープ（`prepare`/`expand` —
+  標準プラグイン呼び出しが別の標準プラグインの内容にネストした場合に、
+  一次パスで取りこぼした呼び出しを再展開する）。ネスト深度制限は `prepare`
+  が担当し、上限を超えたブロックは `<span class="umd-error-deep-recursive">`
+  でラップ（`&`・`{`・`}` はHTMLエスケープ済み）
+- `block.rs`: `@function(args){{content}}` / `::: 記法` の保護・復元
+
+#### src/extensions/media.rs
+
+- 6スコープに属さない画像/動画/音声の自動判別・変換
 
 ---
 
@@ -285,15 +315,31 @@ umd/
 │   ├── parser.rs           # Markdownパーサー
 │   ├── sanitizer.rs        # HTML安全化
 │   ├── frontmatter.rs      # フロントマター処理
-│   └── extensions/         # UMD拡張機能
+│   └── extensions/         # UMD拡張機能（6スコープ + 統括）
 │       ├── mod.rs
-│       ├── emphasis.rs
-│       ├── block_decorations.rs
-│       ├── inline_decorations.rs
-│       ├── plugins.rs
-│       ├── conflict_resolver.rs
-│       └── table/
+│       ├── conflict_resolver.rs   # 競合解決の統括（スコープ外）
+│       ├── preprocessor.rs        # 汎用前処理（スコープ外）
+│       ├── nested_blocks.rs       # リスト内ブロック前処理（スコープ外）
+│       ├── media.rs               # メディア自動検出（スコープ外）
+│       ├── block_decoration.rs    # COLOR/SIZE/TRUNCATE（スコープ外）
+│       ├── decoration_values.rs   # 色/サイズ値テーブル（スコープ外、共有）
+│       ├── inline/                # インライン表記
+│       │   ├── mod.rs
+│       │   ├── emphasis.rs
+│       │   └── notation.rs
+│       ├── fence/                 # フェンス表記
+│       │   ├── mod.rs
+│       │   ├── code_block.rs
+│       │   ├── normalize.rs
+│       │   └── protect.rs
+│       ├── alignment.rs           # 位置揃え表記
+│       ├── plugins/               # インライン/ブロックプラグイン表記
+│       │   ├── mod.rs
+│       │   ├── inline.rs
+│       │   └── block.rs
+│       └── table/                 # テーブル表記
 │           ├── mod.rs
+│           ├── gfm.rs
 │           └── umd/
 │               ├── mod.rs
 │               ├── parser.rs
@@ -424,40 +470,48 @@ umd/
 - マーカー方式での前処理・後処理
 - カスタムヘッダーID処理（`{#id}`）
 
-#### インライン装飾・ブロック装飾
+#### インライン表記・位置揃え表記
 
-- **インライン**: `src/extensions/inline_decorations.rs`
+- **インライン**: `src/extensions/inline/`
+  - `emphasis.rs`: `''bold''`/`'''italic'''`
+  - `notation.rs`: `%%text%%`（取り消し線）、`||text||`（スポイラー）、
+    `__text__`（下線、pre/postprocess）
+- **インラインプラグイン**: `src/extensions/plugins/inline.rs`
   - `&color()`, `&size()`, `&ruby()` などのセマンティック関数
-  - 取り消し線 `%%text%%` → `<s>`
   - ネスト深度制限: `max_inline_nesting`（デフォルト5）を超えたブロックは `<span class="umd-error-deep-recursive">` でラップ（プラグイン名はカウント対象外）
-- **ブロック**: `src/extensions/block_decorations.rs`
-  - `COLOR(...)`, `SIZE(...)`, `CENTER:` などのプレフィックス装飾
-  - LEFT/CENTER/RIGHT/JUSTIFYプレフィックス（配置制御）
+- **ブロック装飾**: `src/extensions/block_decoration.rs`
+  - `COLOR(...)`, `SIZE(...)`, `TRUNCATE:` などのプレフィックス装飾
+- **位置揃え**: `src/extensions/alignment.rs`
+  - `START`/`CENTER`/`END`/`JUSTIFY`・`V-START`/`V-CENTER`/`V-END`/`BASELINE`
+  - 段落・テーブル/プラグインのブロック配置・GFM/UMDテーブルセルで共通利用
 
 #### プラグインシステム
 
-- **メイン実装**: `src/extensions/plugins.rs`
-- **マーカー補助**: `src/extensions/plugin_markers.rs`
-- **構文**: `&fn(args){...};` (インライン), `@fn(args){{ ... }}` (ブロック)
+- **実装**: `src/extensions/plugins/`（`mod.rs` に共有ヘルパー、
+  `inline.rs`/`block.rs` にそれぞれの保護・復元ロジック）
+- **構文**: `&fn(args){...};` (インライン), `@fn(args){{ ... }}` / `::: 記法` (ブロック)
 - **出力形式**: `<template class="umd-plugin umd-plugin-*"><data value="i"></data>...</template>`
 - **実行**: 外部（Nuxt/Laravel等のバックエンド）で処理
 
-#### コードブロック機能
+#### フェンス表記（コードブロック機能）
 
-ファイル: `src/extensions/code_block.rs`
+ファイル: `src/extensions/fence/`
 
-- 言語別シンタックスハイライト: `language-*` クラス
-- Mermaid図: `<figure class="code-block code-block-mermaid mermaid-diagram">...</figure>` でラップ（内部にSVGを直接配置）
-- プレーンテキスト: 言語指定なし → `<pre>...</pre>`
+- `code_block.rs`: 言語別シンタックスハイライト（`language-*` クラス）、
+  Mermaid図（`<figure class="code-block code-block-mermaid mermaid-diagram">...</figure>` でラップ）、
+  プレーンテキスト（言語指定なし → `<pre>...</pre>`）
+- `normalize.rs`: フェンス情報文字列の正規化（`` ```lang:filename ``）
+- `protect.rs`: コード区間の保護・復元（インラインコードの色スウォッチ検出を含む）
 - 仕様: `pre`タグには`lang`属性を付与しない（言語情報は`code.language-*`へ統一）
 
 #### テーブル拡張
 
-ファイル: `src/extensions/table/umd/*`
+ファイル: `src/extensions/table/`
 
-- `|>` (セル横連結), `|^` (セル縦連結)
-- セル装飾: 配置、色、サイズ
-- ComraKのテーブルAS Tを UMD仕様で拡張
+- `gfm.rs`: GFMテーブルへの既定クラス付与、UMDテーブルマーカー復元
+- `umd/*`: `|>` (セル横連結), `|^` (セル縦連結)、セル装飾（色・サイズ、
+  配置は `alignment.rs` の共有プレフィックス表を使用）
+- ComraKのテーブルASTをUMD仕様で拡張
 
 #### メディア自動検出
 

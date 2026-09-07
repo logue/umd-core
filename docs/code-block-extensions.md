@@ -287,7 +287,7 @@ pre code {
 
 ### Rustコード構成
 
-実装は`src/extensions/code_block.rs`に実装されています。
+実装は`src/extensions/fence/code_block.rs`に実装されています（フェンス情報文字列の正規化は`src/extensions/fence/normalize.rs`）。
 
 #### 主要関数
 

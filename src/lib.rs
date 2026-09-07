@@ -275,10 +275,10 @@ pub fn parse_with_frontmatter_opts(input: &str, options: &parser::ParserOptions)
     let content = extensions::preprocessor::preprocess_tasklist_indeterminate(&content);
 
     // Step 3: Pre-process Discord-style underline (__text__) to prevent CommonMark conversion
-    let content = extensions::preprocessor::preprocess_discord_underline(&content);
+    let content = extensions::inline::notation::preprocess_discord_underline(&content);
 
     // Step 3.5: Normalize fenced code block filename syntax (```lang:file)
-    let content = extensions::preprocessor::preprocess_code_block_filenames(&content);
+    let content = extensions::fence::normalize::preprocess_code_block_filenames(&content);
 
     // Step 4: Pre-process to resolve syntax conflicts and extract custom header IDs
     let (preprocessed, header_map) = extensions::conflict_resolver::preprocess_conflicts(&content);
@@ -296,7 +296,7 @@ pub fn parse_with_frontmatter_opts(input: &str, options: &parser::ParserOptions)
     let html = parser::parse_to_html(&sanitized, options);
 
     // Step 7: Restore Discord-style underline placeholders to <u> tags
-    let html = extensions::preprocessor::postprocess_discord_underline(&html);
+    let html = extensions::inline::notation::postprocess_discord_underline(&html);
 
     // Step 8: Apply extended syntax and custom header IDs (includes post-processing)
     let final_html = extensions::apply_extensions_with_headers(&html, &header_map, options);

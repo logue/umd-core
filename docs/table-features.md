@@ -44,8 +44,11 @@ Bootstrapに依存しない設計に移行したことで、テーブルの見�
 
 ## 実装の主担当
 
-- `src/extensions/table/umd/`
-- `src/extensions/conflict_resolver/table/`
+- `src/extensions/table/umd/`（UMDテーブルのパース・セル連結・セル装飾）
+- `src/extensions/table/gfm.rs`（GFMテーブルの既定クラス・UMDテーブル
+  マーカー復元）
+- `src/extensions/alignment.rs`（テーブルセルの配置プレフィックス、
+  GFM/UMD双方で共有）
 - `src/extensions/conflict_resolver.rs`
 
 ## 主なテスト
