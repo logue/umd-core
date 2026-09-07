@@ -36,6 +36,10 @@
   vertical-align: bottom;
 }
 
+.umd-v-baseline {
+  vertical-align: baseline;
+}
+
 /* Text size — CSS keyword values only.
    Relative to the browser's base font size; no arbitrary pixel values.
    Syntax: &size(sm){ text }  →  <span class="umd-text-size-sm">text</span>

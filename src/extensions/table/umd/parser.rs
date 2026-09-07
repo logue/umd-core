@@ -67,12 +67,12 @@ pub fn is_umd_table(lines: &[&str]) -> bool {
             || line.contains("|^")
             || line.contains("COLOR(")
             || line.contains("SIZE(")
-            || line.contains("TOP:")
-            || line.contains("MIDDLE:")
-            || line.contains("BOTTOM:")
+            || line.contains("V-START:")
+            || line.contains("V-CENTER:")
+            || line.contains("V-END:")
             || line.contains("CENTER:")
-            || line.contains("RIGHT:")
-            || line.contains("LEFT:")
+            || line.contains("END:")
+            || line.contains("START:")
         {
             return true;
         }
@@ -178,8 +178,9 @@ pub fn parse_table(table_text: &str) -> String {
 
 /// Generate HTML table from parsed cells with header information
 fn generate_table_html_with_header(rows: &[Vec<Cell>], has_thead: bool) -> String {
-    // Add umd-table class to identify Universal Markdown tables
-    let mut html = String::from(r#"<table class="table umd-table">"#);
+    // PukiWiki-style UMD tables get their own class, with full grid borders
+    // (vertical + horizontal dividers) — see scss/components/table.scss.
+    let mut html = String::from(r#"<table class="umd-table">"#);
 
     if rows.is_empty() {
         html.push_str("</table>");
@@ -357,7 +358,7 @@ mod tests {
         // Without 'h' suffix, no thead should be generated
         let input = "| A | B |\n| C | D |";
         let html = parse_table(input);
-        assert!(html.contains(r#"<table class="table umd-table">"#));
+        assert!(html.contains(r#"<table class="umd-table">"#));
         assert!(!html.contains("<thead>"));
         assert!(html.contains("<tbody>"));
         assert!(html.contains("<td>A</td>"));
@@ -369,7 +370,7 @@ mod tests {
         // With 'h' suffix, thead should be generated
         let input = "| ~A | ~B |h\n| C | D |";
         let html = parse_table(input);
-        assert!(html.contains(r#"<table class="table umd-table">"#));
+        assert!(html.contains(r#"<table class="umd-table">"#));
         assert!(html.contains("<thead>"));
         assert!(html.contains("<tbody>"));
         assert!(html.contains("<th>A</th>"));

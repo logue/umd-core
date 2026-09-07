@@ -461,13 +461,14 @@ UMD 文法上の配置記法の正式名称は以下の通りです：
 
 CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-` プレフィックスを付けた独自記法を採用します。
 
-| 記法        | 対応 CSS                 | 備考         |
-| ----------- | ------------------------ | ------------ |
-| `V-START:`  | `vertical-align: top`    | 旧 `TOP:`    |
-| `V-END:`    | `vertical-align: bottom` | 旧 `BOTTOM:` |
-| `V-CENTER:` | `vertical-align: middle` | 旧 `MIDDLE:` |
+| 記法        | 対応 CSS                    | 備考                                                                     |
+| ----------- | ---------------------------- | ------------------------------------------------------------------------ |
+| `V-START:`  | `vertical-align: top`        | 旧 `TOP:`                                                                 |
+| `V-END:`    | `vertical-align: bottom`     | 旧 `BOTTOM:`                                                              |
+| `V-CENTER:` | `vertical-align: middle`     | 旧 `MIDDLE:`                                                              |
+| `BASELINE:` | `vertical-align: baseline`   | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
 
-> ⚠️ 既存コード（`src/extensions/block_decorations.rs` 等）に物理プロパティのクラス名が残っている場合は、CSS抽象化層の実装と合わせて順次移行する。
+**2026年9月実装済み**: `src/extensions/block_decorations.rs`の`ALIGN_EXTRACT`/`VALIGN_EXTRACT`（および`map_text_align`/`map_vertical_align`、`apply_block_decorations_with_options`の行頭ガード）を上表の記法に更新し、`conflict_resolver.rs`の`block_decoration_prefix`（プリプロセス時の保護用正規表現）も追随。旧`LEFT`/`RIGHT`/`TOP`/`MIDDLE`/`BOTTOM`は段落装飾としては非対応になった（エイリアスなし、完全な置き換え）。ただし`apply_block_placement`（テーブル/プラグインのブロック配置ラッパー）と`table/umd/decorations.rs`（テーブルセル装飾）は物理名称のまま — これらはテーブル関連としてスコープ外（意図的に保留）。
 
 ### 検討事項（脱Bootstrap化）
 
@@ -495,7 +496,15 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 - 未着手: `dfn`/`kbd`/`samp`/`var`/`cite`/`q`/`small`/`bdi`/`ruby`/`time`/`data`/`bdo`/`sup`/`sub`は設定オプションを持たない単純な文字列組み立てのため二重実装のドリフトリスクは低いが、`inline_decorations.rs`にまだ個別正規表現のコピーが残っている（統合の余地あり）
 - 未着手: `src/extensions/plugins.rs`（`apply_plugin_syntax`）はどこからも呼ばれていない完全なデッドコード（実際のプラグイン処理は`plugin_markers.rs`+`conflict_resolver.rs`が担当）。`docs/plugin-system.md`の「実装の主担当」に記載が残っているが未整理
 
-- [ ] テーブル関連のBootstrap依存の置き換え（`conflict_resolver.rs`の`<table class="table">`/`table-responsive`/セル揃え、`table/umd/decorations.rs`、`block_decorations.rs`の`map_vertical_align`と`apply_block_placement`）— 意図的に保留中
+### テーブルのクラス改称（2026年9月実装済み）
+
+- GFM/標準Markdownテーブル → `<table class="umd-list-table">`（縦線なし、行の区切り線のみ。旧`class="table"`）
+- UMD（PukiWiki風）テーブル → `<table class="umd-table">`（縦線あり、フルグリッド。旧`class="table umd-table"`）
+- スタイル定義を新設`scss/components/table.scss`に集約し、`base.scss`の汎用`:where(table)`/`:where(th,td)`ルール（全`<table>`に無条件適用されていた）を削除
+- （2026年9月・撤回）`@table(...)`プラグインオプションから`striped`/`hover`/`dark`/`bordered`/`borderless`のみ削除し`sm`/`responsive`は`umd-table-sm`/`umd-table-responsive`として存続させたが、直後に「テーブルの見た目のバリエーション適用はBootstrap依存を外した以上このライブラリの責務ではない」との判断で`@table`プラグイン自体を完全に削除。`process_table_plugin`/`map_table_plugin_option_to_class`/`merge_class_attr`（いずれも`conflict_resolver.rs`）を削除し、`umd-table-sm`/`umd-table-responsive`のCSSも用途がなくなったため`table.scss`から削除。`@table(...)`/`:::table ...`は他の未対応プラグインと同様、汎用の`<template class="umd-plugin umd-plugin-table">`にフォールバックする
+
+- [x] テーブルセル揃えの論理方向名への改称（2026年9月実装済み）: `conflict_resolver.rs`の`process_cell_content`（GFM表）と`table/umd/decorations.rs`の`parse_cell_content`（UMD表）を、段落装飾（`block_decorations.rs`）と同じ`START`/`CENTER`/`END`/`JUSTIFY`・`V-START`/`V-CENTER`/`V-END`/`BASELINE`記法に統一し、出力クラスも`align-top`等のBootstrap形式から`umd-v-start`等（`scss/utilities/text.scss`の既存クラスを再利用）に変更。`table/umd/parser.rs`の`is_umd_table`検出マーカーも追随。旧`TOP`/`MIDDLE`/`BOTTOM`/`LEFT`/`RIGHT`はセル装飾としては非対応（エイリアスなし）
+- [ ] `apply_block_placement`（テーブル/プラグインのブロック配置ラッパー、`LEFT:`/`RIGHT:`/`CENTER:`/`JUSTIFY:`の直後に表やプラグインを続ける記法）は物理名称のまま — 意図的に保留中
 - [ ] 既存テスト（`bootstrap_integration.rs` 等）の移行方針検討
 - [ ] ドキュメント更新
 

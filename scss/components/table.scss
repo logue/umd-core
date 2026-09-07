@@ -1,0 +1,64 @@
+/*
+ * Tables
+ *
+ * Two different Markdown table syntaxes produce two different classes,
+ * distinguished by whether they get vertical column dividers:
+ *
+ *   - Standard/GFM tables (`| a | b |` with a `---` separator row), rendered
+ *     by comrak and classed in conflict_resolver.rs -> <table class="umd-list-table">
+ *     Horizontal row dividers only, no vertical lines between columns.
+ *   - PukiWiki-style UMD tables (support `|>` colspan / `|^` rowspan),
+ *     rendered by src/extensions/table/umd/parser.rs -> <table class="umd-table">
+ *     Full grid: horizontal AND vertical dividers.
+ *
+ * Design follows Bootstrap's table conventions (spacing, borders, header
+ * weight) but intentionally does not replicate Bootstrap's decorative
+ * variants (.table-striped, .table-hover, .table-dark) or the
+ * .table-bordered/.table-borderless toggle — whether a table has vertical
+ * dividers is fixed by which syntax produced it, not an option. A host app
+ * that wants stripes/hover/dark can add its own classes/rules on top.
+ *
+ * There's no `@table(...)` plugin (removed — table styling variants aren't
+ * this library's responsibility once it no longer depends on Bootstrap;
+ * `@table`/`:::table` now fall back to the generic
+ * `<template class="umd-plugin-table">` like any other unrecognized plugin
+ * name). A host app that wants sm/responsive-style variants can add its own
+ * classes to these two selectors directly.
+ */
+
+:where(.umd-list-table),
+:where(.umd-table) {
+  border-collapse: collapse;
+  inline-size: 100%;
+  margin-block-end: 1rem;
+}
+
+:where(.umd-list-table th),
+:where(.umd-list-table td),
+:where(.umd-table th),
+:where(.umd-table td) {
+  padding: 0.5rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+:where(.umd-list-table thead th),
+:where(.umd-table thead th) {
+  vertical-align: bottom;
+}
+
+/* umd-list-table: horizontal dividers only, no vertical lines */
+:where(.umd-list-table th),
+:where(.umd-list-table td) {
+  border-block-end: 1px solid var(--umd-border-color);
+}
+
+:where(.umd-list-table thead th) {
+  border-block-end-width: 2px;
+}
+
+/* umd-table (PukiWiki-style): full grid, horizontal + vertical dividers */
+:where(.umd-table th),
+:where(.umd-table td) {
+  border: 1px solid var(--umd-border-color);
+}

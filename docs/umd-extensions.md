@@ -24,10 +24,25 @@ Universal Markdown 独自の構文拡張をまとめた仕様です。
 
 行頭プレフィックスで段落/ブロックを装飾します。
 
-- 配置: `LEFT:`, `CENTER:`, `RIGHT:`, `JUSTIFY:`, `TRUNCATE:`
+- インライン方向の配置: `START:`, `CENTER:`, `END:`, `JUSTIFY:`
+- ブロック方向の配置: `V-START:`, `V-CENTER:`, `V-END:`, `BASELINE:`
+- その他: `TRUNCATE:`
 - 色: `COLOR(...)`
 - サイズ: `SIZE(...)`
 - 複合指定: `SIZE(...): COLOR(...): CENTER: ...`
+
+`START`/`END`/`V-START`/`V-CENTER`/`V-END` は論理方向の名称です（物理方向の
+`LEFT`/`RIGHT`/`TOP`/`BOTTOM`ではありません）。縦書きや`dir="rtl"`のような
+右から左に書く言語でも、"start"/"end"（または"block-start"/"block-end"）は
+自動的に反転しますが、`LEFT`/`TOP`のような物理名称は反転しないため、この
+表記に統一しています（CSS論理プロパティとの対応は
+[PLAN.md の「CSS 論理プロパティ方針」](../PLAN.md) 参照）。
+
+なお、テーブル/プラグインをブロック単位で配置する記法
+（`END:`/`CENTER:`などの直後に表やプラグインを続ける書き方。詳細は
+[table-features.md](table-features.md)）は、この一覧とは別の実装
+（`block_decorations.rs`の`apply_block_placement`）ですが、`START`/`CENTER`/`END`/`JUSTIFY`
+という同じ論理方向の記法に統一済みです（旧`LEFT`/`RIGHT`はエイリアスなしで非対応）。
 
 ## インライン装飾関数
 

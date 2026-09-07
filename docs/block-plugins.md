@@ -47,7 +47,7 @@ Something went wrong
 </template>
 ```
 
-標準プラグイン（`@detail` / `@clear` / `@table` など）は、このテンプレート経由ではなく、直接 HTML を出力する場合があります。
+標準プラグイン（`@detail` / `@clear` など）は、このテンプレート経由ではなく、直接 HTML を出力する場合があります。
 
 ## 例
 

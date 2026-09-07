@@ -147,11 +147,13 @@ fn test_colon_block_plugin_math_integration() {
 }
 
 #[test]
-fn test_colon_block_plugin_table_integration() {
-    let input = ":::table striped\n| A | B |\n|---|---|\n| 1 | 2 |\n:::";
+fn test_colon_block_plugin_table_falls_back_to_generic_plugin() {
+    // "table" is not a standard plugin (removed along with Bootstrap
+    // table-variant support) — `:::table` falls back to the same generic
+    // <template class="umd-plugin-{name}"> markup as `@table(){{ }}` does.
+    let input = ":::table sm\n| A | B |\n|---|---|\n| 1 | 2 |\n:::";
     let output = parse(input);
-    assert!(output.contains(r#"class="table table-striped""#) || output.contains("table-striped"));
-    assert!(output.contains("<table"));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-table""#));
 }
 
 #[test]

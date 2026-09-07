@@ -67,100 +67,6 @@ fn render_args_as_data(args: &str) -> String {
         .join("")
 }
 
-fn map_table_plugin_option_to_class(option: &str) -> Option<&'static str> {
-    match option {
-        "striped" => Some("table-striped"),
-        "hover" => Some("table-hover"),
-        "dark" => Some("table-dark"),
-        "bordered" => Some("table-bordered"),
-        "borderless" => Some("table-borderless"),
-        "sm" => Some("table-sm"),
-        _ => None,
-    }
-}
-
-fn merge_class_attr(existing_attrs: &str, add_classes: &[String]) -> String {
-    if add_classes.is_empty() {
-        return existing_attrs.to_string();
-    }
-
-    let class_pattern = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
-
-    if let Some(class_caps) = class_pattern.captures(existing_attrs) {
-        let existing_classes = class_caps.get(1).map_or("", |m| m.as_str());
-        let mut class_list: Vec<String> = existing_classes
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect();
-
-        for class_name in add_classes {
-            if !class_list.iter().any(|c| c == class_name) {
-                class_list.push(class_name.clone());
-            }
-        }
-
-        let merged = format!(r#"class=\"{}\""#, class_list.join(" "));
-        class_pattern.replace(existing_attrs, merged).to_string()
-    } else {
-        let mut attrs = existing_attrs.to_string();
-        attrs.push_str(&format!(r#" class=\"{}\""#, add_classes.join(" ")));
-        attrs
-    }
-}
-
-fn process_table_plugin(function_args: &str, content: &str) -> String {
-    let rendered_content = crate::parse(content);
-
-    let parsed_args = parse_args(function_args);
-    let is_responsive = parsed_args.iter().any(|arg| arg == "responsive");
-    let mut table_classes: Vec<String> = Vec::new();
-
-    for arg in &parsed_args {
-        if let Some(mapped_class) = map_table_plugin_option_to_class(arg) {
-            if !table_classes.iter().any(|c| c == mapped_class) {
-                table_classes.push(mapped_class.to_string());
-            }
-        }
-    }
-
-    let table_pattern = Regex::new(r"(?s)<table[^>]*>.*?</table>").unwrap();
-    let open_table_pattern = Regex::new(r"<table([^>]*)>").unwrap();
-
-    if let Some(table_match) = table_pattern.find(&rendered_content) {
-        let table_html = table_match.as_str();
-
-        let table_with_classes = open_table_pattern
-            .replace(table_html, |caps: &Captures| {
-                let existing_attrs = caps.get(1).map_or("", |m| m.as_str());
-                let merged_attrs = merge_class_attr(existing_attrs, &table_classes);
-                format!("<table{}>", merged_attrs)
-            })
-            .to_string();
-
-        let processed_table = if is_responsive {
-            format!(
-                "<div class=\"table-responsive\">{}</div>",
-                table_with_classes
-            )
-        } else {
-            table_with_classes
-        };
-
-        format!(
-            "{}{}{}",
-            &rendered_content[..table_match.start()],
-            processed_table,
-            &rendered_content[table_match.end()..]
-        )
-    } else {
-        eprintln!(
-            "[UMD warning] @table plugin requires a table inside its content: {}",
-            content.replace('\n', "\\n")
-        );
-        rendered_content
-    }
-}
-
 /// Map a `&size()` value to a `umd-text-size-*` class, or (only when
 /// `allow_custom_font_size` is enabled) an arbitrary inline `font-size`.
 ///
@@ -309,10 +215,17 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
-    // Protect UMD block decorations (COLOR, SIZE, TRUNCATE, alignment, vertical alignment)
-    // These will be applied in post-processing.
+    // Protect UMD block decorations (COLOR, SIZE, TRUNCATE, alignment, vertical
+    // alignment) and the table/plugin block-placement prefix. These will be
+    // applied in post-processing.
+    //
+    // START/END/V-START/V-CENTER/V-END/BASELINE/JUSTIFY/CENTER are shared by
+    // two systems that both use this gate: block_decorations.rs's logical-
+    // direction paragraph alignment, and apply_block_placement's table/plugin
+    // placement wrapper (see that module's docs — both now use the same
+    // logical-direction vocabulary, no physical LEFT/RIGHT/TOP/BOTTOM left).
     let block_decoration_prefix = Regex::new(
-        r"(?m)^((?:(?:SIZE\([^)]+\)|COLOR\([^)]*\)|TRUNCATE|TOP|MIDDLE|BOTTOM|BASELINE|JUSTIFY|RIGHT|CENTER|LEFT):[ \t]*)+.*)$",
+        r"(?m)^((?:(?:SIZE\([^)]+\)|COLOR\([^)]*\)|TRUNCATE|V-START|V-CENTER|V-END|BASELINE|JUSTIFY|END|START|CENTER):[ \t]*)+.*)$",
     )
     .unwrap();
     result = block_decoration_prefix
@@ -855,9 +768,9 @@ pub fn postprocess_conflicts_with_options(
                 .ok()
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded.to_string());
-            // Multiline decorations (e.g., RIGHT:\n<media>) and standalone block placement
+            // Multiline decorations (e.g., END:\n<media>) and standalone block placement
             // prefixes are handled later by apply_block_placement.
-            let placement_only = Regex::new(r"^(LEFT|CENTER|RIGHT|JUSTIFY):\s*$")
+            let placement_only = Regex::new(r"^(START|CENTER|END|JUSTIFY):\s*$")
                 .unwrap()
                 .is_match(decoration.trim());
 
@@ -994,10 +907,6 @@ pub fn postprocess_conflicts_with_options(
                 .and_then(|bytes| String::from_utf8(bytes).ok())
                 .unwrap_or_else(|| encoded_content.to_string());
 
-            if function == "table" {
-                return process_table_plugin(args, &content);
-            }
-
             if function == "math" {
                 let formula = if content.trim().is_empty() {
                     args
@@ -1050,10 +959,6 @@ pub fn postprocess_conflicts_with_options(
 
             if function == "clear" && args.trim().is_empty() && content.trim().is_empty() {
                 return "<div class=\"clearfix\"></div>".to_string();
-            }
-
-            if function == "table" {
-                return process_table_plugin(args, &content);
             }
 
             if function == "math" {
@@ -1205,12 +1110,12 @@ fn apply_tasklist_indeterminate(html: &str) -> String {
         .to_string()
 }
 
-/// Apply Bootstrap 5 enhancements to HTML
+/// Apply reference-CSS enhancements to HTML
 ///
-/// - Add default `table` class to all <table> elements
-/// - Add default `blockquote` class to all <blockquote> elements (except UMD-style)
+/// - Add default `umd-list-table` class to all <table> elements (GFM tables —
+///   UMD/PukiWiki-style tables get `umd-table` directly in table/umd/parser.rs)
+/// - Add default `umd-blockquote` class to all <blockquote> elements (except UMD-style)
 /// - Convert GFM-alert-style blockquotes ([!NOTE], etc.) to UMD's own .umd-note-* markup
-/// - Add JUSTIFY support for tables (w-100 class)
 fn apply_bootstrap_enhancements(
     html: &str,
     header_map: &HeaderIdMap,
@@ -1218,10 +1123,14 @@ fn apply_bootstrap_enhancements(
 ) -> String {
     let mut result = html.to_string();
 
-    // Add default class to tables
+    // Add default class to standard/GFM Markdown tables. No vertical column
+    // dividers — see scss/components/table.scss. PukiWiki-style UMD tables
+    // (with |> colspan / |^ rowspan) get their own "umd-table" class directly
+    // in table/umd/parser.rs instead, since they're built there, not via
+    // comrak's bare <table>.
     let table_pattern = Regex::new(r"<table>").unwrap();
     result = table_pattern
-        .replace_all(&result, "<table class=\"table\">")
+        .replace_all(&result, "<table class=\"umd-list-table\">")
         .to_string();
 
     // Add default class to blockquotes
@@ -1288,9 +1197,11 @@ fn apply_bootstrap_enhancements(
     result
 }
 
-/// Process table cell alignment prefixes (TOP:, MIDDLE:, BOTTOM:, BASELINE:)
+/// Process table cell vertical alignment prefixes (V-START:, V-CENTER:, V-END:, BASELINE:)
 ///
-/// Detects alignment prefixes in table cells and adds Bootstrap alignment classes.
+/// Detects alignment prefixes in table cells and adds `umd-v-*` alignment
+/// classes (logical-direction names, matching block_decorations.rs and
+/// scss/utilities/text.scss — not physical TOP:/BOTTOM:).
 /// Note: GFM tables are handled by comrak without extensions.
 /// UMD tables have their own cell spanning and decoration support.
 fn process_table_cell_alignment(html: &str) -> String {
@@ -1323,14 +1234,14 @@ fn process_table_cell_alignment(html: &str) -> String {
 fn process_cell_content(tag: &str, existing_attrs: &str, content: &str) -> String {
     // Check for vertical alignment prefixes
     let (align_class, remaining_content) =
-        if let Some(stripped) = content.trim_start().strip_prefix("TOP:") {
-            ("align-top", stripped.trim_start())
-        } else if let Some(stripped) = content.trim_start().strip_prefix("MIDDLE:") {
-            ("align-middle", stripped.trim_start())
-        } else if let Some(stripped) = content.trim_start().strip_prefix("BOTTOM:") {
-            ("align-bottom", stripped.trim_start())
+        if let Some(stripped) = content.trim_start().strip_prefix("V-START:") {
+            ("umd-v-start", stripped.trim_start())
+        } else if let Some(stripped) = content.trim_start().strip_prefix("V-CENTER:") {
+            ("umd-v-center", stripped.trim_start())
+        } else if let Some(stripped) = content.trim_start().strip_prefix("V-END:") {
+            ("umd-v-end", stripped.trim_start())
         } else if let Some(stripped) = content.trim_start().strip_prefix("BASELINE:") {
-            ("align-baseline", stripped.trim_start())
+            ("umd-v-baseline", stripped.trim_start())
         } else {
             ("", content)
         };
@@ -1474,7 +1385,7 @@ mod tests {
         let header_map = HeaderIdMap::new();
         let input = "<table><tr><td>Cell</td></tr></table>";
         let output = postprocess_conflicts(input, &header_map);
-        assert!(output.contains(r#"<table class="table">"#));
+        assert!(output.contains(r#"<table class="umd-list-table">"#));
     }
 
     #[test]
@@ -1639,22 +1550,21 @@ mod tests {
     #[test]
     fn test_table_cell_vertical_alignment() {
         let header_map = HeaderIdMap::new();
-        let input =
-            r#"<table class="table"><tr><td>TOP: Cell1</td><td>MIDDLE: Cell2</td></tr></table>"#;
+        let input = r#"<table class="table"><tr><td>V-START: Cell1</td><td>V-CENTER: Cell2</td></tr></table>"#;
         let output = postprocess_conflicts(input, &header_map);
-        assert!(output.contains(r#"class="align-top""#));
+        assert!(output.contains(r#"class="umd-v-start""#));
         assert!(output.contains("Cell1"));
-        assert!(output.contains(r#"class="align-middle""#));
+        assert!(output.contains(r#"class="umd-v-center""#));
         assert!(output.contains("Cell2"));
     }
 
     #[test]
     fn test_table_cell_multiple_alignments() {
         let header_map = HeaderIdMap::new();
-        let input = r#"<table><tr><th>BASELINE: Header</th><td>BOTTOM: Data</td></tr></table>"#;
+        let input = r#"<table><tr><th>BASELINE: Header</th><td>V-END: Data</td></tr></table>"#;
         let output = postprocess_conflicts(input, &header_map);
-        assert!(output.contains(r#"class="align-baseline""#));
-        assert!(output.contains(r#"class="align-bottom""#));
+        assert!(output.contains(r#"class="umd-v-baseline""#));
+        assert!(output.contains(r#"class="umd-v-end""#));
     }
 
     #[test]

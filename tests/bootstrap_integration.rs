@@ -9,7 +9,7 @@ use umd::parser::Icons;
 fn test_bootstrap_table_default_class() {
     let input = "| Header |\n|--------|\n| Cell   |";
     let output = parse(input);
-    assert!(output.contains(r#"<table class="table">"#));
+    assert!(output.contains(r#"<table class="umd-list-table">"#));
 }
 
 #[test]
@@ -172,6 +172,19 @@ fn test_block_alignment() {
 }
 
 #[test]
+fn test_block_alignment_start_and_end() {
+    assert!(parse("START: Start text").contains(r#"class="umd-start""#));
+    assert!(parse("END: End text").contains(r#"class="umd-end""#));
+}
+
+#[test]
+fn test_block_vertical_align_logical_names() {
+    assert!(parse("V-START: Top text").contains(r#"class="umd-v-start""#));
+    assert!(parse("V-CENTER: Middle text").contains(r#"class="umd-v-center""#));
+    assert!(parse("V-END: Bottom text").contains(r#"class="umd-v-end""#));
+}
+
+#[test]
 fn test_block_justify_alignment() {
     let input = "JUSTIFY: この文章は両端揃えです";
     let output = parse(input);
@@ -193,7 +206,7 @@ fn test_block_placement_justify_for_umd_table() {
     let output = parse(input);
     assert!(output.contains("<table"), "output: {}", output);
     assert!(output.contains("umd-table"), "output: {}", output);
-    assert!(output.contains("w-100"), "output: {}", output);
+    assert!(output.contains("umd-block-justify"), "output: {}", output);
     assert!(!output.contains("<p>JUSTIFY:</p>"));
 }
 
@@ -202,8 +215,7 @@ fn test_block_placement_center_for_block_plugin() {
     let input = "CENTER:\n@callout(info)";
     let output = parse(input);
     assert!(output.contains("umd-plugin-callout"), "output: {}", output);
-    assert!(output.contains("w-auto"), "output: {}", output);
-    assert!(output.contains("mx-auto"), "output: {}", output);
+    assert!(output.contains("umd-block-center"), "output: {}", output);
     assert!(!output.contains("CENTER:"));
 }
 
@@ -220,16 +232,16 @@ fn test_compound_prefixes() {
 
 #[test]
 fn test_table_cell_vertical_alignment_top() {
-    let input = "| TOP: Header |\n|-------------|\n| Cell        |";
+    let input = "| V-START: Header |\n|-------------|\n| Cell        |";
     let output = parse(input);
-    assert!(output.contains(r#"class="align-top""#));
+    assert!(output.contains(r#"class="umd-v-start""#));
 }
 
 #[test]
 fn test_table_cell_vertical_alignment_middle() {
-    let input = "| MIDDLE: Data |\n|-------------|\n| Cell         |";
+    let input = "| V-CENTER: Data |\n|-------------|\n| Cell         |";
     let output = parse(input);
-    assert!(output.contains(r#"class="align-middle""#));
+    assert!(output.contains(r#"class="umd-v-center""#));
 }
 
 #[test]
@@ -261,7 +273,7 @@ fn test_mixed_bootstrap_features() {
 
 This is &color(blue){important}; text.
 
-| TOP: Header | MIDDLE: Data |
+| V-START: Header | V-CENTER: Data |
 |-------------|--------------|
 | Cell 1      | Cell 2       |
 
@@ -271,10 +283,10 @@ This is &color(blue){important}; text.
 
     // Check all features are present
     assert!(output.contains(r#"class="umd-color-blue""#));
-    // UMD table syntax (because of TOP: and MIDDLE: prefixes)
-    assert!(output.contains(r#"class="table umd-table""#));
-    assert!(output.contains(r#"class="align-top""#));
-    assert!(output.contains(r#"class="align-middle""#));
+    // UMD table syntax (because of V-START: and V-CENTER: prefixes)
+    assert!(output.contains(r#"class="umd-table""#));
+    assert!(output.contains(r#"class="umd-v-start""#));
+    assert!(output.contains(r#"class="umd-v-center""#));
     assert!(output.contains("<dl>"));
     assert!(output.contains("<dt>Term</dt>"));
 }
@@ -297,13 +309,13 @@ fn test_media_line_start_treated_as_block() {
 }
 
 #[test]
-fn test_right_prefix_places_media_right() {
-    let input = "RIGHT:\n![alt](image.png \"Title\")";
+fn test_end_prefix_places_media_end() {
+    let input = "END:\n![alt](image.png \"Title\")";
     let output = parse(input);
     assert!(output.contains(r#"<figure class="umd-block-end">"#));
     assert!(output.contains("<picture"));
     assert!(output.contains("src=\"image.png\""));
-    assert!(!output.contains("RIGHT:"));
+    assert!(!output.contains("END:"));
 }
 
 #[test]
@@ -361,47 +373,16 @@ fn test_code_block_with_filename_without_language() {
 }
 
 #[test]
-fn test_table_plugin_applies_bootstrap_variants() {
-    let input = "@table(striped,hover){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n}}";
+fn test_table_plugin_removed_falls_back_to_generic_plugin() {
+    // @table(...) is not a standard plugin (removed along with Bootstrap
+    // table-variant support — see PLAN.md) — it now falls through to the
+    // same generic <template class="umd-plugin-{name}"> markup as any other
+    // unrecognized/host-defined plugin name.
+    let input = "@table(sm){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n}}";
     let output = parse(input);
 
-    assert!(output.contains("table-striped"), "output: {}", output);
-    assert!(output.contains("table-hover"), "output: {}", output);
-}
-
-#[test]
-fn test_table_plugin_responsive_wrapper() {
-    let input = "@table(responsive){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n}}";
-    let output = parse(input);
-
-    assert!(
-        output.contains(r#"<div class="table-responsive"><table"#),
-        "output: {}",
-        output
-    );
-}
-
-#[test]
-fn test_table_plugin_applies_to_first_table_only() {
-    let input = "@table(hover){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n\n| X1 | X2 |\n|----|----|\n| Y1 | Y2 |\n}}";
-    let output = parse(input);
-
-    assert_eq!(
-        output.matches("table-hover").count(),
-        1,
-        "output: {}",
-        output
-    );
-    assert!(output.matches("<table").count() >= 2, "output: {}", output);
-}
-
-#[test]
-fn test_table_plugin_without_table_falls_back_to_content() {
-    let input = "@table(striped){{\nこれはテキストです\n}}";
-    let output = parse(input);
-
-    assert!(output.contains("これはテキストです"), "output: {}", output);
-    assert!(!output.contains("umd-plugin-table"), "output: {}", output);
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-table""#));
+    assert!(output.contains("<data value=\"0\">sm</data>"));
 }
 
 #[test]

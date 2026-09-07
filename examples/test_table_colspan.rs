@@ -42,16 +42,16 @@ fn main() {
     println!("Output:\n{}\n", parse(combined));
     println!("Expected: Cell 'Span2x2' spans 2 columns and 2 rows\n");
 
-    // Example 5: With Bootstrap classes
-    let with_classes = r#"| CENTER: Header1 |> | RIGHT: Header3 |
+    // Example 5: With alignment decoration
+    let with_classes = r#"| CENTER: Header1 |> | END: Header3 |
 |-----------------|--|----------------|
-| TOP: Cell1      |> | MIDDLE: Cell3  |
-| BOTTOM: Cell4   | Cell5 | Cell6     |"#;
-    println!("Example 5: With Bootstrap classes and alignment");
+| V-START: Cell1  |> | V-CENTER: Cell3  |
+| V-END: Cell4    | Cell5 | Cell6     |"#;
+    println!("Example 5: With alignment decoration");
     println!("Input:\n{}\n", with_classes);
     println!("Output:\n{}\n", parse(with_classes));
     println!(
-        "Expected: Headers centered/right aligned, cells with vertical alignment, and colspan\n"
+        "Expected: Headers centered/end aligned, cells with vertical alignment, and colspan\n"
     );
 
     // Example 6: Complex table with multiple spans

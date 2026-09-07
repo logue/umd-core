@@ -9,7 +9,7 @@
 以下に挙げる関数はすべて「標準プラグイン」（ビルトインとして認識され、汎用の
 `<template class="umd-plugin-{name}">` へのフォールバックを経由せず、直接
 セマンティックなHTMLを出力する）です。ブロック型の標準プラグイン
-（`@table` / `@math` / `@popover` / `@clear` / `@detail`。[plugin-system.md](plugin-system.md)参照）
+（`@math` / `@popover` / `@clear` / `@detail`。[plugin-system.md](plugin-system.md)参照）
 のインライン版にあたる位置づけで、実装は `src/extensions/conflict_resolver.rs`
 の `convert_standard_inline_plugin_to_html`（および `argsonly`/`noargs` 版）
 に一箇所に集約されています。

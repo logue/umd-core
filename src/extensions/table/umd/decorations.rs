@@ -3,7 +3,9 @@
 //! Provides support for:
 //! - COLOR(fg,bg): Cell foreground and background colors
 //! - SIZE(value): Font size adjustments
-//! - Alignment prefixes: TOP:, MIDDLE:, BOTTOM:, CENTER:, etc.
+//! - Alignment prefixes: V-START:, V-CENTER:, V-END:, CENTER:, etc.
+//!   (logical-direction names, matching block_decorations.rs and
+//!   scss/utilities/text.scss — not physical TOP:/BOTTOM:/LEFT:/RIGHT:)
 
 use super::parser::Cell;
 use regex::Regex;
@@ -83,14 +85,14 @@ pub fn parse_cell_content(cell: &mut Cell) {
 
     // Parse alignment prefixes
     for (prefix, class) in &[
-        ("TOP:", "align-top"),
-        ("MIDDLE:", "align-middle"),
-        ("BOTTOM:", "align-bottom"),
-        ("BASELINE:", "align-baseline"),
-        ("RIGHT:", "text-end"),
-        ("CENTER:", "text-center"),
-        ("LEFT:", "text-start"),
-        ("JUSTIFY:", "text-justify"),
+        ("V-START:", "umd-v-start"),
+        ("V-CENTER:", "umd-v-center"),
+        ("V-END:", "umd-v-end"),
+        ("BASELINE:", "umd-v-baseline"),
+        ("END:", "umd-end"),
+        ("CENTER:", "umd-center"),
+        ("START:", "umd-start"),
+        ("JUSTIFY:", "umd-justify"),
     ] {
         if remaining.starts_with(prefix) {
             cell.classes.push(class.to_string());
@@ -196,7 +198,16 @@ mod tests {
         parse_cell_content(&mut cell);
 
         assert_eq!(cell.content, "Text");
-        assert!(cell.classes.contains(&"text-center".to_string()));
+        assert!(cell.classes.contains(&"umd-center".to_string()));
+    }
+
+    #[test]
+    fn test_vertical_alignment_decoration() {
+        let mut cell = Cell::new("V-START: Text".to_string(), false);
+        parse_cell_content(&mut cell);
+
+        assert_eq!(cell.content, "Text");
+        assert!(cell.classes.contains(&"umd-v-start".to_string()));
     }
 
     #[test]

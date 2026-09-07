@@ -4,15 +4,23 @@
 //! - COLOR(fg,bg): `umd-color-*`/`umd-bg-*` classes or inline color
 //! - SIZE(value): inline `font-size` (rem)
 //! - TRUNCATE: `umd-truncate` class
-//! - JUSTIFY/RIGHT/CENTER/LEFT: `umd-*` text alignment classes
+//! - JUSTIFY/START/CENTER/END: inline-direction `umd-*` text alignment classes
+//! - V-START/V-CENTER/V-END/BASELINE: block-direction `umd-v-*` alignment classes
 //!
-//! Table cell vertical alignment (TOP/MIDDLE/BOTTOM/BASELINE) and the
-//! table/plugin block-placement wrapper (`apply_block_placement`) still emit
-//! Bootstrap classes — out of scope for this pass, tracked in PLAN.md.
+//! `START`/`END` and `V-START`/`V-CENTER`/`V-END` are logical-direction names
+//! (matching `scss/utilities/text.scss`), not physical `LEFT`/`RIGHT`/`TOP`/
+//! `BOTTOM` — under `dir="rtl"` or vertical writing modes, "start" and "end"
+//! (or "block-start"/"block-end") flip automatically, whereas a hardcoded
+//! `LEFT`/`TOP` would not. See PLAN.md's "CSS 論理プロパティ方針".
+//!
+//! The table/plugin block-placement wrapper (`apply_block_placement`, and
+//! table cell alignment in `conflict_resolver.rs`/`table/umd/decorations.rs`)
+//! is a separate, still-physical-named (`LEFT`/`RIGHT`/`TOP`/`BOTTOM`) system
+//! — out of scope for this pass, tracked in PLAN.md.
 //!
 //! Multiple prefixes can be combined:
-//! - SIZE(1.5): COLOR(primary): CENTER: Text
-//! - TRUNCATE: RIGHT: Text
+//! - SIZE(lg): COLOR(primary): CENTER: Text
+//! - TRUNCATE: END: Text
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -29,7 +37,9 @@ struct BlockDecoration {
     text_align: Option<String>,
     // Truncate flag
     truncate: bool,
-    // Vertical alignment (for table cells)
+    // Vertical alignment class (V-START/V-CENTER/V-END/BASELINE); has no
+    // visual effect on a plain paragraph, only inside a table cell or other
+    // inline-level/table-cell box — kept for prefix-syntax completeness
     vertical_align: Option<String>,
 }
 
@@ -101,7 +111,7 @@ impl BlockDecoration {
 #[allow(dead_code)]
 static COMPOUND_PREFIX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r"(?m)^(?:(?:SIZE\(([^)]+)\)|COLOR\(([^,)]*?)(?:,([^)]*?))?\)|(TRUNCATE)|(TOP|MIDDLE|BOTTOM|BASELINE)|(JUSTIFY|RIGHT|CENTER|LEFT)):\s*)+(.+)$"
+        r"(?m)^(?:(?:SIZE\(([^)]+)\)|COLOR\(([^,)]*?)(?:,([^)]*?))?\)|(TRUNCATE)|(V-START|V-CENTER|V-END|BASELINE)|(JUSTIFY|END|CENTER|START)):\s*)+(.+)$"
     )
     .unwrap()
 });
@@ -112,14 +122,14 @@ static COLOR_EXTRACT: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"COLOR\(([^,)]*?)(?:,([^)]*?))?\):").unwrap());
 static TRUNCATE_EXTRACT: Lazy<Regex> = Lazy::new(|| Regex::new(r"(TRUNCATE):").unwrap());
 static VALIGN_EXTRACT: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(TOP|MIDDLE|BOTTOM|BASELINE):").unwrap());
+    Lazy::new(|| Regex::new(r"(V-START|V-CENTER|V-END|BASELINE):").unwrap());
 static ALIGN_EXTRACT: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(JUSTIFY|RIGHT|CENTER|LEFT):").unwrap());
+    Lazy::new(|| Regex::new(r"(JUSTIFY|END|CENTER|START):").unwrap());
 
 // Block placement pattern for tables and plugins (must start on new line)
 static BLOCK_PLACEMENT: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r"(?m)^(LEFT|CENTER|RIGHT|JUSTIFY):\n((?:\|[^\n]*\|(?:\n|$))+|@\w+(?:\([^)]*\))?\{[^}]*\})",
+        r"(?m)^(START|CENTER|END|JUSTIFY):\n((?:\|[^\n]*\|(?:\n|$))+|@\w+(?:\([^)]*\))?\{[^}]*\})",
     )
     .unwrap()
 });
@@ -185,25 +195,28 @@ fn map_color_with_options(
     None
 }
 
-/// Map alignment to a `umd-*` text-align class
+/// Map inline-direction alignment (`START`/`CENTER`/`END`/`JUSTIFY`) to a
+/// `umd-*` text-align class
 fn map_text_align(value: &str) -> String {
     match value.to_uppercase().as_str() {
-        "RIGHT" => "umd-end".to_string(),
+        "END" => "umd-end".to_string(),
         "CENTER" => "umd-center".to_string(),
-        "LEFT" => "umd-start".to_string(),
+        "START" => "umd-start".to_string(),
         "JUSTIFY" => "umd-justify".to_string(),
         _ => "umd-start".to_string(),
     }
 }
 
-/// Map vertical alignment to Bootstrap class
+/// Map block-direction alignment (`V-START`/`V-CENTER`/`V-END`/`BASELINE`)
+/// to a `umd-v-*` class. There's no CSS logical equivalent of
+/// `vertical-align` — `V-` is UMD's own naming convention.
 fn map_vertical_align(value: &str) -> String {
     match value.to_uppercase().as_str() {
-        "TOP" => "align-top".to_string(),
-        "MIDDLE" => "align-middle".to_string(),
-        "BOTTOM" => "align-bottom".to_string(),
-        "BASELINE" => "align-baseline".to_string(),
-        _ => "align-baseline".to_string(),
+        "V-START" => "umd-v-start".to_string(),
+        "V-CENTER" => "umd-v-center".to_string(),
+        "V-END" => "umd-v-end".to_string(),
+        "BASELINE" => "umd-v-baseline".to_string(),
+        _ => "umd-v-baseline".to_string(),
     }
 }
 
@@ -278,14 +291,14 @@ pub fn apply_block_decorations_with_options(
         if line.starts_with("SIZE(")
             || line.starts_with("COLOR(")
             || line.starts_with("TRUNCATE:")
-            || line.starts_with("TOP:")
-            || line.starts_with("MIDDLE:")
-            || line.starts_with("BOTTOM:")
+            || line.starts_with("V-START:")
+            || line.starts_with("V-CENTER:")
+            || line.starts_with("V-END:")
             || line.starts_with("BASELINE:")
             || line.starts_with("JUSTIFY:")
-            || line.starts_with("RIGHT:")
+            || line.starts_with("END:")
             || line.starts_with("CENTER:")
-            || line.starts_with("LEFT:")
+            || line.starts_with("START:")
         {
             let (decoration, content) =
                 parse_prefixes_with_options(line, allow_hex_colors, allow_custom_font_size);
@@ -319,8 +332,10 @@ pub fn apply_block_decorations(html: &str) -> String {
 
 /// Apply block placement prefixes to tables and block plugins
 ///
-/// Handles LEFT:/CENTER:/RIGHT:/JUSTIFY: prefixes followed by newline
-/// for UMD tables and block plugins (@function).
+/// Handles START:/CENTER:/END:/JUSTIFY: prefixes followed by newline
+/// for UMD tables and block plugins (@function). Logical-direction names
+/// (matching block_decorations.rs's paragraph alignment and
+/// scss/utilities/text.scss), not physical LEFT:/RIGHT:.
 ///
 /// # Arguments
 ///
@@ -328,7 +343,7 @@ pub fn apply_block_decorations(html: &str) -> String {
 ///
 /// # Returns
 ///
-/// HTML with block placement applied (Bootstrap utility classes)
+/// HTML with block placement applied (`umd-*` reference-CSS classes)
 pub fn apply_block_placement(html: &str) -> String {
     fn merge_class_attr(tag_html: &str, extra_classes: &str) -> String {
         let class_re = Regex::new(r#"class=\"([^\"]*)\""#).unwrap();
@@ -357,16 +372,16 @@ pub fn apply_block_placement(html: &str) -> String {
 
     fn placement_class_for_block(placement: &str) -> &'static str {
         match placement {
-            "LEFT" => "w-auto",
-            "CENTER" => "w-auto mx-auto",
-            "RIGHT" => "w-auto ms-auto me-0",
-            "JUSTIFY" => "w-100",
+            "START" => "umd-block-auto",
+            "CENTER" => "umd-block-center",
+            "END" => "umd-block-auto umd-block-end",
+            "JUSTIFY" => "umd-block-justify",
             _ => "",
         }
     }
 
     let media_block_placement = Regex::new(
-        r#"(?s)<p>\s*(LEFT|CENTER|RIGHT|JUSTIFY):\s*\n\s*(<picture[\s\S]*?</picture>|<video[\s\S]*?</video>|<audio[\s\S]*?</audio>|<a href="[^"]+" download class="download-link[^"]*"[^>]*>[\s\S]*?</a>)\s*</p>"#,
+        r#"(?s)<p>\s*(START|CENTER|END|JUSTIFY):\s*\n\s*(<picture[\s\S]*?</picture>|<video[\s\S]*?</video>|<audio[\s\S]*?</audio>|<a href="[^"]+" download class="download-link[^"]*"[^>]*>[\s\S]*?</a>)\s*</p>"#,
     )
     .unwrap();
 
@@ -376,9 +391,9 @@ pub fn apply_block_placement(html: &str) -> String {
             let media = &caps[2];
 
             let wrapper_class = match placement {
-                "LEFT" => "umd-block-start",
+                "START" => "umd-block-start",
                 "CENTER" => "umd-inline-center",
-                "RIGHT" => "umd-block-end",
+                "END" => "umd-block-end",
                 "JUSTIFY" => "umd-block-justify",
                 _ => "",
             };
@@ -392,7 +407,7 @@ pub fn apply_block_placement(html: &str) -> String {
         .to_string();
 
     let table_and_plugin_placement_in_paragraph = Regex::new(
-        r#"(?s)<p>\s*(LEFT|CENTER|RIGHT|JUSTIFY):\s*\n\s*(<(?:table|template)\b[^>]*>[\s\S]*?</(?:table|template)>)\s*</p>"#,
+        r#"(?s)<p>\s*(START|CENTER|END|JUSTIFY):\s*\n\s*(<(?:table|template)\b[^>]*>[\s\S]*?</(?:table|template)>)\s*</p>"#,
     )
     .unwrap();
 
@@ -415,7 +430,7 @@ pub fn apply_block_placement(html: &str) -> String {
         .to_string();
 
     let table_and_plugin_placement = Regex::new(
-        r#"(?s)<p>\s*(LEFT|CENTER|RIGHT|JUSTIFY):\s*</p>\s*(<(?:table|template)\b[^>]*>[\s\S]*?</(?:table|template)>)"#,
+        r#"(?s)<p>\s*(START|CENTER|END|JUSTIFY):\s*</p>\s*(<(?:table|template)\b[^>]*>[\s\S]*?</(?:table|template)>)"#,
     )
     .unwrap();
 
@@ -513,6 +528,20 @@ mod tests {
     }
 
     #[test]
+    fn test_text_align_start() {
+        let input = "START: Start-aligned text";
+        let output = apply_block_decorations(input);
+        assert!(output.contains("class=\"umd-start\""));
+    }
+
+    #[test]
+    fn test_text_align_end() {
+        let input = "END: End-aligned text";
+        let output = apply_block_decorations(input);
+        assert!(output.contains("class=\"umd-end\""));
+    }
+
+    #[test]
     fn test_truncate() {
         let input = "TRUNCATE: Long text that will be truncated";
         let output = apply_block_decorations(input);
@@ -531,24 +560,39 @@ mod tests {
 
     #[test]
     fn test_vertical_align() {
-        let input = "TOP: Top aligned";
+        let input = "V-START: Top aligned";
         let output = apply_block_decorations(input);
-        assert!(output.contains("class=\"align-top\""));
+        assert!(output.contains("class=\"umd-v-start\""));
+    }
+
+    #[test]
+    fn test_vertical_align_center_and_end() {
+        assert!(
+            apply_block_decorations("V-CENTER: Middle aligned").contains("class=\"umd-v-center\"")
+        );
+        assert!(apply_block_decorations("V-END: Bottom aligned").contains("class=\"umd-v-end\""));
+    }
+
+    #[test]
+    fn test_vertical_align_baseline() {
+        let input = "BASELINE: Baseline aligned";
+        let output = apply_block_decorations(input);
+        assert!(output.contains("class=\"umd-v-baseline\""));
     }
 
     #[test]
     fn test_compound_with_truncate() {
-        let input = "TRUNCATE: RIGHT: Truncated right text";
+        let input = "TRUNCATE: END: Truncated right text";
         let output = apply_block_decorations(input);
         assert!(output.contains("umd-truncate"));
         assert!(output.contains("umd-end"));
     }
 
     #[test]
-    fn test_block_placement_left() {
-        let input = "LEFT:\n|Header|\n|Cell|";
+    fn test_block_placement_start() {
+        let input = "START:\n|Header|\n|Cell|";
         let output = apply_block_placement(input);
-        assert!(output.contains(r#"<div class="w-auto">"#));
+        assert!(output.contains(r#"<div class="umd-block-auto">"#));
         assert!(output.contains("|Header|"));
     }
 
@@ -556,40 +600,40 @@ mod tests {
     fn test_block_placement_center() {
         let input = "CENTER:\n|Header|\n|Cell|";
         let output = apply_block_placement(input);
-        assert!(output.contains(r#"<div class="w-auto mx-auto">"#));
+        assert!(output.contains(r#"<div class="umd-block-center">"#));
     }
 
     #[test]
-    fn test_block_placement_right() {
-        let input = "RIGHT:\n|Header|\n|Cell|";
+    fn test_block_placement_end() {
+        let input = "END:\n|Header|\n|Cell|";
         let output = apply_block_placement(input);
-        assert!(output.contains(r#"<div class="w-auto ms-auto me-0">"#));
+        assert!(output.contains(r#"<div class="umd-block-auto umd-block-end">"#));
     }
 
     #[test]
     fn test_block_placement_justify() {
         let input = "JUSTIFY:\n|Header|\n|Cell|";
         let output = apply_block_placement(input);
-        assert!(output.contains(r#"<div class="w-100">"#));
+        assert!(output.contains(r#"<div class="umd-block-justify">"#));
     }
 
     #[test]
     fn test_block_placement_plugin() {
         let input = "CENTER:\n@youtube{video_id}";
         let output = apply_block_placement(input);
-        assert!(output.contains(r#"<div class="w-auto mx-auto">"#));
+        assert!(output.contains(r#"<div class="umd-block-center">"#));
         assert!(output.contains("@youtube"));
     }
 
     #[test]
-    fn test_block_placement_right_media() {
-        let input = r#"<p>RIGHT:
+    fn test_block_placement_end_media() {
+        let input = r#"<p>END:
 <picture>
   <img src="image.png" alt="alt" title="Title" />
 </picture></p>"#;
         let output = apply_block_placement(input);
         assert!(output.contains(r#"<figure class="umd-block-end">"#));
         assert!(output.contains("<picture>"));
-        assert!(!output.contains("RIGHT:"));
+        assert!(!output.contains("END:"));
     }
 }

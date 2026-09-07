@@ -50,9 +50,9 @@ Minimum requirements:
 
 ### Tables & Layout
 
-- ✅ **Markdown Tables**: Standard GFM tables with sorting capability
-- ✅ **UMD Tables**: Extended tables with cell spanning (`|>` colspan, `|^` rowspan)
-- ✅ **Cell Decoration**: alignment (LEFT/CENTER/RIGHT/JUSTIFY), color, size control
+- ✅ **Markdown Tables**: Standard GFM tables (`<table class="umd-list-table">` — horizontal row dividers only, no vertical lines)
+- ✅ **UMD Tables**: PukiWiki-style tables with cell spanning (`|>` colspan, `|^` rowspan) (`<table class="umd-table">` — full grid, vertical + horizontal dividers)
+- ✅ **Cell Decoration**: logical-direction alignment (`START`/`CENTER`/`END`/`JUSTIFY`, `V-START`/`V-CENTER`/`V-END`/`BASELINE`), color, size control
 - ✅ **Block Decorations**: SIZE, COLOR, positioning with Bootstrap prefix syntax
 
 ### Interactivity & Data
@@ -316,13 +316,22 @@ exactly like `colorSwatch` above.
 ```markdown
 COLOR(red): Error message → <p class="umd-color-red">Error message</p>
 SIZE(lg): Larger text → <p class="umd-text-size-lg">Larger text</p>
-RIGHT: Right-aligned content → <p class="umd-end">Right-aligned content</p>
+END: End-aligned content → <p class="umd-end">End-aligned content</p>
 CENTER: Centered paragraph → <p class="umd-center">Centered paragraph</p>
+V-START: Top-aligned cell content → <p class="umd-v-start">Top-aligned cell content</p>
 ```
 
 `SIZE()` only accepts the keyword sizes `xs`/`sm`/`lg`/`xl` by default; enable
 `ParserOptions.allow_custom_font_size` to also allow arbitrary rem/px values
 (rendered as an inline style instead of a class).
+
+Alignment uses logical-direction keywords (`START`/`END`, `V-START`/
+`V-CENTER`/`V-END`/`BASELINE`) rather than physical ones (`LEFT`/`RIGHT`/
+`TOP`/`BOTTOM`), so they flip correctly under `dir="rtl"` or vertical writing
+modes. This applies uniformly across paragraph alignment, table cell
+alignment, and the table/plugin block-placement prefix (see
+[Tables with Cell Spanning](#tables-with-cell-spanning) below) — there's no
+physical `LEFT`/`RIGHT`/`TOP`/`BOTTOM` left anywhere in this syntax family.
 
 ### Inline Semantic Elements
 
@@ -472,7 +481,7 @@ UMD Table (with colspan/rowspan):
 | Cell1   | Cell2 | Cell3 |
 |^        | Cell4 | Cell5 |
 
-RIGHT:
+END:
 | Left Cell | Right Cell |
 
 CENTER:

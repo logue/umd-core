@@ -20,3 +20,10 @@
   inline-size: auto;
   margin-inline: auto;
 }
+
+/* Shrink-to-fit block, no margin change — pair with utilities/spacing.scss's
+   .umd-block-end for an END-aligned shrink-wrapped block (START needs no
+   margin utility since a block naturally sits at the inline-start already) */
+.umd-block-auto {
+  inline-size: auto;
+}

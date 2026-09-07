@@ -22,8 +22,8 @@ Universal Markdown のプラグイン構文と出力形式です。
 ### ブロック型（`::: 記法`）
 
 Qiita/GROWI 系の記法との互換性のための代替構文です。`@function(args){{ ... }}`
-と同じプラグインシステムに統合されており、出力形式・標準プラグイン（`@table` /
-`@math` / `@popover` / `@clear`）の扱いも共通です。
+と同じプラグインシステムに統合されており、出力形式・標準プラグイン（`@math` /
+`@popover` / `@clear`）の扱いも共通です。
 
 ```umd
 :::function args
@@ -182,7 +182,7 @@ export function parseUmdPlugins(html: string): UmdPluginNode[] {
 補足:
 
 - `content` は UMD 出力時にエスケープされているため、`textContent` 取得で元のテキスト表現を扱えます。
-- 標準プラグイン（`@detail`, `@clear`, `@table`）は `template` を経由しないケースがあるため、別ルートで処理します。
+- 標準プラグイン（`@detail`, `@clear`, `@math`, `@popover`）は `template` を経由しないケースがあるため、別ルートで処理します。
 
 ## PHP でのパース例
 
@@ -264,10 +264,10 @@ function parseUmdPlugins(string $html): array
   - `<details><summary>...</summary>...</details>`
 - `@clear()`
   - `<div class="clearfix"></div>`
-- `@table(...)`
-  - テーブルへの Bootstrap バリエーション適用（詳細は [table-features.md](table-features.md)）
 - `@math(...)` / `@popover(...)`
   - [umd-extensions.md](umd-extensions.md) 参照
+
+`@table(...)`は標準プラグインではありません（Bootstrap依存のテーブルバリエーション適用機能だったため削除。詳細は[table-features.md](table-features.md)）。`@table`/`:::table`は未知の関数名として汎用の`<template class="umd-plugin-table">`にフォールバックします。
 
 インライン型（`&color()`, `&size()`, `&ruby()`, `&spoiler()` など）の標準プラグイン一覧は
 [inline-plugins.md](inline-plugins.md) を参照してください。いずれも未知の関数名と異なり、
@@ -284,5 +284,4 @@ function parseUmdPlugins(string $html): array
 - `tests/bootstrap_integration.rs`
 - `tests/conflict_resolution.rs`（`::: 記法` の統合テストを含む）
 - `examples/test_plugin_extended.rs`
-- `examples/test_plugin_table.rs`
 - `src/extensions/plugin_markers.rs` の単体テスト（`::: 記法` の字句解析）

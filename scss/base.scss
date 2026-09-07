@@ -24,15 +24,6 @@
   block-size: auto;
 }
 
-:where(table) {
-  border-collapse: collapse;
-}
-
-:where(th, td) {
-  border: 1px solid var(--umd-border-color);
-  padding: 0.5rem;
-}
-
 :where(.umd-footnotes) {
   border-block-start: 1px solid var(--umd-border-color);
   color: var(--umd-muted-color);
