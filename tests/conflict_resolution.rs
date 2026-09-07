@@ -69,7 +69,7 @@ fn test_color_decoration() {
 fn test_plugin_syntax_preserved() {
     let input = "@toc(){{ }}";
     let output = parse(input);
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-toc""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-toc""#));
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn test_complex_nesting() {
 fn test_colon_block_plugin_basic() {
     let input = ":::alert warning\nSomething went wrong\n:::";
     let output = parse(input);
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-alert""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-alert""#));
     assert!(output.contains("Something went wrong"));
 }
 
@@ -127,14 +127,14 @@ fn test_colon_block_plugin_basic() {
 fn test_colon_block_plugin_no_args() {
     let input = ":::toc\n:::";
     let output = parse(input);
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-toc""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-toc""#));
 }
 
 #[test]
 fn test_colon_block_plugin_multiline_content() {
     let input = ":::box\nLine one\n\nLine two\n:::";
     let output = parse(input);
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-box""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-box""#));
     assert!(output.contains("Line one"));
     assert!(output.contains("Line two"));
 }
@@ -153,7 +153,7 @@ fn test_colon_block_plugin_table_falls_back_to_generic_plugin() {
     // <template class="umd-plugin-{name}"> markup as `@table(){{ }}` does.
     let input = ":::table sm\n| A | B |\n|---|---|\n| 1 | 2 |\n:::";
     let output = parse(input);
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-table""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-table""#));
 }
 
 #[test]
@@ -164,7 +164,7 @@ fn test_colon_block_plugin_nested_block_not_supported() {
     // nested plugin.
     let input = ":::outer\n:::inner\ncontent\n:::\n:::";
     let output = parse(input);
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-outer""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-outer""#));
     assert!(!output.contains("umd-plugin-inner"));
 }
 
@@ -174,7 +174,7 @@ fn test_colon_block_plugin_does_not_swallow_surrounding_text() {
     let output = parse(input);
     assert!(output.contains("Before"));
     assert!(output.contains("After"));
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-note""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-note""#));
 }
 
 #[test]

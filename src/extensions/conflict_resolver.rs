@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use std::collections::HashMap;
 
-use super::{alignment, block_decoration, plugins, preprocessor, table};
+use super::{alignment, block_decoration, fence, plugins, preprocessor, table};
 
 // Patterns that need special handling
 
@@ -113,10 +113,10 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
         })
         .to_string();
 
-    // Protect colon block plugin syntax (`::: 記法`) first, so that any
+    // Protect colon-fence block plugin syntax (`::: 記法`) first, so that any
     // `@`/`&` plugin syntax nested inside a `:::` block is swallowed as
     // opaque literal content instead of being parsed as a nested plugin.
-    result = plugins::block::protect_colon_block_plugins(&result);
+    result = fence::plugin_block::protect_fence_block_plugins(&result);
 
     // Protect inline and block plugin syntax
     result = plugins::inline::protect_inline_plugins(&result);
@@ -447,9 +447,12 @@ pub fn postprocess_conflicts_with_options(
     // argsonly/noargs siblings) — see plugins::inline for the restore order.
     result = plugins::inline::restore_markers(&result, allow_hex_colors, allow_custom_font_size);
 
-    // Restore block plugin markers (@function(...){{...}} and `::: 記法`) —
-    // see plugins::block for the restore order.
+    // Restore block plugin markers: @function(...){{...}} (see
+    // plugins::block) and the `::: 記法` colon-fence variant (see
+    // fence::plugin_block, which delegates per-function rendering back to
+    // plugins::block::render_fence_block_plugin).
     result = plugins::block::restore_markers(&result);
+    result = fence::plugin_block::restore_markers(&result);
 
     // Remove wrapping <p> tags around template plugins
     let wrapped_plugin =

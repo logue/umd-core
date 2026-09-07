@@ -10,8 +10,9 @@
 //!    `conflict_resolver::postprocess_conflicts_with_options` and turns
 //!    each marker into real HTML via `convert_standard_inline_plugin_to_html`
 //!    (and its `argsonly`/`noargs` siblings) for recognized ("standard")
-//!    function names, falling back to a generic `<template class="umd-plugin-*">`
-//!    for anything else.
+//!    function names, falling back to a generic
+//!    `<template class="umd-plugin umd-plugin-inline umd-plugin-*">` for
+//!    anything else.
 //!
 //! 2. **Second-pass sweep** (`prepare` + `expand`): the marker regex used by
 //!    `protect_inline_plugins` allows one level of `{...}` nesting in a
@@ -148,8 +149,8 @@ pub fn protect_inline_plugins(input: &str) -> String {
 /// This is the inline counterpart of the block-level standard plugins
 /// (`@table`/`@math`/`@popover`/`@clear`/`@detail`, see `plugins::block`) —
 /// a function name recognized here bypasses the generic
-/// `<template class="umd-plugin-{name}">` fallback that unrecognized/
-/// host-defined plugin names get. Returns `None` for anything not in this
+/// `<template class="umd-plugin umd-plugin-inline umd-plugin-{name}">`
+/// fallback that unrecognized/host-defined plugin names get. Returns `None` for anything not in this
 /// list, letting the caller fall back to the generic template.
 fn convert_standard_inline_plugin_to_html(
     function: &str,
@@ -363,12 +364,12 @@ pub(crate) fn restore_markers(
 
             if escaped_content.is_empty() {
                 format!(
-                    "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                    "<template class=\"umd-plugin umd-plugin-inline umd-plugin-{}\">{}</template>",
                     function, args_html
                 )
             } else {
                 format!(
-                    "<template class=\"umd-plugin umd-plugin-{}\">{}{}</template>",
+                    "<template class=\"umd-plugin umd-plugin-inline umd-plugin-{}\">{}{}</template>",
                     function, args_html, escaped_content
                 )
             }
@@ -392,7 +393,7 @@ pub(crate) fn restore_markers(
             // Otherwise, convert to plugin <template>
             let args_html = render_args_as_data(args);
             format!(
-                "<template class=\"umd-plugin umd-plugin-{}\">{}</template>",
+                "<template class=\"umd-plugin umd-plugin-inline umd-plugin-{}\">{}</template>",
                 function, args_html
             )
         })
@@ -412,7 +413,7 @@ pub(crate) fn restore_markers(
 
             // Otherwise, convert to plugin <template>
             format!(
-                "<template class=\"umd-plugin umd-plugin-{}\"></template>",
+                "<template class=\"umd-plugin umd-plugin-inline umd-plugin-{}\"></template>",
                 function
             )
         })
@@ -506,7 +507,9 @@ pub(crate) fn prepare(html: &str, max_inline_nesting: Option<usize>) -> String {
     result = result.replace("&amp;br", "&br");
 
     if let Some(limit) = max_inline_nesting.filter(|limit| *limit > 0) {
-        result = neutralize_over_limit_inline_decorations(&result, limit);
+        if inline_decoration_nesting_depth(&result) > limit {
+            result = neutralize_over_limit_inline_decorations(&result, limit);
+        }
     }
 
     result

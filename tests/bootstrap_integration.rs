@@ -347,7 +347,7 @@ fn test_code_block_with_filename_uses_figure_caption() {
         output
     );
     assert!(
-        output.contains(r#"<figcaption class="code-filename"><span class="filename">src/main.rs</span></figcaption>"#),
+        output.contains(r#"<figcaption class="code-filename">src/main.rs</figcaption>"#),
         "output: {}",
         output
     );
@@ -381,7 +381,7 @@ fn test_table_plugin_removed_falls_back_to_generic_plugin() {
     let input = "@table(sm){{\n| H1 | H2 |\n|----|----|\n| A  | B  |\n}}";
     let output = parse(input);
 
-    assert!(output.contains(r#"class="umd-plugin umd-plugin-table""#));
+    assert!(output.contains(r#"class="umd-plugin umd-plugin-block umd-plugin-table""#));
     assert!(output.contains("<data value=\"0\">sm</data>"));
 }
 

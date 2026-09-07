@@ -149,7 +149,7 @@ fn process_syntax_highlighted_blocks(html: &str) -> String {
             if let Some(filename) = filename {
                 let escaped_filename = html_escape::encode_text(&filename);
                 format!(
-                    "<figure class=\"code-block\"><figcaption class=\"code-filename\"><span class=\"filename\">{}</span></figcaption>{}</figure>",
+                    "<figure class=\"code-block\"><figcaption class=\"code-filename\">{}</figcaption>{}</figure>",
                     escaped_filename,
                     rendered_block
                 )
