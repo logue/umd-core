@@ -62,7 +62,8 @@
 
 - 🔮 Bootstrap依存の削減（CSS Layerの活用による脱Bootstrap化）
 - 🔮 リファレンスCSS提供（スタイル定義の標準化）
-- 🔮 テンプレートエンジン機能の検討と仕様策定
+- 🔮 テンプレートエンジン機能の検討と仕様策定（拡張子 `.umdt`）
+- 🔮 バイナリアセット同梱パッケージ形式（拡張子 `.umdx`）の検討
 - 🔮 フロントエンド向けのシンタックスハイライト改善
 - 🔮 テキスト装飾記法の追加（`^^` / `~~` / `==` / `&outline()`）
 - 🔮 挿入・削除記法（`{+ +}` / `{- -}`）の追加
@@ -72,61 +73,6 @@
 - 🔮 ボトムマター仕様策定
 - 🔮 AAプラグイン（決め打ちフォント指定によるアスキーアート表示、例: MS Pゴシック）— 文字幅依存が強くリファレンスCSS/コアの責務にできないためプラグインとして分離
 - 🔮 Mermaid SVGの色トークン対応 — `mermaid-rs-renderer`は各要素に`fill="#hex"`等のリテラル色を焼き込むため、`.umd-color-*`のようなCSSクラスでは上書きできない。現状は`src/extensions/fence/code_block.rs`の`inject_umd_color_variables`がBootstrap既定6色のHEXのみ`var(--umd-color-*, #hex)`に後置換する場当たり的な対応。恒久対応は (1) この置換をUMDの色トークン・全色相に拡張するか、(2) `mermaid-rs-renderer`のTheme/ThemeVariables設定に`var(...)`文字列を直接渡してレンダリングさせる（SVGシリアライザが素通しするか要検証）
-
----
-
-## ブロック型プラグイン書式仕様（`::: 記法`）
-
-### 概要
-
-QiitaやGrowiで採用されている書式を新たにサポートします。
-
-```markdown
-:::function args
-content
-:::
-```
-
-### 基本ルール
-
-1. **開始**: `:::function args` で開始（`function` はプラグイン名、`args` はオプション引数）
-2. **終了**: `:::` で終了
-3. **入れ子構造**: **非サポート** - 入れ子構造内のプラグインマークアップは無視またはエラーとして扱う
-
-### 非対応パターン（入れ子禁止）
-
-以下のパターンはいずれも入れ子を含むため非対応です：
-
-```umd
-❌ ブロック型プラグイン内にブロック型プラグイン
-:::function args
-:::function2 args2
-content
-:::
-:::
-
-❌ ブロック型プラグイン内にインライン型プラグイン
-:::function args
-@function2(args2){{
-    content
-  }}
-:::
-
-❌ インライン型プラグイン内にブロック型プラグイン
-@function(args){{
-  :::function2 args2
-    content
-  :::
-}}
-```
-
-### 実装計画
-
-- [x] `::: 記法` の字句解析・構文解析実装（`src/extensions/plugins/block.rs` の `protect_colon_block_plugins`）
-- [x] 既存プラグインシステムとの統合（`@table` / `@math` / `@popover` / `@clear` と同一の後処理ロジックを共有、`src/extensions/plugins/block.rs`）
-- [x] 入れ子検出・エラーハンドリング実装（最初に現れる `:::` のみの行で閉じることで、入れ子部分は生テキストとして無害化）
-- [x] テスト suite 追加（`plugins::block` 単体テスト、`tests/conflict_resolution.rs` の統合テスト）
-- [x] ドキュメント更新（[docs/plugin-system.md](docs/plugin-system.md) / [docs/block-plugins.md](docs/block-plugins.md)）
 
 ---
 
@@ -356,65 +302,31 @@ Subresource Integrity (SRI) 相当のハッシュ検証をリンク・画像に�
 
 ---
 
+## ファイル拡張子の使い分け（`.umd` / `.umdt` / `.umdx`）
+
+### 概要（拡張子）
+
+用途に応じてファイル拡張子を使い分ける案です。UMDパーサー自体は文字列を入力とするため拡張子を直接判定しませんが、エディタやビルドツールがファイルを開かずに種別を判別できるようにするための命名規約です。
+
+- `.umd`: 通常のUMDドキュメント
+- `.umdt`: テンプレートエンジンモード（[docs/template-engine-spec.md](docs/template-engine-spec.md)、フロントマターの`is_template: true`と併用）で使うファイルの命名規約。`.ts`/`.tsx`、`.md`/`.mdx`と同じ「拡張子+1文字」の慣習に合わせ、`.umd`とソート時に隣接するよう`umdt`（`tumd`ではなく）を採用
+- `.umdx`: 画像等バイナリアセットを同梱したパッケージ形式（アイデア段階、仕様未確定）。`docx`/`xlsx`/`pptx`同様、ZIPで`.umd`本文とアセットファイルを束ねる形を想定。想定用途はアプリケーション組み込みマニュアルをこのWASMパーサーとWebViewで表示するケースで、コアパーサーの契約（文字列→HTML）自体は変えず、別レイヤー（展開ツール）がZIPを解いて本文だけをパーサーに渡す構成を想定
+
+### 検討事項（拡張子）
+
+- `.umdx`のZIP内部構造（マニフェストの要否、アセット参照方法、フロントマター/ボトムマターでのアセットポインタ定義方法）は未検討
+- `.umdt`と`.umdx`の組み合わせ（テンプレート+アセット同梱）の可否
+- 拡張子とフロントマター変数（`is_template`等）が食い違う場合の扱い（例: `.umdt`なのに`is_template`未設定）
+
+---
+
 ## Bootstrap依存の削減とリファレンスCSS
 
 ### 概要（脱Bootstrap化）
 
 現在Bootstrap 5のユーティリティクラス（`d-block`、`text-primary`など）に依存して出力しているHTMLを、Bootstrap本体への依存から切り離し、CSS Layer（`@layer`）を使ったミニマムなリファレンスCSSで置き換える計画です。
 
-### クラス名改名一覧（2026年8月実施済み）
-
-**display.scss**
-
-| 旧                | 新                   | CSS                                      |
-| ----------------- | -------------------- | ---------------------------------------- |
-| `.d-block`        | `.umd-block`         | `display: block`                         |
-| `.d-inline-block` | `.umd-inline-block`  | `display: inline-block`                  |
-| `.d-none`         | `.umd-hidden`        | `display: none`                          |
-| `.w-100`          | `.umd-block-justify` | `inline-size: 100%`                      |
-| `.w-auto`         | `.umd-block-center`  | `inline-size: auto; margin-inline: auto` |
-
-**text.scss**
-
-| 旧             | 新                           | CSS                                      |
-| -------------- | ---------------------------- | ---------------------------------------- |
-| `.text-center` | `.umd-center`                | `text-align: center`                     |
-| `.text-end`    | `.umd-end`                   | `text-align: end`                        |
-| （新規）       | `.umd-start`                 | `text-align: start`                      |
-| （新規）       | `.umd-justify`               | `text-align: justify`                    |
-| （新規）       | `.umd-v-start/center/end`    | `vertical-align: top/middle/bottom`      |
-| （新規）       | `.umd-text-size-xs/sm/lg/xl` | `font-size: x-small/small/large/x-large` |
-| `.fs-4`        | （削除）                     | —                                        |
-
-**spacing.scss**
-
-| 旧         | 新                   | CSS                         |
-| ---------- | -------------------- | --------------------------- |
-| `.mx-auto` | `.umd-inline-center` | `margin-inline: auto`       |
-| `.ms-auto` | `.umd-block-end`     | `margin-inline-start: auto` |
-| `.me-auto` | `.umd-block-start`   | `margin-inline-end: auto`   |
-| `.me-0`    | （削除）             | —                           |
-
-**components/content.scss**
-
-| 旧                          | 新                             |
-| --------------------------- | ------------------------------ |
-| `.blockquote`（エイリアス） | 削除（`.umd-blockquote` のみ） |
-| `.spoiler`                  | `.umd-spoiler`                 |
-| `.inline-code-color`        | `.umd-color-swatch`            |
-
-**components/code-block.scss**
-
-| 旧            | 新                |
-| ------------- | ----------------- |
-| `.code-block` | `.umd-code-block` |
-| `.code-title` | `.umd-code-title` |
-
-**base.scss**
-
-| 旧           | 新               |
-| ------------ | ---------------- |
-| `.footnotes` | `.umd-footnotes` |
+> クラス名の旧→新対応（`d-block` → `umd-block` 等、2026年8月実施済み）は移行完了済みのため本書からは削除。現行のクラス名は [docs/architecture.md](docs/architecture.md)・[docs/umd-extensions.md](docs/umd-extensions.md)・[docs/table-features.md](docs/table-features.md)・[docs/media-tags.md](docs/media-tags.md)・`scss/` を参照。
 
 ### 基本ルール（脱Bootstrap化）
 
@@ -468,46 +380,20 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 | `V-CENTER:` | `vertical-align: middle`     | 旧 `MIDDLE:`                                                              |
 | `BASELINE:` | `vertical-align: baseline`   | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
 
-**2026年9月実装済み**: 段落装飾のALIGN_EXTRACT/VALIGN_EXTRACT・`apply_block_placement`（テーブル/プラグインのブロック配置ラッパー）・`table/umd/decorations.rs`（テーブルセル装飾）のすべてを上表の論理名記法に統一済み（旧`LEFT`/`RIGHT`/`TOP`/`MIDDLE`/`BOTTOMはエイリアスなしで完全に置き換え）。その後の記法別モジュール整理（後述）で、これらのマッピング・共有プレフィックス表は`src/extensions/alignment.rs`に集約され、`block_decoration.rs`（COLOR/SIZE/TRUNCATE）・`table/umd/decorations.rs`・GFMテーブルセル配置処理はいずれもそこを参照する構成になった。
-
 ### 検討事項（脱Bootstrap化）
 
 - 意味を持つ色（`primary`/`danger`等）のオプション指定方法（CSS変数、テーマ設定オブジェクト、ビルド時設定など）の具体化
 - 既存のBootstrap前提ドキュメント（`docs/architecture.md`等）との整合、移行パス（Bootstrap版との共存可否）
 - リファレンスCSSの配布方法（npm パッケージ、CDN、生成物としてのみ提供 等）
 
-### 実装計画（脱Bootstrap化）
+### 実装計画（脱Bootstrap化）残タスク
 
-- [x] CSS Layer構成の設計（`@layer umd.reset, umd.base, umd.components, umd.utilities, umd.overrides`）
-- [x] クラス名改名マッピングの確定・実施
-- [x] セマンティックトークン（`primary`/`danger`等）の除去、ホスト側責務として明記
-- [x] リファレンスCSS実装（`scss/` 配下の全ファイル整備）
-- [x] `tokens.scss`: `light-dark()` によるダークモード一本化、パレット変数参照に移行
-- [x] Bootstrap依存コードの置き換え（テーブル以外）: `block_decorations.rs`（COLOR/SIZE/TRUNCATE/文字揃え。ただし`TOP/MIDDLE/BOTTOM/BASELINE`とテーブル/プラグイン配置ラッパー`apply_block_placement`はテーブル専用のため未着手）、`inline_decorations.rs`/`conflict_resolver.rs`の色マッピング（`umd-color-*`/`umd-bg-*`へ改名、16色パレットに拡張）、通常の`<blockquote>`（`umd-blockquote`へ改名）、`media.rs`（`img-fluid`削除・`w-100`→`umd-block-justify`・メディア配置`ms-auto`等→`umd-block-start/end`・`umd-inline-center`）、Mermaid SVGの`--bs-*`→`--umd-color-*`
-- [x] `&badge()`はBootstrap依存の解消コストに見合わないため機能自体を削除（`convert_standard_inline_plugin_to_html`/`inline_decorations.rs`の両実装・`scss/components/badge.scss`・関連テストを削除。未対応関数は既存の汎用プラグインフォールバック`<template class="umd-plugin umd-plugin-badge">`に自然に委譲される）
-- [x] `SIZE()`/`&size()`は既定で`xs`/`sm`/`lg`/`xl`のみ受け付け`umd-text-size-*`クラスを出力（`.umd-text-size-*`はキーワード4種のみで数値remスケールと対応しないため）。任意rem/px値は新設`ParserOptions.allow_custom_font_size`（既定`false`）で opt-in
+> クラス名改名・リファレンスCSS実装・色/サイズ系プラグインの整理・テーブルセル揃えの改称・`apply_block_placement`の論理名統一は完了済み。詳細は [docs/architecture.md](docs/architecture.md)・[docs/plugin-system.md](docs/plugin-system.md)・[docs/inline-plugins.md](docs/inline-plugins.md)・[docs/table-features.md](docs/table-features.md) を参照。
 
-### インライン標準プラグインの整理（2026年9月）
-
-- 発見: `&color()`/`&size()`/`&badge()`（削除済）は `conflict_resolver.rs` のマーカー復元経路で処理される一方、`&spoiler()`（`&spoiler(text);`/`&spoiler{text};`）にはそのマーカー復元側の対応ケースが無く、汎用プラグインへの取りこぼしフォールバックで`<template class="umd-plugin umd-plugin-spoiler">`になってしまっていた（未実装のまま放置されていたバグ）
-- 発見: ある標準プラグインの中に別の標準プラグインをネストした場合（例: `&color(blue){&size(sm){x};};`）、外側のマーカー正規表現が内側の呼び出しを非展開のまま生テキストとして飲み込むため、`inline_decorations.rs`側の“二回目の掃引”（`apply_inline_decorations_with_limit_and_options`、`mod.rs`でマーカー復元の後に実行）が実際にそれを展開している。このためこのファイルの`&color()`/`&size()`のマッピングロジックは见かけ上デッドコードではなく、ネスト時にのみ効くセカンドパスとして機能していた
-- 対応: `conflict_resolver.rs`に`"spoiler"`ケースを追加（`umd-spoiler`クラス、content版・argsonly版の両方）。`map_color_value_with_options`/`map_font_size_value`を`pub(crate)`化し、`inline_decorations.rs`側のローカル重複実装を削除して同じ関数を呼び出すよう統一（二重実装によるドリフトを恒久的に防止）。Discord風`||text||`スポイラーの出力クラスも`spoiler`→`umd-spoiler`に修正
-- 命名: `convert_inline_decoration_to_html`系3関数を`convert_standard_inline_plugin_to_html`系に改名し、ブロック型標準プラグイン（`@table`/`@math`/`@popover`/`@clear`/`@detail`）と対になる「インライン標準プラグイン」という位置づけを明示（docs: [plugin-system.md](docs/plugin-system.md) / [inline-plugins.md](docs/inline-plugins.md)）
-- 未着手: `dfn`/`kbd`/`samp`/`var`/`cite`/`q`/`small`/`bdi`/`ruby`/`time`/`data`/`bdo`/`sup`/`sub`は設定オプションを持たない単純な文字列組み立てのため二重実装のドリフトリスクは低いが、個別正規表現のコピーが残っている（統合の余地あり）
-- 解決済み（2026年9月・記法別モジュール整理）: `conflict_resolver.rs`の一次パスと`inline_decorations.rs`の二次スイープを`src/extensions/plugins/inline.rs`に統合。同一ファイル内の関数呼び出しになったため`map_color_value_with_options`/`map_font_size_value`の`pub(crate)`公開は不要になった（両者とも`plugins/inline.rs`のプライベート関数）
-- 解決済み（2026年9月・記法別モジュール整理）: 完全なデッドコードだった`src/extensions/plugins.rs`（`apply_plugin_syntax`）を削除。実際のプラグイン処理は`src/extensions/plugins/inline.rs`（インライン）と`src/extensions/plugins/block.rs`（ブロック）が担当。`docs/plugin-system.md`の「実装の主担当」も更新済み
-
-### テーブルのクラス改称（2026年9月実装済み）
-
-- GFM/標準Markdownテーブル → `<table class="umd-list-table">`（縦線なし、行の区切り線のみ。旧`class="table"`）
-- UMD（PukiWiki風）テーブル → `<table class="umd-table">`（縦線あり、フルグリッド。旧`class="table umd-table"`）
-- スタイル定義を新設`scss/components/table.scss`に集約し、`base.scss`の汎用`:where(table)`/`:where(th,td)`ルール（全`<table>`に無条件適用されていた）を削除
-- （2026年9月・撤回）`@table(...)`プラグインオプションから`striped`/`hover`/`dark`/`bordered`/`borderless`のみ削除し`sm`/`responsive`は`umd-table-sm`/`umd-table-responsive`として存続させたが、直後に「テーブルの見た目のバリエーション適用はBootstrap依存を外した以上このライブラリの責務ではない」との判断で`@table`プラグイン自体を完全に削除。`process_table_plugin`/`map_table_plugin_option_to_class`/`merge_class_attr`（いずれも`conflict_resolver.rs`）を削除し、`umd-table-sm`/`umd-table-responsive`のCSSも用途がなくなったため`table.scss`から削除。`@table(...)`/`:::table ...`は他の未対応プラグインと同様、汎用の`<template class="umd-plugin umd-plugin-table">`にフォールバックする
-
-- [x] テーブルセル揃えの論理方向名への改称（2026年9月実装済み）: `conflict_resolver.rs`の`process_cell_content`（GFM表）と`table/umd/decorations.rs`の`parse_cell_content`（UMD表）を、段落装飾（`block_decorations.rs`）と同じ`START`/`CENTER`/`END`/`JUSTIFY`・`V-START`/`V-CENTER`/`V-END`/`BASELINE`記法に統一し、出力クラスも`align-top`等のBootstrap形式から`umd-v-start`等（`scss/utilities/text.scss`の既存クラスを再利用）に変更。`table/umd/parser.rs`の`is_umd_table`検出マーカーも追随。旧`TOP`/`MIDDLE`/`BOTTOM`/`LEFT`/`RIGHT`はセル装飾としては非対応（エイリアスなし）
-- [ ] `apply_block_placement`（テーブル/プラグインのブロック配置ラッパー、`LEFT:`/`RIGHT:`/`CENTER:`/`JUSTIFY:`の直後に表やプラグインを続ける記法）は物理名称のまま — 意図的に保留中
+- [x] **UMDテーブルのセル装飾 `COLOR()`/`SIZE()` を`decoration_values.rs`へ移行**（`src/extensions/table/umd/decorations.rs`）: 独自実装の`is_bootstrap_color`/`get_bootstrap_size_class`を削除し、`&color()`/`&size()`と共有の`map_color_value_with_options`/`map_font_size_value`を使用するよう変更。出力クラスは`text-{color}`/`bg-{color}`/`fs-*`から`umd-color-*`/`umd-bg-*`/`umd-text-size-*`へ、パレットも16色に統一。適用先はこれまで通りセル自体（`<td>`/`<th>`、`cell.classes`/`cell.styles`）のまま変更なし。`allow_hex_colors`/`allow_custom_font_size`オプションも`ParserOptions`から`preprocess_conflicts`→`extract_umd_tables`→`parse_table`→`parse_cell_content`まで貫通させ、`&color()`/`&size()`と同じ挙動に統一（セル内容中の`項目&color(red){New!};`のようなネスト`&color()`との共存もテスト済み）
 - [ ] 既存テスト（`bootstrap_integration.rs` 等）の移行方針検討
 - [ ] ドキュメント更新
+- [ ] インライン標準プラグイン（`dfn`/`kbd`/`samp`/`var`/`cite`/`q`/`small`/`bdi`/`ruby`/`time`/`data`/`bdo`/`sup`/`sub`）の個別正規表現の重複統合（優先度低）
 
 ---
 
@@ -688,22 +574,14 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 
 ## 仕様確定事項
 
-詳細は [docs/planned-features.md](docs/planned-features.md) を参照。
+詳細は [docs/planned-features.md](docs/planned-features.md) を参照。実装済みの確定仕様（URL自動リンク・URLスキーム制限・文字サイズ記法・数式構文・フットノート・絵文字・改行タグ等）は各テーマ別ドキュメントに記載済みのためここでは省略。未実装のものは以下の通り：
 
-- ✅ **URL 自動リンク**: `<URL>` 形式のみサポート（裸 URL は非推奨）
-- ✅ **URL スキーム**: `javascript:`, `data:`, `vbscript:`, `file:` ブロック
-- ✅ **テキスト装飾記法**: 以下の記法を確定
-  - `__text__` → `<u>` アンダーライン
+- ✅（仕様確定・未実装） **テキスト装飾記法**: `__text__` は実装済み（`<u>`）。以下は仕様確定のみで未実装
   - `^^text^^` → `<span>` オーバーライン（`^`は「上」のニーモニック、ASCII範囲内）
   - `~~text~~` → `<span>` 波線アンダーライン（`~~`の形が波線に対応）
   - `==text==` → `<span>` アンダーライン + オーバーライン
   - `{- text -}` → `<del>` 削除（diff記法の`-`に対応）
-- ✅ **袋文字プラグイン**: `&outline(fill, stroke){text}` — `-webkit-text-stroke` + `paint-order: stroke fill`
-- ✅ **文字サイズ記法**: `&size(xs/sm/lg/xl){text}` — CSSキーワード値のみ（ピクセル指定はオプション、デフォルト無効）
-- ✅ **数式構文**: `&math(LaTeX);` ($ 記号非採用)
-- ✅ **フットノート**: JSON 構造化データ出力
-- ✅ **絵文字**: Unicode 直接入力推奨、ショートコード非サポート
-- ✅ **改行**: `&br;` 明示的タグ（テーブルセル対応）
+- ✅（仕様確定・未実装） **袋文字プラグイン**: `&outline(fill, stroke){text}` — `-webkit-text-stroke` + `paint-order: stroke fill`
 
 ---
 

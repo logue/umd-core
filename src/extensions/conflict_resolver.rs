@@ -50,6 +50,10 @@ impl HeaderIdMap {
 /// # Arguments
 ///
 /// * `input` - The raw wiki markup input
+/// * `allow_hex_colors` - Whether UMD table `COLOR()` cell decorations
+///   accept hex values, matching `ParserOptions::allow_hex_colors`
+/// * `allow_custom_font_size` - Whether UMD table `SIZE()` cell decorations
+///   accept arbitrary values, matching `ParserOptions::allow_custom_font_size`
 ///
 /// # Returns
 ///
@@ -61,10 +65,14 @@ impl HeaderIdMap {
 /// use umd::extensions::conflict_resolver::preprocess_conflicts;
 ///
 /// let input = "> quote <";
-/// let (output, _) = preprocess_conflicts(input);
+/// let (output, _) = preprocess_conflicts(input, false, false);
 /// // UMD blockquote is preserved
 /// ```
-pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
+pub fn preprocess_conflicts(
+    input: &str,
+    allow_hex_colors: bool,
+    allow_custom_font_size: bool,
+) -> (String, HeaderIdMap) {
     // Step 1: Remove comments before any other processing
     let mut result = preprocessor::remove_comments(input);
 
@@ -123,7 +131,8 @@ pub fn preprocess_conflicts(input: &str) -> (String, HeaderIdMap) {
     result = plugins::block::protect_block_plugins(&result);
 
     // Extract and protect UMD tables (before definition lists)
-    let (result, table_map) = table::umd::extract_umd_tables(&result);
+    let (result, table_map) =
+        table::umd::extract_umd_tables(&result, allow_hex_colors, allow_custom_font_size);
     header_map.tables = table_map;
 
     // Process definition lists: :term|definition
@@ -657,7 +666,7 @@ mod tests {
     #[test]
     fn test_markdown_blockquote_unchanged() {
         let input = "> Standard Markdown quote\n> Second line";
-        let (output, _) = preprocess_conflicts(input);
+        let (output, _) = preprocess_conflicts(input, false, false);
         // Should NOT be converted (no closing <)
         assert_eq!(output, input);
     }
@@ -665,7 +674,7 @@ mod tests {
     #[test]
     fn test_custom_header_id() {
         let input = "# My Header {#custom-id}\n\nContent";
-        let (output, header_map) = preprocess_conflicts(input);
+        let (output, header_map) = preprocess_conflicts(input, false, false);
         // Should extract the custom ID
         assert_eq!(header_map.ids.get(&1), Some(&"custom-id".to_string()));
         // Should remove {#custom-id} from the text
@@ -676,7 +685,7 @@ mod tests {
     #[test]
     fn test_multiple_custom_header_ids() {
         let input = "# First {#first}\n\n## Second {#second}\n\n### Third";
-        let (_output, header_map) = preprocess_conflicts(input);
+        let (_output, header_map) = preprocess_conflicts(input, false, false);
         assert_eq!(header_map.ids.get(&1), Some(&"first".to_string()));
         assert_eq!(header_map.ids.get(&2), Some(&"second".to_string()));
         assert_eq!(header_map.ids.get(&3), None); // No custom ID for third
@@ -885,7 +894,7 @@ mod tests {
     #[test]
     fn test_definition_list() {
         let input = ":Term 1|Definition 1\n:Term 2|Definition 2";
-        let (preprocessed, _) = preprocess_conflicts(input);
+        let (preprocessed, _) = preprocess_conflicts(input, false, false);
         assert!(preprocessed.contains("{{DEFINITION_LIST:"));
     }
 
@@ -893,7 +902,7 @@ mod tests {
     fn test_definition_list_html_output() {
         let header_map = HeaderIdMap::new();
         let input = ":HTML|HyperText Markup Language\n:CSS|Cascading Style Sheets";
-        let (preprocessed, _) = preprocess_conflicts(input);
+        let (preprocessed, _) = preprocess_conflicts(input, false, false);
         let output = postprocess_conflicts(&preprocessed, &header_map);
         assert!(output.contains("<dl>"));
         assert!(output.contains("<dt>HTML</dt>"));

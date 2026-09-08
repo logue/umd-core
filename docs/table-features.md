@@ -28,11 +28,17 @@ Universal Markdown のテーブル関連機能です。
 
 - インライン方向の配置: `START:`, `CENTER:`, `END:`, `JUSTIFY:`
 - ブロック方向の配置: `V-START:`, `V-CENTER:`, `V-END:`, `BASELINE:`
-- 色・サイズ: `COLOR(...)`, `SIZE(...)`
+- 色・サイズ: `COLOR(fg,bg)`, `SIZE(value)`
 
 配置プレフィックスは物理方向（`LEFT`/`RIGHT`/`TOP`/`BOTTOM`）ではなく論理方向の名称です。
 `block_decorations.rs`の段落装飾（[umd-extensions.md](umd-extensions.md)参照）と同じ命名規則で、
 `scss/utilities/text.scss`の`umd-start`/`umd-end`/`umd-v-start`等のクラスにそのまま対応します。
+
+`COLOR()`/`SIZE()`は値のパレット・クラス名規則をインラインプラグイン`&color()`/`&size()`と共有します（`decoration_values.rs`）。
+
+- `COLOR(fg,bg)`: 16色パレット名（`blue`/`indigo`/`violet`/`purple`/`pink`/`red`/`orange`/`amber`/`yellow`/`lime`/`green`/`teal`/`cyan`/`brown`/`gray`/`pewter`）→`umd-color-*`/`umd-bg-*`クラス。`ParserOptions.allow_hex_colors`が有効な場合は`#rgb`/`#rrggbb`も受け付け、インライン`style`に変換
+- `SIZE(value)`: キーワード（`xs`/`sm`/`lg`/`xl`）→`umd-text-size-*`クラス。`ParserOptions.allow_custom_font_size`が有効な場合は任意のrem/px/数値も受け付け、インライン`style`に変換
+- 適用先は`&color()`/`&size()`が生成する`<span>`ではなく、セル自体（`<td>`/`<th>`）。背景色・文字色はセル単位の属性であり、文中の一部だけを装飾する`&color()`とは役割が異なるため。セル内容中に`項目&color(red){New!};`のようにネストした`&color()`で部分的に上書きすることも可能
 
 ## `@table` プラグインは廃止
 

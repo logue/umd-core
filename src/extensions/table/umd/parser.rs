@@ -87,11 +87,16 @@ pub fn is_umd_table(lines: &[&str]) -> bool {
 /// # Arguments
 ///
 /// * `table_text` - The table text (multiple lines starting with |)
+/// * `allow_hex_colors` - Whether `COLOR()` cell decorations accept hex
+///   values (same option as `&color()`, see `ParserOptions::allow_hex_colors`)
+/// * `allow_custom_font_size` - Whether `SIZE()` cell decorations accept
+///   arbitrary values (same option as `&size()`, see
+///   `ParserOptions::allow_custom_font_size`)
 ///
 /// # Returns
 ///
 /// HTML table string
-pub fn parse_table(table_text: &str) -> String {
+pub fn parse_table(table_text: &str, allow_hex_colors: bool, allow_custom_font_size: bool) -> String {
     let lines: Vec<&str> = table_text.lines().collect();
 
     if lines.is_empty() {
@@ -146,7 +151,11 @@ pub fn parse_table(table_text: &str) -> String {
                 // Regular cell separator
                 let content = current_cell.trim().to_string();
                 let mut cell = Cell::new(content, false);
-                super::decorations::parse_cell_content(&mut cell);
+                super::decorations::parse_cell_content(
+                    &mut cell,
+                    allow_hex_colors,
+                    allow_custom_font_size,
+                );
                 cells.push(cell);
                 current_cell.clear();
                 current_pos += 1;
@@ -160,7 +169,11 @@ pub fn parse_table(table_text: &str) -> String {
         if !current_cell.trim().is_empty() || !cells.is_empty() {
             let content = current_cell.trim().to_string();
             let mut cell = Cell::new(content, false);
-            super::decorations::parse_cell_content(&mut cell);
+            super::decorations::parse_cell_content(
+                &mut cell,
+                allow_hex_colors,
+                allow_custom_font_size,
+            );
             cells.push(cell);
         }
 
@@ -277,7 +290,11 @@ fn generate_table_html_with_header(rows: &[Vec<Cell>], has_thead: bool) -> Strin
 ///
 /// Returns a tuple of (processed_text, table_map)
 /// where table_map contains markers and their corresponding HTML
-pub fn extract_umd_tables(input: &str) -> (String, Vec<(String, String)>) {
+pub fn extract_umd_tables(
+    input: &str,
+    allow_hex_colors: bool,
+    allow_custom_font_size: bool,
+) -> (String, Vec<(String, String)>) {
     let mut result = input.to_string();
     let mut tables = Vec::new();
     let mut table_counter = 0;
@@ -305,7 +322,7 @@ pub fn extract_umd_tables(input: &str) -> (String, Vec<(String, String)>) {
                 let table_lines_refs: Vec<&str> = table_text.lines().collect();
                 if is_umd_table(&table_lines_refs) {
                     // Parse and replace with marker
-                    let html = parse_table(&table_text);
+                    let html = parse_table(&table_text, allow_hex_colors, allow_custom_font_size);
                     // Use a marker with newlines to make comrak treat it as block-level
                     let marker = format!("\n\nUMD_TABLE_MARKER_{}_END\n\n", table_counter);
                     tables.push((marker.clone(), html));
@@ -326,7 +343,7 @@ pub fn extract_umd_tables(input: &str) -> (String, Vec<(String, String)>) {
         let table_text = table_lines.join("\n");
         let table_lines_refs: Vec<&str> = table_text.lines().collect();
         if is_umd_table(&table_lines_refs) {
-            let html = parse_table(&table_text);
+            let html = parse_table(&table_text, allow_hex_colors, allow_custom_font_size);
             // Use a marker with newlines
             let marker = format!("\n\nUMD_TABLE_MARKER_{}_END\n\n", table_counter);
             tables.push((marker.clone(), html));
@@ -357,7 +374,7 @@ mod tests {
     fn test_parse_simple_table() {
         // Without 'h' suffix, no thead should be generated
         let input = "| A | B |\n| C | D |";
-        let html = parse_table(input);
+        let html = parse_table(input, false, false);
         assert!(html.contains(r#"<table class="umd-table">"#));
         assert!(!html.contains("<thead>"));
         assert!(html.contains("<tbody>"));
@@ -369,7 +386,7 @@ mod tests {
     fn test_parse_table_with_header() {
         // With 'h' suffix, thead should be generated
         let input = "| ~A | ~B |h\n| C | D |";
-        let html = parse_table(input);
+        let html = parse_table(input, false, false);
         assert!(html.contains(r#"<table class="umd-table">"#));
         assert!(html.contains("<thead>"));
         assert!(html.contains("<tbody>"));
@@ -383,7 +400,7 @@ mod tests {
     fn test_parse_mixed_th_td() {
         // ~-prefixed cells become <th> even in body rows
         let input = "| A | B |h\n| ~Row Header | Data |";
-        let html = parse_table(input);
+        let html = parse_table(input, false, false);
         eprintln!("Output: {}", html);
         assert!(html.contains("<tbody>"));
         assert!(html.contains("<th>Row Header</th>"));
@@ -393,7 +410,7 @@ mod tests {
     #[test]
     fn test_parse_colspan() {
         let input = "| A |> |h\n| C | D |";
-        let html = parse_table(input);
+        let html = parse_table(input, false, false);
         eprintln!("Input: {}", input);
         eprintln!("Output: {}", html);
         assert!(html.contains("<thead>"));
@@ -404,13 +421,14 @@ mod tests {
     #[test]
     fn test_parse_with_decoration() {
         let input = "| COLOR(red): ~A | B |h";
-        let html = parse_table(input);
+        let html = parse_table(input, false, false);
         eprintln!("Input: {}", input);
         eprintln!("Output: {}", html);
-        // Bootstrap color names are output as classes
+        // UMD color names are output as umd-color-* classes, same palette
+        // as &color()
         assert!(html.contains("class="));
-        assert!(html.contains("text-red"));
+        assert!(html.contains("umd-color-red"));
         // ~A becomes <th> with the color class
-        assert!(html.contains(r#"<th class="text-red">A</th>"#));
+        assert!(html.contains(r#"<th class="umd-color-red">A</th>"#));
     }
 }

@@ -281,7 +281,11 @@ pub fn parse_with_frontmatter_opts(input: &str, options: &parser::ParserOptions)
     let content = extensions::fence::normalize::preprocess_code_block_filenames(&content);
 
     // Step 4: Pre-process to resolve syntax conflicts and extract custom header IDs
-    let (preprocessed, header_map) = extensions::conflict_resolver::preprocess_conflicts(&content);
+    let (preprocessed, header_map) = extensions::conflict_resolver::preprocess_conflicts(
+        &content,
+        options.allow_hex_colors,
+        options.allow_custom_font_size,
+    );
 
     // Step 4.5: Remove ASCII control characters (U+0000-U+001F except TAB/LF/CR, and U+007F)
     // from non-code-block regions. Plugin content is already base64-encoded by Step 4,
