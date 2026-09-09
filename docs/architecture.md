@@ -1,12 +1,13 @@
 # アーキテクチャドキュメント
 
-**最終更新**: 2026年5月18日
+**最終更新**: 2026年9月9日
 
 Universal Markdownの技術アーキテクチャとシステム設計を記載しています。
 
 ## 目次
 
 - [システム概要](#システム概要)
+- [3層アーキテクチャ（遅延レンダリングモデル）](#3層アーキテクチャ遅延レンダリングモデル)
 - [処理フロー](#処理フロー)
 - [主要コンポーネント](#主要コンポーネント)
 - [依存クレート](#依存クレート)
@@ -19,16 +20,15 @@ Universal Markdownの技術アーキテクチャとシステム設計を記載�
 
 ## システム概要
 
-Universal Markdownは、CommonMark準拠のMarkdownパーサーをベースに、UMD（Universal Markdown）独自構文、Bootstrap 5統合、セマンティックHTML生成を実現するRust製パーサーライブラリです。
+Universal Markdownは、CommonMark準拠のMarkdownパーサーをベースに、UMD（Universal Markdown）独自構文、セマンティックHTML生成を実現するRust製パーサーライブラリです。
 
 ### 設計方針
 
 1. **CommonMark準拠**: 75%以上のCommonMark仕様テストをパス
 2. **セキュリティ優先**: HTML直接入力を禁止、全てのユーザー入力をエスケープ
 3. **拡張性**: プラグインシステムによる機能拡張が可能
-4. **Bootstrap統合**: Bootstrap 5のユーティリティクラスを自動生成
-5. **セマンティックHTML**: アクセシビリティとSEOを考慮したHTML出力
-6. **表記の一意性**: 複数の書き方に同じ意味を持たせない。標準Markdownでは
+4. **セマンティックHTML**: アクセシビリティとSEOを考慮したHTML出力
+5. **表記の一意性**: 複数の書き方に同じ意味を持たせない。標準Markdownでは
    `**text**` と `__text__` はどちらも `<strong>` に変換されるが、UMDでは
    両者を明確に区別し、`**text**` は強調 (`<strong>`)、`__text__` は
    Discord風の下線 (`<u>`) として扱う。同じ意味を表す構文を複数用意すると
@@ -44,6 +44,84 @@ Universal Markdownは、CommonMark準拠のMarkdownパーサーをベースに�
 - **HTML安全化**: ammonia 4.1.2
 - **正規表現**: regex 1.12.3
 - **WASM対応**: wasm-bindgen 0.2.120
+
+---
+
+## 3層アーキテクチャ（遅延レンダリングモデル）
+
+umd-core は「**コアはプラグインの意味を知る必要がない**」という原則に基づき、処理を3層に分離する **遅延レンダリング（Deferred Rendering）** パターンを採用しています。
+
+```mermaid
+flowchart TD
+    IN["📄 UMDソース\n（マークアップ入力）"]
+
+    subgraph L1["Layer 1 — umd-core（Rust / WASM）"]
+        P1["CommonMark + UMD標準構文パーサー"]
+        P2["標準 HTML 出力"]
+        P3["&lt;template&gt; / &lt;data&gt;\nプレースホルダー出力"]
+    end
+
+    subgraph L2["Layer 2 — ホストアプリ（消費側）"]
+        P4["プラグイン解釈・展開\n（ドメイン固有処理）"]
+    end
+
+    subgraph L3["Layer 3 — フロントエンド（消費側）"]
+        P5["umd-* CSS クラス適用\nクライアントサイド処理"]
+    end
+
+    OUT["🖥️ 最終表示"]
+
+    IN --> P1
+    P1 --> P2
+    P1 --> P3
+    P2 --> P4
+    P3 --> P4
+    P4 --> P5
+    P5 --> OUT
+```
+
+### 各層の責務
+
+| 層 | 担当 | 責務の範囲 |
+|----|------|------------|
+| **Layer 1: umd-core** | このリポジトリ | CommonMark + UMD標準構文のパース。プラグイン構文を `<template>`/`<data>` タグに変換して出力する。プラグインの「意味」は関知しない |
+| **Layer 2: ホストアプリ** | 利用側 | `<template>`/`<data>` タグを解釈し、実際のHTMLへ展開する。ドメイン固有のプラグインをここで実装する |
+| **Layer 3: フロントエンド** | 利用側 | `umd-*` CSSクラスの適用、クライアントサイドのインタラクション処理 |
+
+### コアに含めるかどうかの判断基準
+
+**コアに含める**: CommonMark仕様に準拠した構文、またはUMDがすべてのユースケースで標準化するインライン/ブロック構文
+
+**ホスト/フロントエンドの責務**: ドメイン固有の処理、プラグインの具体的な意味解釈、ビジュアル表現の詳細
+
+迷ったときの指針：「その構文の意味が *誰がUMDを使っているか* によって変わるなら、コアの外に置く」
+
+### `<template>`/`<data>` プレースホルダー
+
+umd-core がパース時に意味を解決できないプラグイン構文は、`<template>` または `<data>` タグとして出力されます。
+
+```html
+<!-- 入力: &myplugin(arg){content} -->
+<!-- umd-core の出力: -->
+<template data-plugin="myplugin" data-arg="arg">content</template>
+```
+
+これにより：
+
+- ホストがプラグインを実装していなくても**ページが破損しない**（ブラウザはタグを無視する）
+- コアを変更せずにホスト固有のレンダリングを実現できる
+- フロントエンドのみで完結するプラグインも実装可能
+
+### PukiWiki との設計上の違い
+
+PukiWikiはプラグインがHTMLを直接生成する（コア本体にPHPコードを挿入する）モデルでした。umd-coreはこれを逆転させ、プラグインの実装をコアの外に追い出し、意味的に中立なプレースホルダーを介して通信します。
+
+| | PukiWiki | umd-core |
+|--|----------|----------|
+| プラグインの実装場所 | コア本体（PHP直挿入） | ホスト/フロントエンド |
+| プラグインのHTML生成 | プラグイン自身が行う | ホストがプレースホルダーを解釈して行う |
+| コアが知ること | プラグインの意味・出力形式 | プラグインの存在のみ（意味は関知しない） |
+| 未実装プラグイン時 | エラーまたは空出力 | プレースホルダーが残るだけ（ページ破損なし） |
 
 ---
 
@@ -128,7 +206,7 @@ Output HTML + Frontmatter + Footnotes
 
 - UMD独自構文（強調、装飾、プラグイン等）をASTに追加
 - セル連結対応テーブルをパース
-- Bootstrapクラスへのマッピング
+- UMD CSSクラスへのマッピング
 - カスタムヘッダーIDを`<h*>`タグへ適用
 
 #### 10. Footnotes Extractor
@@ -347,7 +425,7 @@ umd/
 │               └── decorations.rs
 ├── tests/                  # 統合テスト
 │   ├── commonmark.rs       # CommonMark準拠テスト
-│   ├── bootstrap_integration.rs  # Bootstrap統合テスト
+│   ├── bootstrap_integration.rs  # CSS クラス・HTML 出力統合テスト
 │   ├── conflict_resolution.rs    # 構文衝突テスト
 │   └── test_semantic_integration.rs  # セマンティックHTML
 ├── examples/               # サンプル・デモ
@@ -538,10 +616,10 @@ umd/
 - **コード区間の保護**: 正規表現変換前に `protect_code_sections` で保護
 - **新規regex**: 既存の保護パターンを回避しない設計
 
-#### Bootstrapカラー変数の記述規約
+#### CSS カラー変数の記述規約
 
-- **ドキュメント/サンプルCSS**: 意味付きシステムカラー（`--bs-primary`, `--bs-success`, `--bs-secondary` など）は使用しない
-- **推奨**: 用途に依存しないパレット系トークン（`--bs-blue`, `--bs-cyan`, `--bs-gray-500` など）を使用する
+- **ドキュメント/サンプルCSS**: 意味付きシステムカラー（`--umd-color-primary`, `--umd-color-success` など）は使用しない
+- **推奨**: 用途に依存しないパレット系トークン（`--umd-color-blue`, `--umd-color-cyan` など）を使用する
 - **理由**: 同じ色でも「意味（semantic）」と「色相（palette）」を分離し、設計意図の衝突を避ける
 - **例外**: 意味づけ自体が仕様である場合（例: `> ![NOTE]` 系、`COLOR(primary):`、バッジ用途）はこの限りではない
 
@@ -577,7 +655,7 @@ cargo test transform_images_to_media -- --nocapture
 
 ```bash
 ./build.sh [dev|release]
-# 出力: pkg/ フォルダ
+# 出力: dist/ フォルダ
 # 要件: wasm-pack ツールチェーン
 ```
 
@@ -726,7 +804,7 @@ XSS対策のため、以下のスキームをブロック:
 固定の件数は変動しやすいため、この文書ではカテゴリのみ管理します。
 
 1. **Unit Tests**: 各モジュールの個別機能テスト
-2. **Integration Tests**: Bootstrap統合・構文競合・セマンティックHTML検証
+2. **Integration Tests**: CSS クラス統合・構文競合・セマンティックHTML検証
 3. **CommonMark Compliance Tests**: CommonMark/GFM準拠テスト
 4. **Doctests**: ドキュメント内サンプルコードの整合チェック
 
@@ -753,8 +831,6 @@ XSS対策のため、以下のスキームをブロック:
 - **仕様書**: [LukiWiki rules](https://github.com/logue/LukiWiki-core/blob/master/docs/rules.md)
 - **CommonMark仕様**: [spec.commonmark.org](https://spec.commonmark.org/)
 - **GFM仕様**: [GitHub Flavored Markdown](https://github.github.com/gfm/)
-- **Bootstrap 5**: [Bootstrap Docs](https://getbootstrap.com/docs/5.3/)
-
 ---
 
 ## ライセンス

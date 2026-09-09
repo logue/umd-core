@@ -30,9 +30,9 @@ fi
 
 # Build for web target
 if [ "$BUILD_TYPE" = "dev" ]; then
-    wasm-pack build --target web --dev --out-dir pkg
+    wasm-pack build --target web --dev --out-dir dist
 else
-    wasm-pack build --target web --release --out-dir pkg
+    wasm-pack build --target web --release --out-dir dist
 fi
 
 npm run build:css
@@ -41,7 +41,7 @@ npm run build:css
 ruby <<'RUBY'
 require "json"
 
-path = "pkg/package.json"
+path = "dist/package.json"
 unless File.exist?(path)
     warn "⚠️  package.json not found at #{path}; skipped metadata normalization."
     exit 0
@@ -71,9 +71,9 @@ File.write(path, JSON.pretty_generate(pkg) + "\n")
 RUBY
 
 echo "✅ Build completed successfully!"
-echo "📦 Output directory: pkg/"
+echo "📦 Output directory: dist/"
 echo ""
 echo "Usage example:"
-echo "  import init, { parse } from './pkg/umd.js';"
+echo "  import init, { parse } from './dist/umd.js';"
 echo "  await init();"
 echo "  const html = parse('# Hello World');"

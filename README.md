@@ -1,6 +1,6 @@
 # Universal Markdown (UMD)
 
-A next-generation Markdown parser built with Rust, combining CommonMark compliance (~75%+), Bootstrap 5 integration, semantic HTML generation, and an extensible plugin system. Maintains backward compatibility with UMD legacy syntax.
+A next-generation Markdown parser built with Rust, combining CommonMark compliance (~75%+), semantic HTML generation, a minimal `umd-*` reference CSS (no required framework dependency), and an extensible plugin system. Maintains backward compatibility with UMD legacy syntax.
 
 **Status**: Production-ready | **Latest Update**: 2026-05-19 | **License**: Apache-2.0
 
@@ -38,22 +38,22 @@ Minimum requirements:
 - ✅ **CommonMark Compliant** (~75%+ specification compliance)
 - ✅ **GFM Extensions** (tables, strikethrough, task lists, footnotes)
 - ✅ **HTML5 Semantic Tags** (optimized for accessibility and SEO)
-- ✅ **Bootstrap 5 Integration** (automatic utility class generation)
+- ✅ **Reference CSS** (`umd-*` utility classes, no required framework dependency — see [docs/reference-css.md](docs/reference-css.md))
 
 ### Media & Content
 
 - ✅ **Auto-detect Media Files**: `![alt](url)` intelligently becomes `<video>`, `<audio>`, `<picture>`, or download link based on file extension
 - ✅ **Semantic HTML Elements**: `&ruby()`, `&sup()`, `&time()`, etc.
 - ✅ **Definition Lists**: `:term|definition` syntax with block-level support
-- ✅ **Code Blocks with Bootstrap Integration**: Class-based language output (`<code class="language-*">`) and syntect highlighting
-- ✅ **Mermaid SSR**: ` ```mermaid ` blocks are rendered server-side as `<figure class="code-block code-block-mermaid mermaid-diagram">...<svg>...</svg></figure>`
+- ✅ **Code Blocks**: Class-based language output (`<code class="language-*">`) and syntect highlighting
+- ✅ **Mermaid SSR**: ` ```mermaid ` blocks are rendered server-side as `<figure class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram">...<svg>...</svg></figure>`
 
 ### Tables & Layout
 
 - ✅ **Markdown Tables**: Standard GFM tables (`<table class="umd-list-table">` — horizontal row dividers only, no vertical lines)
 - ✅ **UMD Tables**: PukiWiki-style tables with cell spanning (`|>` colspan, `|^` rowspan) (`<table class="umd-table">` — full grid, vertical + horizontal dividers)
 - ✅ **Cell Decoration**: logical-direction alignment (`START`/`CENTER`/`END`/`JUSTIFY`, `V-START`/`V-CENTER`/`V-END`/`BASELINE`), color, size control
-- ✅ **Block Decorations**: SIZE, COLOR, positioning with Bootstrap prefix syntax
+- ✅ **Block Decorations**: SIZE, COLOR, logical-direction positioning prefixes (`START`/`END`/`V-START`/etc.)
 
 ### Interactivity & Data
 
@@ -244,13 +244,13 @@ Build WASM module:
 
 ```bash
 ./build.sh release
-# Output: pkg/umd.js, pkg/umd_bg.wasm
+# Output: dist/umd.js, dist/umd_bg.wasm
 ```
 
 Use in JavaScript:
 
 ```javascript
-import init, { parse } from "./pkg/umd.js";
+import init, { parse } from "./dist/umd.js";
 
 async function main() {
   await init();
@@ -393,7 +393,7 @@ code .inline-code-color {
   height: 0.75em;
   margin-left: 0.4em;
   border-radius: 0.2em;
-  border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.2));
+  border: 1px solid rgba(0, 0, 0, 0.2);
   vertical-align: middle;
 }
 ```
@@ -554,21 +554,28 @@ Output: HTML + Frontmatter + Footnotes
 
 ## Test Coverage
 
-**284 tests passing** ✅
+**358 tests passing** (plus 15 doc tests) ✅
 
 ```text
-196 unit tests (core modules)
- 24 bootstrap integration tests (CSS class generation)
+243 unit tests (core modules)
+ 47 CSS class / HTML output integration tests (tests/bootstrap_integration.rs)
+ 21 conflict resolution tests (syntax collision handling)
  18 commonmark compliance tests (specification adherence)
- 13 conflict resolution tests (syntax collision handling)
+ 14 comment syntax tests
+ 11 base URL resolution tests
+  3 bidi code block option tests
   1 semantic integration test
 ```
+
+> Note: `tests/bootstrap_integration.rs` predates the move away from Bootstrap
+> utility classes; despite the filename, it only asserts UMD's own `umd-*`
+> reference-CSS classes.
 
 Run tests:
 
 ```bash
-cargo test --verbose              # All tests
-cargo test --test bootstrap_integration  # Integration tests only
+cargo test --verbose                     # All tests
+cargo test --test bootstrap_integration  # CSS class / HTML output tests only
 ```
 
 ---

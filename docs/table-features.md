@@ -9,8 +9,8 @@ Universal Markdown のテーブル関連機能です。
 - GFM テーブル → `<table class="umd-list-table">`（縦線なし。行の区切り線のみ）
 - UMD テーブル（セル連結対応、PukiWiki風）→ `<table class="umd-table">`（縦線あり。フルグリッド）
 
-デザインはBootstrapのテーブル（余白・罫線・見出しの太さ）に準拠しますが、
-`table-striped`/`table-hover`/`table-dark`のような装飾バリエーションは
+デザインはUMDリファレンスCSS（余白・罫線・見出しの太さ）で定義しており、
+外部CSSフレームワークの `table-striped`/`table-hover`/`table-dark` のような装飾バリエーションは
 サポートしません。縦線の有無はどちらの構文で書いたかで決まる固定の性質であり、
 オプションで切り替えるものではないため、`table-bordered`/`table-borderless`も
 非対応です。スタイル定義は[`scss/components/table.scss`](../scss/components/table.scss)参照。
@@ -42,8 +42,8 @@ Universal Markdown のテーブル関連機能です。
 
 ## `@table` プラグインは廃止
 
-`@table(options){{ ... }}`（テーブルへのBootstrapバリエーション適用）は削除されました。
-Bootstrapに依存しない設計に移行したことで、テーブルの見た目のバリエーション適用は
+`@table(options){{ ... }}`（テーブルへの外部CSSバリエーション適用）は削除されました。
+UMDリファレンスCSSへ移行したことで、外部フレームワーク依存のテーブルバリエーション適用は
 このライブラリの責務ではなくなったためです。`@table`/`:::table`は未知のプラグイン名として
 扱われ、他の未対応プラグインと同様に汎用の`<template class="umd-plugin umd-plugin-table">`
 にフォールバックします（詳細は[plugin-system.md](plugin-system.md)）。

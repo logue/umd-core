@@ -27,7 +27,7 @@ cargo install wasm-pack
 
 ## 生成されるファイル
 
-`pkg/`ディレクトリに以下のファイルが生成されます：
+`dist/`ディレクトリに以下のファイルが生成されます：
 
 - `umd.js` - JavaScriptバインディング
 - `umd.d.ts` - TypeScript型定義
@@ -55,7 +55,7 @@ This is **bold** and *italic* text.
     <div id="output"></div>
 
     <script type="module">
-      import init, { parse } from "./pkg/umd.js";
+      import init, { parse } from "./dist/umd.js";
 
       await init();
 
@@ -72,7 +72,7 @@ This is **bold** and *italic* text.
 ### Node.jsから使用
 
 ```javascript
-import init, { parse } from "./pkg/umd.js";
+import init, { parse } from "./dist/umd.js";
 
 async function main() {
   await init();
@@ -96,7 +96,7 @@ main();
 ### TypeScript
 
 ```typescript
-import init, { parse } from "./pkg/umd.js";
+import init, { parse } from "./dist/umd.js";
 
 async function parseMarkdown(source: string): Promise<string> {
   await init();

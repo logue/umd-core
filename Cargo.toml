@@ -1,28 +1,27 @@
 [package]
 name = "umd"
-version = "0.1.3"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.98.1"
 license = "Apache-2.0"
 authors = ["logue"]
-description = "Universal Markdown - A post-Markdown superset with Bootstrap 5 integration and extensible syntax"
+description = "Universal Markdown - A post-Markdown superset with semantic HTML and extensible syntax"
 repository = "https://github.com/logue/umd-core"
 homepage = "https://github.com/logue/umd-core"
 documentation = "https://docs.rs/umd"
 readme = "README.md"
-keywords = ["markdown", "parser", "commonmark", "bootstrap", "wasm"]
+keywords = ["markdown", "parser", "commonmark", "html", "wasm"]
 categories = ["parser-implementations", "text-processing", "wasm"]
 exclude = [
   ".github/**",
   "AI_Handover_Document.md",
   "package-lock.json",
   "package.json",
-  "pkg/**",
+  "dist/**",
   "rsbuild.config.ts",
   "scripts/**",
   "scss/**",
-  "target/**",
-  "test_table",
+  "target/**"
 ]
 
 [lib]
@@ -31,7 +30,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 ammonia = "4.1.4" # HTML sanitization
 base64 = "0.23.1" # Base64 encoding for content protection
-comrak = "0.55.0" # Markdown parser (GFM)
+comrak = { version = "0.55.0", default-features = false } # Markdown parser (GFM)
 html-escape = "0.2.15" # HTML escaping
 math-core = "0.8.2" # LaTeX to MathML Core conversion for &math/@math
 maud = "0.27.0" # Type-safe HTML generation

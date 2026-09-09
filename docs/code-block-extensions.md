@@ -121,9 +121,9 @@ graph TD
   data-mermaid-source="graph TD..."
 >
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
-    <!-- Bootstrap CSS変数でスタイル付けされたSVG要素 -->
-    <rect fill="var(--bs-blue, #0d6efd)" />
-    <text fill="var(--bs-body-color)" />
+    <!-- UMD CSS変数でスタイル付けされたSVG要素 -->
+    <rect fill="var(--umd-color-blue, #0d6efd)" />
+    <text fill="var(--umd-body-color)" />
   </svg>
 </figure>
 ```
@@ -148,7 +148,7 @@ graph TD
 >
   <figcaption class="umd-code-title">システムフロー</figcaption>
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
-    <!-- Bootstrap CSS変数でスタイル付けされたSVG要素 -->
+    <!-- UMD CSS変数でスタイル付けされたSVG要素 -->
   </svg>
 </figure>
 ```
@@ -156,7 +156,7 @@ graph TD
 **特徴:**
 
 - ✅ サーバー側（Rust）で完全に処理
-- ✅ Bootstrap CSS 変数でダークモード自動対応
+- ✅ CSS 変数でダークモード自動対応
 - ✅ SEO対応（HTMLに含まれた状態で配信）
 - ✅ JavaScript不要
 - ✅ セマンティックな`<figure>`でラップ
@@ -251,30 +251,32 @@ document.querySelectorAll("figure.umd-mermaid-diagram").forEach((figure) => {
 </script>
 ```
 
-#### 3. Bootstrap統合版カスタムテーマ
+#### 3. UMD CSS カスタムテーマ
 
-> 補足: このテーマ例では意味付きシステムカラー（`--bs-primary` など）を避け、パレット系トークン（`--bs-blue` など）を優先しています。\
+> 補足: このテーマ例では意味付きシステムカラーを避け、パレット系トークンを優先しています。\
 > ただし、意味づけ自体が仕様であるケース（例: `> ![NOTE]` 系、`COLOR(primary):`、バッジ用途）は例外です。
 
 ```css
 /* ライトモード */
 :root {
-  --code-bg: var(--bs-light, #f8f9fa);
-  --code-text: var(--bs-gray-900, #212529);
-  --code-keyword: var(--bs-blue, #0d6efd);
-  --code-string: var(--bs-green, #198754);
-  --code-comment: var(--bs-gray, #6c757d);
-  --code-number: var(--bs-orange, #fd7e14);
+  --code-bg: var(--umd-body-bg-subtle, #f8f9fa);
+  --code-text: var(--umd-body-color, #212529);
+  --code-keyword: var(--umd-color-blue, #0d6efd);
+  --code-string: var(--umd-color-green, #198754);
+  --code-comment: var(--umd-color-gray, #6c757d);
+  --code-number: var(--umd-color-orange, #fd7e14);
 }
 
 /* ダークモード */
-[data-bs-theme="dark"] {
-  --code-bg: var(--bs-dark, #212529);
-  --code-text: var(--bs-gray-100, #f8f9fa);
-  --code-keyword: var(--bs-cyan, #0dcaf0);
-  --code-string: var(--bs-teal, #13c798);
-  --code-comment: var(--bs-gray-500, #adb5bd);
-  --code-number: var(--bs-yellow, #ffc107);
+@media (prefers-color-scheme: dark) {
+  :root {
+    --code-bg: var(--umd-body-bg, #212529);
+    --code-text: var(--umd-body-color, #f8f9fa);
+    --code-keyword: var(--umd-color-cyan, #0dcaf0);
+    --code-string: var(--umd-color-teal, #13c798);
+    --code-comment: var(--umd-color-gray-500, #adb5bd);
+    --code-number: var(--umd-color-yellow, #ffc107);
+  }
 }
 
 code {
@@ -291,8 +293,8 @@ pre code {
 
 /* figcaption スタイル */
 .umd-code-block figcaption {
-  background-color: var(--bs-gray-200, #e9ecef);
-  color: var(--bs-gray-800, #343a40);
+  background-color: var(--umd-subtle-bg, #e9ecef);
+  color: var(--umd-body-color, #343a40);
   padding: 0.5rem 1rem;
   border-radius: 0.25rem 0.25rem 0 0;
   font-size: 0.875rem;
@@ -303,7 +305,7 @@ pre code {
   margin: 1rem 0;
   border-radius: 0.25rem;
   overflow: hidden;
-  border: 1px solid var(--bs-gray-300, #dee2e6);
+  border: 1px solid var(--umd-border-color, #dee2e6);
 }
 ```
 
@@ -320,7 +322,7 @@ pre code {
 - `render_mermaid_as_svg(mermaid_code: &str) -> String` - Mermaid → SVG変換
 - `process_syntax_highlighted_blocks(html: &str) -> String` - Syntectハイライト + フォールバック出力
 - `extract_filename_from_meta(meta: &str) -> Option<String>` - `data-meta`からファイル名抽出
-- `inject_bootstrap_colors(svg: &str) -> String` - Bootstrap CSS変数の注入
+- `inject_bootstrap_colors(svg: &str) -> String` - CSS変数の注入
 
 #### 処理パイプライン
 

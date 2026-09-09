@@ -5,7 +5,7 @@ This document defines the standard release path for publishing the `umd` crate t
 ## Scope
 
 - Target: Rust crate publication to crates.io
-- Out of scope: npm publication for `pkg/`
+- Out of scope: npm publication for `dist/`
 
 ## Pre-publish checklist
 

@@ -62,3 +62,45 @@ pub struct UserProfile {
 
 1. Consume the generated `*.d.ts` types output by the `wasm-pack` build process directly.
 2. Treat generated interfaces as read-only; never modify them manually.
+
+---
+
+## 4. Architecture: Deferred Rendering Model
+
+umd-core follows a **3-layer deferred rendering** design. The core principle is:
+
+> **The core does not need to know what a plugin means.**
+
+### Layer Responsibilities
+
+| Layer | Owner | Responsibility |
+|-------|-------|----------------|
+| **Layer 1: umd-core (Rust/WASM)** | This repo | Parse CommonMark + UMD standard syntax. Convert plugin syntax into `<template>`/`<data>` placeholder tags. The core has no knowledge of plugin semantics. |
+| **Layer 2: Host application** | Consumer | Interpret `<template>`/`<data>` placeholders and expand them into actual HTML/content. Implement domain-specific plugins here. |
+| **Layer 3: Frontend** | Consumer | Apply CSS classes (`umd-*`), handle client-side interaction and rendering. |
+
+### Decision Criterion: What Belongs in Core
+
+**Include in core**: Syntax that conforms to the CommonMark spec, or inline/block syntax that UMD standardizes across all use cases.
+
+**Host/frontend responsibility**: Domain-specific processing, concrete interpretation of plugin semantics, visual presentation details.
+
+When in doubt: if the meaning of a construct depends on *who is using UMD*, it belongs outside the core.
+
+### `<template>`/`<data>` Placeholders
+
+Plugin syntax that umd-core cannot resolve at parse time is emitted as a `<template>` or `<data>` tag. This ensures:
+
+- Pages do not break if the host has not implemented the plugin — the tag is silently ignored by browsers.
+- Host-specific rendering is achieved without modifying core.
+- Frontend-only plugins are also possible.
+
+```html
+<!-- Input: &myplugin(arg){content} -->
+<!-- umd-core output: -->
+<template data-plugin="myplugin" data-arg="arg">content</template>
+```
+
+### Contrast with PukiWiki
+
+PukiWiki plugins generate HTML directly by inserting PHP code into the core. umd-core inverts this: plugins are pushed *outside* the core, and communication happens through semantically neutral placeholder tags. The host decides how (and whether) to render them.

@@ -1,6 +1,6 @@
 # Reference CSS
 
-UMDの参照CSSは、Rust/WASMコードとは分離した `scss/` を編集元にします。RsbuildとSassで `pkg/umd-reference.css` を生成します。
+UMDの参照CSSは、Rust/WASMコードとは分離した `scss/` を編集元にします。RsbuildとSassで `dist/umd-reference.css` を生成します。
 
 ## Build
 

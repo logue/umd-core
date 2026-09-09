@@ -1,16 +1,20 @@
 {
-	"name": "umd-core-assets",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"build:css": "rsbuild build && node scripts/build-css.mjs",
-		"dev:css": "rsbuild dev"
-	},
-	"devDependencies": {
-		"@rsbuild/core": "^2.2.3",
-		"@rsbuild/plugin-sass": "^2.0.1"
-	},
-	"dependencies": {
-		"@sableclient/twemoji-font": "^1.0.4"
-	}
+  "name": "umd-core-assets",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "./build.sh",
+    "build:css": "rsbuild build && node scripts/build-css.mjs",
+    "dev:css": "rsbuild dev",
+    "lint": "biome check --write .",
+    "test": "cargo test"
+  },
+  "dependencies": {
+    "@sableclient/twemoji-font": "^1.0.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@rsbuild/core": "^2.2.4",
+    "@rsbuild/plugin-sass": "^2.0.1"
+  }
 }

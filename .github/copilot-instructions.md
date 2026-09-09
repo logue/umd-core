@@ -82,7 +82,7 @@ Rust crate の公開関連は以下を一次情報として扱う：
 
 - 公開前に `cargo build --verbose && cargo test --verbose` を必須実行
 - 公開前に `cargo package --list` で同梱物を確認
-- 公開時は Rust crate のみを対象とし、`pkg/` の npm 公開手順は本スコープ外
+- 公開時は Rust crate のみを対象とし、`dist/` の npm 公開手順は本スコープ外
 - `README.md` は利用者向け概要、公開運用詳細は上記4文書へ分離する
 
 ## ドキュメント体系

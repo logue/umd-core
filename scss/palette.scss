@@ -14,253 +14,276 @@
  * own custom prefix (e.g. "tw-blue" → --tw-blue-050 … --tw-blue-975) to
  * avoid colliding with --umd-palette-* and with each other.
  *
- * color-mix(in lab, <base>, white <tint%>) for 025–400
+ * color-mix(in lab, <base>, $white <tint%>) for 025–400
  * <base> for 500
- * color-mix(in lab, <base>, black <shade%>) for 600–975
+ * color-mix(in lab, <base>, $black <shade%>) for 600–975
  */
+@use "sass:map";
+
+// Easily convert colors to oklch() with https://oklch.com/
+
+$white: #fff !default;
+$black: #000 !default;
+
+$blue: oklch(60% 0.24 240) !default;
+$indigo: oklch(56% 0.26 288) !default;
+$violet: oklch(56% 0.24 300) !default;
+$purple: oklch(56% 0.24 320) !default;
+$pink: oklch(60% 0.22 4) !default;
+$red: oklch(60% 0.22 20) !default;
+$orange: oklch(70% 0.22 52) !default;
+$amber: oklch(79% 0.2 78) !default;
+$yellow: oklch(88% 0.24 88) !default;
+$lime: oklch(65% 0.24 135) !default;
+$green: oklch(64% 0.22 160) !default;
+$teal: oklch(68% 0.22 190) !default;
+$cyan: oklch(69% 0.22 220) !default;
+$brown: oklch(60% 0.12 54) !default;
+$gray: oklch(60% 0.02 245) !default;
+$pewter: oklch(65% 0.01 290) !default;
 
 :root {
   /* --- Blue  oklch(60% 0.24 240) --- */
-  --umd-palette-blue-025: color-mix(in lab, oklch(60% 0.24 240), white 94%);
-  --umd-palette-blue-050: color-mix(in lab, oklch(60% 0.24 240), white 90%);
-  --umd-palette-blue-100: color-mix(in lab, oklch(60% 0.24 240), white 80%);
-  --umd-palette-blue-200: color-mix(in lab, oklch(60% 0.24 240), white 60%);
-  --umd-palette-blue-300: color-mix(in lab, oklch(60% 0.24 240), white 40%);
-  --umd-palette-blue-400: color-mix(in lab, oklch(60% 0.24 240), white 20%);
-  --umd-palette-blue-500: oklch(60% 0.24 240);
-  --umd-palette-blue-600: color-mix(in lab, oklch(60% 0.24 240), black 16%);
-  --umd-palette-blue-700: color-mix(in lab, oklch(60% 0.24 240), black 32%);
-  --umd-palette-blue-800: color-mix(in lab, oklch(60% 0.24 240), black 48%);
-  --umd-palette-blue-900: color-mix(in lab, oklch(60% 0.24 240), black 64%);
-  --umd-palette-blue-950: color-mix(in lab, oklch(60% 0.24 240), black 76%);
-  --umd-palette-blue-975: color-mix(in lab, oklch(60% 0.24 240), black 88%);
+  --umd-palette-blue-025: color-mix(in lab, $blue, $white 94%);
+  --umd-palette-blue-050: color-mix(in lab, $blue, $white 90%);
+  --umd-palette-blue-100: color-mix(in lab, $blue, $white 80%);
+  --umd-palette-blue-200: color-mix(in lab, $blue, $white 60%);
+  --umd-palette-blue-300: color-mix(in lab, $blue, $white 40%);
+  --umd-palette-blue-400: color-mix(in lab, $blue, $white 20%);
+  --umd-palette-blue-500: $blue;
+  --umd-palette-blue-600: color-mix(in lab, $blue, $black 16%);
+  --umd-palette-blue-700: color-mix(in lab, $blue, $black 32%);
+  --umd-palette-blue-800: color-mix(in lab, $blue, $black 48%);
+  --umd-palette-blue-900: color-mix(in lab, $blue, $black 64%);
+  --umd-palette-blue-950: color-mix(in lab, $blue, $black 76%);
+  --umd-palette-blue-975: color-mix(in lab, $blue, $black 88%);
 
-  /* --- Indigo  oklch(56% 0.26 288) --- */
-  --umd-palette-indigo-025: color-mix(in lab, oklch(56% 0.26 288), white 94%);
-  --umd-palette-indigo-050: color-mix(in lab, oklch(56% 0.26 288), white 90%);
-  --umd-palette-indigo-100: color-mix(in lab, oklch(56% 0.26 288), white 80%);
-  --umd-palette-indigo-200: color-mix(in lab, oklch(56% 0.26 288), white 60%);
-  --umd-palette-indigo-300: color-mix(in lab, oklch(56% 0.26 288), white 40%);
-  --umd-palette-indigo-400: color-mix(in lab, oklch(56% 0.26 288), white 20%);
-  --umd-palette-indigo-500: oklch(56% 0.26 288);
-  --umd-palette-indigo-600: color-mix(in lab, oklch(56% 0.26 288), black 16%);
-  --umd-palette-indigo-700: color-mix(in lab, oklch(56% 0.26 288), black 32%);
-  --umd-palette-indigo-800: color-mix(in lab, oklch(56% 0.26 288), black 48%);
-  --umd-palette-indigo-900: color-mix(in lab, oklch(56% 0.26 288), black 64%);
-  --umd-palette-indigo-950: color-mix(in lab, oklch(56% 0.26 288), black 76%);
-  --umd-palette-indigo-975: color-mix(in lab, oklch(56% 0.26 288), black 88%);
+  /* --- Indigo: oklch(56% 0.26 288) --- */
+  --umd-palette-indigo-025: color-mix(in lab, $indigo, $white 94%);
+  --umd-palette-indigo-050: color-mix(in lab, $indigo, $white 90%);
+  --umd-palette-indigo-100: color-mix(in lab, $indigo, $white 80%);
+  --umd-palette-indigo-200: color-mix(in lab, $indigo, $white 60%);
+  --umd-palette-indigo-300: color-mix(in lab, $indigo, $white 40%);
+  --umd-palette-indigo-400: color-mix(in lab, $indigo, $white 20%);
+  --umd-palette-indigo-500: $indigo;
+  --umd-palette-indigo-600: color-mix(in lab, $indigo, $black 16%);
+  --umd-palette-indigo-700: color-mix(in lab, $indigo, $black 32%);
+  --umd-palette-indigo-800: color-mix(in lab, $indigo, $black 48%);
+  --umd-palette-indigo-900: color-mix(in lab, $indigo, $black 64%);
+  --umd-palette-indigo-950: color-mix(in lab, $indigo, $black 76%);
+  --umd-palette-indigo-975: color-mix(in lab, $indigo, $black 88%);
 
   /* --- Violet  oklch(56% 0.24 300) --- */
-  --umd-palette-violet-025: color-mix(in lab, oklch(56% 0.24 300), white 94%);
-  --umd-palette-violet-050: color-mix(in lab, oklch(56% 0.24 300), white 90%);
-  --umd-palette-violet-100: color-mix(in lab, oklch(56% 0.24 300), white 80%);
-  --umd-palette-violet-200: color-mix(in lab, oklch(56% 0.24 300), white 60%);
-  --umd-palette-violet-300: color-mix(in lab, oklch(56% 0.24 300), white 40%);
-  --umd-palette-violet-400: color-mix(in lab, oklch(56% 0.24 300), white 20%);
-  --umd-palette-violet-500: oklch(56% 0.24 300);
-  --umd-palette-violet-600: color-mix(in lab, oklch(56% 0.24 300), black 16%);
-  --umd-palette-violet-700: color-mix(in lab, oklch(56% 0.24 300), black 32%);
-  --umd-palette-violet-800: color-mix(in lab, oklch(56% 0.24 300), black 48%);
-  --umd-palette-violet-900: color-mix(in lab, oklch(56% 0.24 300), black 64%);
-  --umd-palette-violet-950: color-mix(in lab, oklch(56% 0.24 300), black 76%);
-  --umd-palette-violet-975: color-mix(in lab, oklch(56% 0.24 300), black 88%);
+  --umd-palette-violet-025: color-mix(in lab, $violet, $white 94%);
+  --umd-palette-violet-050: color-mix(in lab, $violet, $white 90%);
+  --umd-palette-violet-100: color-mix(in lab, $violet, $white 80%);
+  --umd-palette-violet-200: color-mix(in lab, $violet, $white 60%);
+  --umd-palette-violet-300: color-mix(in lab, $violet, $white 40%);
+  --umd-palette-violet-400: color-mix(in lab, $violet, $white 20%);
+  --umd-palette-violet-500: $violet;
+  --umd-palette-violet-600: color-mix(in lab, $violet, $black 16%);
+  --umd-palette-violet-700: color-mix(in lab, $violet, $black 32%);
+  --umd-palette-violet-800: color-mix(in lab, $violet, $black 48%);
+  --umd-palette-violet-900: color-mix(in lab, $violet, $black 64%);
+  --umd-palette-violet-950: color-mix(in lab, $violet, $black 76%);
+  --umd-palette-violet-975: color-mix(in lab, $violet, $black 88%);
 
   /* --- Purple  oklch(56% 0.24 320) --- */
-  --umd-palette-purple-025: color-mix(in lab, oklch(56% 0.24 320), white 94%);
-  --umd-palette-purple-050: color-mix(in lab, oklch(56% 0.24 320), white 90%);
-  --umd-palette-purple-100: color-mix(in lab, oklch(56% 0.24 320), white 80%);
-  --umd-palette-purple-200: color-mix(in lab, oklch(56% 0.24 320), white 60%);
-  --umd-palette-purple-300: color-mix(in lab, oklch(56% 0.24 320), white 40%);
-  --umd-palette-purple-400: color-mix(in lab, oklch(56% 0.24 320), white 20%);
-  --umd-palette-purple-500: oklch(56% 0.24 320);
-  --umd-palette-purple-600: color-mix(in lab, oklch(56% 0.24 320), black 16%);
-  --umd-palette-purple-700: color-mix(in lab, oklch(56% 0.24 320), black 32%);
-  --umd-palette-purple-800: color-mix(in lab, oklch(56% 0.24 320), black 48%);
-  --umd-palette-purple-900: color-mix(in lab, oklch(56% 0.24 320), black 64%);
-  --umd-palette-purple-950: color-mix(in lab, oklch(56% 0.24 320), black 76%);
-  --umd-palette-purple-975: color-mix(in lab, oklch(56% 0.24 320), black 88%);
+  --umd-palette-purple-025: color-mix(in lab, $purple, $white 94%);
+  --umd-palette-purple-050: color-mix(in lab, $purple, $white 90%);
+  --umd-palette-purple-100: color-mix(in lab, $purple, $white 80%);
+  --umd-palette-purple-200: color-mix(in lab, $purple, $white 60%);
+  --umd-palette-purple-300: color-mix(in lab, $purple, $white 40%);
+  --umd-palette-purple-400: color-mix(in lab, $purple, $white 20%);
+  --umd-palette-purple-500: $purple;
+  --umd-palette-purple-600: color-mix(in lab, $purple, $black 16%);
+  --umd-palette-purple-700: color-mix(in lab, $purple, $black 32%);
+  --umd-palette-purple-800: color-mix(in lab, $purple, $black 48%);
+  --umd-palette-purple-900: color-mix(in lab, $purple, $black 64%);
+  --umd-palette-purple-950: color-mix(in lab, $purple, $black 76%);
+  --umd-palette-purple-975: color-mix(in lab, $purple, $black 88%);
 
   /* --- Pink  oklch(60% 0.22 4) --- */
-  --umd-palette-pink-025: color-mix(in lab, oklch(60% 0.22 4), white 94%);
-  --umd-palette-pink-050: color-mix(in lab, oklch(60% 0.22 4), white 90%);
-  --umd-palette-pink-100: color-mix(in lab, oklch(60% 0.22 4), white 80%);
-  --umd-palette-pink-200: color-mix(in lab, oklch(60% 0.22 4), white 60%);
-  --umd-palette-pink-300: color-mix(in lab, oklch(60% 0.22 4), white 40%);
-  --umd-palette-pink-400: color-mix(in lab, oklch(60% 0.22 4), white 20%);
-  --umd-palette-pink-500: oklch(60% 0.22 4);
-  --umd-palette-pink-600: color-mix(in lab, oklch(60% 0.22 4), black 16%);
-  --umd-palette-pink-700: color-mix(in lab, oklch(60% 0.22 4), black 32%);
-  --umd-palette-pink-800: color-mix(in lab, oklch(60% 0.22 4), black 48%);
-  --umd-palette-pink-900: color-mix(in lab, oklch(60% 0.22 4), black 64%);
-  --umd-palette-pink-950: color-mix(in lab, oklch(60% 0.22 4), black 76%);
-  --umd-palette-pink-975: color-mix(in lab, oklch(60% 0.22 4), black 88%);
+  --umd-palette-pink-025: color-mix(in lab, $pink, $white 94%);
+  --umd-palette-pink-050: color-mix(in lab, $pink, $white 90%);
+  --umd-palette-pink-100: color-mix(in lab, $pink, $white 80%);
+  --umd-palette-pink-200: color-mix(in lab, $pink, $white 60%);
+  --umd-palette-pink-300: color-mix(in lab, $pink, $white 40%);
+  --umd-palette-pink-400: color-mix(in lab, $pink, $white 20%);
+  --umd-palette-pink-500: $pink;
+  --umd-palette-pink-600: color-mix(in lab, $pink, $black 16%);
+  --umd-palette-pink-700: color-mix(in lab, $pink, $black 32%);
+  --umd-palette-pink-800: color-mix(in lab, $pink, $black 48%);
+  --umd-palette-pink-900: color-mix(in lab, $pink, $black 64%);
+  --umd-palette-pink-950: color-mix(in lab, $pink, $black 76%);
+  --umd-palette-pink-975: color-mix(in lab, $pink, $black 88%);
 
   /* --- Red  oklch(60% 0.22 20) --- */
-  --umd-palette-red-025: color-mix(in lab, oklch(60% 0.22 20), white 94%);
-  --umd-palette-red-050: color-mix(in lab, oklch(60% 0.22 20), white 90%);
-  --umd-palette-red-100: color-mix(in lab, oklch(60% 0.22 20), white 80%);
-  --umd-palette-red-200: color-mix(in lab, oklch(60% 0.22 20), white 60%);
-  --umd-palette-red-300: color-mix(in lab, oklch(60% 0.22 20), white 40%);
-  --umd-palette-red-400: color-mix(in lab, oklch(60% 0.22 20), white 20%);
-  --umd-palette-red-500: oklch(60% 0.22 20);
-  --umd-palette-red-600: color-mix(in lab, oklch(60% 0.22 20), black 16%);
-  --umd-palette-red-700: color-mix(in lab, oklch(60% 0.22 20), black 32%);
-  --umd-palette-red-800: color-mix(in lab, oklch(60% 0.22 20), black 48%);
-  --umd-palette-red-900: color-mix(in lab, oklch(60% 0.22 20), black 64%);
-  --umd-palette-red-950: color-mix(in lab, oklch(60% 0.22 20), black 76%);
-  --umd-palette-red-975: color-mix(in lab, oklch(60% 0.22 20), black 88%);
+  --umd-palette-red-025: color-mix(in lab, $red, $white 94%);
+  --umd-palette-red-050: color-mix(in lab, $red, $white 90%);
+  --umd-palette-red-100: color-mix(in lab, $red, $white 80%);
+  --umd-palette-red-200: color-mix(in lab, $red, $white 60%);
+  --umd-palette-red-300: color-mix(in lab, $red, $white 40%);
+  --umd-palette-red-400: color-mix(in lab, $red, $white 20%);
+  --umd-palette-red-500: $red;
+  --umd-palette-red-600: color-mix(in lab, $red, $black 16%);
+  --umd-palette-red-700: color-mix(in lab, $red, $black 32%);
+  --umd-palette-red-800: color-mix(in lab, $red, $black 48%);
+  --umd-palette-red-900: color-mix(in lab, $red, $black 64%);
+  --umd-palette-red-950: color-mix(in lab, $red, $black 76%);
+  --umd-palette-red-975: color-mix(in lab, $red, $black 88%);
 
   /* --- Orange  oklch(70% 0.22 52) --- */
-  --umd-palette-orange-025: color-mix(in lab, oklch(70% 0.22 52), white 94%);
-  --umd-palette-orange-050: color-mix(in lab, oklch(70% 0.22 52), white 90%);
-  --umd-palette-orange-100: color-mix(in lab, oklch(70% 0.22 52), white 80%);
-  --umd-palette-orange-200: color-mix(in lab, oklch(70% 0.22 52), white 60%);
-  --umd-palette-orange-300: color-mix(in lab, oklch(70% 0.22 52), white 40%);
-  --umd-palette-orange-400: color-mix(in lab, oklch(70% 0.22 52), white 20%);
-  --umd-palette-orange-500: oklch(70% 0.22 52);
-  --umd-palette-orange-600: color-mix(in lab, oklch(70% 0.22 52), black 16%);
-  --umd-palette-orange-700: color-mix(in lab, oklch(70% 0.22 52), black 32%);
-  --umd-palette-orange-800: color-mix(in lab, oklch(70% 0.22 52), black 48%);
-  --umd-palette-orange-900: color-mix(in lab, oklch(70% 0.22 52), black 64%);
-  --umd-palette-orange-950: color-mix(in lab, oklch(70% 0.22 52), black 76%);
-  --umd-palette-orange-975: color-mix(in lab, oklch(70% 0.22 52), black 88%);
+  --umd-palette-orange-025: color-mix(in lab, $orange, $white 94%);
+  --umd-palette-orange-050: color-mix(in lab, $orange, $white 90%);
+  --umd-palette-orange-100: color-mix(in lab, $orange, $white 80%);
+  --umd-palette-orange-200: color-mix(in lab, $orange, $white 60%);
+  --umd-palette-orange-300: color-mix(in lab, $orange, $white 40%);
+  --umd-palette-orange-400: color-mix(in lab, $orange, $white 20%);
+  --umd-palette-orange-500: $orange;
+  --umd-palette-orange-600: color-mix(in lab, $orange, $black 16%);
+  --umd-palette-orange-700: color-mix(in lab, $orange, $black 32%);
+  --umd-palette-orange-800: color-mix(in lab, $orange, $black 48%);
+  --umd-palette-orange-900: color-mix(in lab, $orange, $black 64%);
+  --umd-palette-orange-950: color-mix(in lab, $orange, $black 76%);
+  --umd-palette-orange-975: color-mix(in lab, $orange, $black 88%);
 
   /* --- Amber  oklch(79% 0.2 78) --- */
-  --umd-palette-amber-025: color-mix(in lab, oklch(79% 0.2 78), white 94%);
-  --umd-palette-amber-050: color-mix(in lab, oklch(79% 0.2 78), white 90%);
-  --umd-palette-amber-100: color-mix(in lab, oklch(79% 0.2 78), white 80%);
-  --umd-palette-amber-200: color-mix(in lab, oklch(79% 0.2 78), white 60%);
-  --umd-palette-amber-300: color-mix(in lab, oklch(79% 0.2 78), white 40%);
-  --umd-palette-amber-400: color-mix(in lab, oklch(79% 0.2 78), white 20%);
-  --umd-palette-amber-500: oklch(79% 0.2 78);
-  --umd-palette-amber-600: color-mix(in lab, oklch(79% 0.2 78), black 16%);
-  --umd-palette-amber-700: color-mix(in lab, oklch(79% 0.2 78), black 32%);
-  --umd-palette-amber-800: color-mix(in lab, oklch(79% 0.2 78), black 48%);
-  --umd-palette-amber-900: color-mix(in lab, oklch(79% 0.2 78), black 64%);
-  --umd-palette-amber-950: color-mix(in lab, oklch(79% 0.2 78), black 76%);
-  --umd-palette-amber-975: color-mix(in lab, oklch(79% 0.2 78), black 88%);
+  --umd-palette-amber-025: color-mix(in lab, $amber, $white 94%);
+  --umd-palette-amber-050: color-mix(in lab, $amber, $white 90%);
+  --umd-palette-amber-100: color-mix(in lab, $amber, $white 80%);
+  --umd-palette-amber-200: color-mix(in lab, $amber, $white 60%);
+  --umd-palette-amber-300: color-mix(in lab, $amber, $white 40%);
+  --umd-palette-amber-400: color-mix(in lab, $amber, $white 20%);
+  --umd-palette-amber-500: $amber;
+  --umd-palette-amber-600: color-mix(in lab, $amber, $black 16%);
+  --umd-palette-amber-700: color-mix(in lab, $amber, $black 32%);
+  --umd-palette-amber-800: color-mix(in lab, $amber, $black 48%);
+  --umd-palette-amber-900: color-mix(in lab, $amber, $black 64%);
+  --umd-palette-amber-950: color-mix(in lab, $amber, $black 76%);
+  --umd-palette-amber-975: color-mix(in lab, $amber, $black 88%);
 
   /* --- Yellow  oklch(88% 0.24 88) --- */
-  --umd-palette-yellow-025: color-mix(in lab, oklch(88% 0.24 88), white 94%);
-  --umd-palette-yellow-050: color-mix(in lab, oklch(88% 0.24 88), white 90%);
-  --umd-palette-yellow-100: color-mix(in lab, oklch(88% 0.24 88), white 80%);
-  --umd-palette-yellow-200: color-mix(in lab, oklch(88% 0.24 88), white 60%);
-  --umd-palette-yellow-300: color-mix(in lab, oklch(88% 0.24 88), white 40%);
-  --umd-palette-yellow-400: color-mix(in lab, oklch(88% 0.24 88), white 20%);
-  --umd-palette-yellow-500: oklch(88% 0.24 88);
-  --umd-palette-yellow-600: color-mix(in lab, oklch(88% 0.24 88), black 16%);
-  --umd-palette-yellow-700: color-mix(in lab, oklch(88% 0.24 88), black 32%);
-  --umd-palette-yellow-800: color-mix(in lab, oklch(88% 0.24 88), black 48%);
-  --umd-palette-yellow-900: color-mix(in lab, oklch(88% 0.24 88), black 64%);
-  --umd-palette-yellow-950: color-mix(in lab, oklch(88% 0.24 88), black 76%);
-  --umd-palette-yellow-975: color-mix(in lab, oklch(88% 0.24 88), black 88%);
+  --umd-palette-yellow-025: color-mix(in lab, $yellow, $white 94%);
+  --umd-palette-yellow-050: color-mix(in lab, $yellow, $white 90%);
+  --umd-palette-yellow-100: color-mix(in lab, $yellow, $white 80%);
+  --umd-palette-yellow-200: color-mix(in lab, $yellow, $white 60%);
+  --umd-palette-yellow-300: color-mix(in lab, $yellow, $white 40%);
+  --umd-palette-yellow-400: color-mix(in lab, $yellow, $white 20%);
+  --umd-palette-yellow-500: $yellow;
+  --umd-palette-yellow-600: color-mix(in lab, $yellow, $black 16%);
+  --umd-palette-yellow-700: color-mix(in lab, $yellow, $black 32%);
+  --umd-palette-yellow-800: color-mix(in lab, $yellow, $black 48%);
+  --umd-palette-yellow-900: color-mix(in lab, $yellow, $black 64%);
+  --umd-palette-yellow-950: color-mix(in lab, $yellow, $black 76%);
+  --umd-palette-yellow-975: color-mix(in lab, $yellow, $black 88%);
 
   /* --- Lime  oklch(65% 0.24 135) --- */
-  --umd-palette-lime-025: color-mix(in lab, oklch(65% 0.24 135), white 94%);
-  --umd-palette-lime-050: color-mix(in lab, oklch(65% 0.24 135), white 90%);
-  --umd-palette-lime-100: color-mix(in lab, oklch(65% 0.24 135), white 80%);
-  --umd-palette-lime-200: color-mix(in lab, oklch(65% 0.24 135), white 60%);
-  --umd-palette-lime-300: color-mix(in lab, oklch(65% 0.24 135), white 40%);
-  --umd-palette-lime-400: color-mix(in lab, oklch(65% 0.24 135), white 20%);
-  --umd-palette-lime-500: oklch(65% 0.24 135);
-  --umd-palette-lime-600: color-mix(in lab, oklch(65% 0.24 135), black 16%);
-  --umd-palette-lime-700: color-mix(in lab, oklch(65% 0.24 135), black 32%);
-  --umd-palette-lime-800: color-mix(in lab, oklch(65% 0.24 135), black 48%);
-  --umd-palette-lime-900: color-mix(in lab, oklch(65% 0.24 135), black 64%);
-  --umd-palette-lime-950: color-mix(in lab, oklch(65% 0.24 135), black 76%);
-  --umd-palette-lime-975: color-mix(in lab, oklch(65% 0.24 135), black 88%);
+  --umd-palette-lime-025: color-mix(in lab, $lime, $white 94%);
+  --umd-palette-lime-050: color-mix(in lab, $lime, $white 90%);
+  --umd-palette-lime-100: color-mix(in lab, $lime, $white 80%);
+  --umd-palette-lime-200: color-mix(in lab, $lime, $white 60%);
+  --umd-palette-lime-300: color-mix(in lab, $lime, $white 40%);
+  --umd-palette-lime-400: color-mix(in lab, $lime, $white 20%);
+  --umd-palette-lime-500: $lime;
+  --umd-palette-lime-600: color-mix(in lab, $lime, $black 16%);
+  --umd-palette-lime-700: color-mix(in lab, $lime, $black 32%);
+  --umd-palette-lime-800: color-mix(in lab, $lime, $black 48%);
+  --umd-palette-lime-900: color-mix(in lab, $lime, $black 64%);
+  --umd-palette-lime-950: color-mix(in lab, $lime, $black 76%);
+  --umd-palette-lime-975: color-mix(in lab, $lime, $black 88%);
 
   /* --- Green  oklch(64% 0.22 160) --- */
-  --umd-palette-green-025: color-mix(in lab, oklch(64% 0.22 160), white 94%);
-  --umd-palette-green-050: color-mix(in lab, oklch(64% 0.22 160), white 90%);
-  --umd-palette-green-100: color-mix(in lab, oklch(64% 0.22 160), white 80%);
-  --umd-palette-green-200: color-mix(in lab, oklch(64% 0.22 160), white 60%);
-  --umd-palette-green-300: color-mix(in lab, oklch(64% 0.22 160), white 40%);
-  --umd-palette-green-400: color-mix(in lab, oklch(64% 0.22 160), white 20%);
-  --umd-palette-green-500: oklch(64% 0.22 160);
-  --umd-palette-green-600: color-mix(in lab, oklch(64% 0.22 160), black 16%);
-  --umd-palette-green-700: color-mix(in lab, oklch(64% 0.22 160), black 32%);
-  --umd-palette-green-800: color-mix(in lab, oklch(64% 0.22 160), black 48%);
-  --umd-palette-green-900: color-mix(in lab, oklch(64% 0.22 160), black 64%);
-  --umd-palette-green-950: color-mix(in lab, oklch(64% 0.22 160), black 76%);
-  --umd-palette-green-975: color-mix(in lab, oklch(64% 0.22 160), black 88%);
+  --umd-palette-green-025: color-mix(in lab, $green, $white 94%);
+  --umd-palette-green-050: color-mix(in lab, $green, $white 90%);
+  --umd-palette-green-100: color-mix(in lab, $green, $white 80%);
+  --umd-palette-green-200: color-mix(in lab, $green, $white 60%);
+  --umd-palette-green-300: color-mix(in lab, $green, $white 40%);
+  --umd-palette-green-400: color-mix(in lab, $green, $white 20%);
+  --umd-palette-green-500: $green;
+  --umd-palette-green-600: color-mix(in lab, $green, $black 16%);
+  --umd-palette-green-700: color-mix(in lab, $green, $black 32%);
+  --umd-palette-green-800: color-mix(in lab, $green, $black 48%);
+  --umd-palette-green-900: color-mix(in lab, $green, $black 64%);
+  --umd-palette-green-950: color-mix(in lab, $green, $black 76%);
+  --umd-palette-green-975: color-mix(in lab, $green, $black 88%);
 
   /* --- Teal  oklch(68% 0.22 190) --- */
-  --umd-palette-teal-025: color-mix(in lab, oklch(68% 0.22 190), white 94%);
-  --umd-palette-teal-050: color-mix(in lab, oklch(68% 0.22 190), white 90%);
-  --umd-palette-teal-100: color-mix(in lab, oklch(68% 0.22 190), white 80%);
-  --umd-palette-teal-200: color-mix(in lab, oklch(68% 0.22 190), white 60%);
-  --umd-palette-teal-300: color-mix(in lab, oklch(68% 0.22 190), white 40%);
-  --umd-palette-teal-400: color-mix(in lab, oklch(68% 0.22 190), white 20%);
-  --umd-palette-teal-500: oklch(68% 0.22 190);
-  --umd-palette-teal-600: color-mix(in lab, oklch(68% 0.22 190), black 16%);
-  --umd-palette-teal-700: color-mix(in lab, oklch(68% 0.22 190), black 32%);
-  --umd-palette-teal-800: color-mix(in lab, oklch(68% 0.22 190), black 48%);
-  --umd-palette-teal-900: color-mix(in lab, oklch(68% 0.22 190), black 64%);
-  --umd-palette-teal-950: color-mix(in lab, oklch(68% 0.22 190), black 76%);
-  --umd-palette-teal-975: color-mix(in lab, oklch(68% 0.22 190), black 88%);
+  --umd-palette-teal-025: color-mix(in lab, $teal, $white 94%);
+  --umd-palette-teal-050: color-mix(in lab, $teal, $white 90%);
+  --umd-palette-teal-100: color-mix(in lab, $teal, $white 80%);
+  --umd-palette-teal-200: color-mix(in lab, $teal, $white 60%);
+  --umd-palette-teal-300: color-mix(in lab, $teal, $white 40%);
+  --umd-palette-teal-400: color-mix(in lab, $teal, $white 20%);
+  --umd-palette-teal-500: $teal;
+  --umd-palette-teal-600: color-mix(in lab, $teal, $black 16%);
+  --umd-palette-teal-700: color-mix(in lab, $teal, $black 32%);
+  --umd-palette-teal-800: color-mix(in lab, $teal, $black 48%);
+  --umd-palette-teal-900: color-mix(in lab, $teal, $black 64%);
+  --umd-palette-teal-950: color-mix(in lab, $teal, $black 76%);
+  --umd-palette-teal-975: color-mix(in lab, $teal, $black 88%);
 
   /* --- Cyan  oklch(69% 0.22 220) --- */
-  --umd-palette-cyan-025: color-mix(in lab, oklch(69% 0.22 220), white 94%);
-  --umd-palette-cyan-050: color-mix(in lab, oklch(69% 0.22 220), white 90%);
-  --umd-palette-cyan-100: color-mix(in lab, oklch(69% 0.22 220), white 80%);
-  --umd-palette-cyan-200: color-mix(in lab, oklch(69% 0.22 220), white 60%);
-  --umd-palette-cyan-300: color-mix(in lab, oklch(69% 0.22 220), white 40%);
-  --umd-palette-cyan-400: color-mix(in lab, oklch(69% 0.22 220), white 20%);
-  --umd-palette-cyan-500: oklch(69% 0.22 220);
-  --umd-palette-cyan-600: color-mix(in lab, oklch(69% 0.22 220), black 16%);
-  --umd-palette-cyan-700: color-mix(in lab, oklch(69% 0.22 220), black 32%);
-  --umd-palette-cyan-800: color-mix(in lab, oklch(69% 0.22 220), black 48%);
-  --umd-palette-cyan-900: color-mix(in lab, oklch(69% 0.22 220), black 64%);
-  --umd-palette-cyan-950: color-mix(in lab, oklch(69% 0.22 220), black 76%);
-  --umd-palette-cyan-975: color-mix(in lab, oklch(69% 0.22 220), black 88%);
+  --umd-palette-cyan-025: color-mix(in lab, $cyan, $white 94%);
+  --umd-palette-cyan-050: color-mix(in lab, $cyan, $white 90%);
+  --umd-palette-cyan-100: color-mix(in lab, $cyan, $white 80%);
+  --umd-palette-cyan-200: color-mix(in lab, $cyan, $white 60%);
+  --umd-palette-cyan-300: color-mix(in lab, $cyan, $white 40%);
+  --umd-palette-cyan-400: color-mix(in lab, $cyan, $white 20%);
+  --umd-palette-cyan-500: $cyan;
+  --umd-palette-cyan-600: color-mix(in lab, $cyan, $black 16%);
+  --umd-palette-cyan-700: color-mix(in lab, $cyan, $black 32%);
+  --umd-palette-cyan-800: color-mix(in lab, $cyan, $black 48%);
+  --umd-palette-cyan-900: color-mix(in lab, $cyan, $black 64%);
+  --umd-palette-cyan-950: color-mix(in lab, $cyan, $black 76%);
+  --umd-palette-cyan-975: color-mix(in lab, $cyan, $black 88%);
 
   /* --- Brown  oklch(60% 0.12 54) --- */
-  --umd-palette-brown-025: color-mix(in lab, oklch(60% 0.12 54), white 94%);
-  --umd-palette-brown-050: color-mix(in lab, oklch(60% 0.12 54), white 90%);
-  --umd-palette-brown-100: color-mix(in lab, oklch(60% 0.12 54), white 80%);
-  --umd-palette-brown-200: color-mix(in lab, oklch(60% 0.12 54), white 60%);
-  --umd-palette-brown-300: color-mix(in lab, oklch(60% 0.12 54), white 40%);
-  --umd-palette-brown-400: color-mix(in lab, oklch(60% 0.12 54), white 20%);
-  --umd-palette-brown-500: oklch(60% 0.12 54);
-  --umd-palette-brown-600: color-mix(in lab, oklch(60% 0.12 54), black 16%);
-  --umd-palette-brown-700: color-mix(in lab, oklch(60% 0.12 54), black 32%);
-  --umd-palette-brown-800: color-mix(in lab, oklch(60% 0.12 54), black 48%);
-  --umd-palette-brown-900: color-mix(in lab, oklch(60% 0.12 54), black 64%);
-  --umd-palette-brown-950: color-mix(in lab, oklch(60% 0.12 54), black 76%);
-  --umd-palette-brown-975: color-mix(in lab, oklch(60% 0.12 54), black 88%);
+  --umd-palette-brown-025: color-mix(in lab, $brown, $white 94%);
+  --umd-palette-brown-050: color-mix(in lab, $brown, $white 90%);
+  --umd-palette-brown-100: color-mix(in lab, $brown, $white 80%);
+  --umd-palette-brown-200: color-mix(in lab, $brown, $white 60%);
+  --umd-palette-brown-300: color-mix(in lab, $brown, $white 40%);
+  --umd-palette-brown-400: color-mix(in lab, $brown, $white 20%);
+  --umd-palette-brown-500: $brown;
+  --umd-palette-brown-600: color-mix(in lab, $brown, $black 16%);
+  --umd-palette-brown-700: color-mix(in lab, $brown, $black 32%);
+  --umd-palette-brown-800: color-mix(in lab, $brown, $black 48%);
+  --umd-palette-brown-900: color-mix(in lab, $brown, $black 64%);
+  --umd-palette-brown-950: color-mix(in lab, $brown, $black 76%);
+  --umd-palette-brown-975: color-mix(in lab, $brown, $black 88%);
 
   /* --- Gray  oklch(60% 0.02 245) --- */
-  --umd-palette-gray-025: color-mix(in lab, oklch(60% 0.02 245), white 94%);
-  --umd-palette-gray-050: color-mix(in lab, oklch(60% 0.02 245), white 90%);
-  --umd-palette-gray-100: color-mix(in lab, oklch(60% 0.02 245), white 80%);
-  --umd-palette-gray-200: color-mix(in lab, oklch(60% 0.02 245), white 60%);
-  --umd-palette-gray-300: color-mix(in lab, oklch(60% 0.02 245), white 40%);
-  --umd-palette-gray-400: color-mix(in lab, oklch(60% 0.02 245), white 20%);
-  --umd-palette-gray-500: oklch(60% 0.02 245);
-  --umd-palette-gray-600: color-mix(in lab, oklch(60% 0.02 245), black 16%);
-  --umd-palette-gray-700: color-mix(in lab, oklch(60% 0.02 245), black 32%);
-  --umd-palette-gray-800: color-mix(in lab, oklch(60% 0.02 245), black 48%);
-  --umd-palette-gray-900: color-mix(in lab, oklch(60% 0.02 245), black 64%);
-  --umd-palette-gray-950: color-mix(in lab, oklch(60% 0.02 245), black 76%);
-  --umd-palette-gray-975: color-mix(in lab, oklch(60% 0.02 245), black 88%);
+  --umd-palette-gray-025: color-mix(in lab, $gray, $white 94%);
+  --umd-palette-gray-050: color-mix(in lab, $gray, $white 90%);
+  --umd-palette-gray-100: color-mix(in lab, $gray, $white 80%);
+  --umd-palette-gray-200: color-mix(in lab, $gray, $white 60%);
+  --umd-palette-gray-300: color-mix(in lab, $gray, $white 40%);
+  --umd-palette-gray-400: color-mix(in lab, $gray, $white 20%);
+  --umd-palette-gray-500: $gray;
+  --umd-palette-gray-600: color-mix(in lab, $gray, $black 16%);
+  --umd-palette-gray-700: color-mix(in lab, $gray, $black 32%);
+  --umd-palette-gray-800: color-mix(in lab, $gray, $black 48%);
+  --umd-palette-gray-900: color-mix(in lab, $gray, $black 64%);
+  --umd-palette-gray-950: color-mix(in lab, $gray, $black 76%);
+  --umd-palette-gray-975: color-mix(in lab, $gray, $black 88%);
 
   /* --- Pewter  oklch(65% 0.01 290) --- */
-  --umd-palette-pewter-025: color-mix(in lab, oklch(65% 0.01 290), white 94%);
-  --umd-palette-pewter-050: color-mix(in lab, oklch(65% 0.01 290), white 90%);
-  --umd-palette-pewter-100: color-mix(in lab, oklch(65% 0.01 290), white 80%);
-  --umd-palette-pewter-200: color-mix(in lab, oklch(65% 0.01 290), white 60%);
-  --umd-palette-pewter-300: color-mix(in lab, oklch(65% 0.01 290), white 40%);
-  --umd-palette-pewter-400: color-mix(in lab, oklch(65% 0.01 290), white 20%);
-  --umd-palette-pewter-500: oklch(65% 0.01 290);
-  --umd-palette-pewter-600: color-mix(in lab, oklch(65% 0.01 290), black 16%);
-  --umd-palette-pewter-700: color-mix(in lab, oklch(65% 0.01 290), black 32%);
-  --umd-palette-pewter-800: color-mix(in lab, oklch(65% 0.01 290), black 48%);
-  --umd-palette-pewter-900: color-mix(in lab, oklch(65% 0.01 290), black 64%);
-  --umd-palette-pewter-950: color-mix(in lab, oklch(65% 0.01 290), black 76%);
-  --umd-palette-pewter-975: color-mix(in lab, oklch(65% 0.01 290), black 88%);
+  --umd-palette-pewter-025: color-mix(in lab, $pewter, $white 94%);
+  --umd-palette-pewter-050: color-mix(in lab, $pewter, $white 90%);
+  --umd-palette-pewter-100: color-mix(in lab, $pewter, $white 80%);
+  --umd-palette-pewter-200: color-mix(in lab, $pewter, $white 60%);
+  --umd-palette-pewter-300: color-mix(in lab, $pewter, $white 40%);
+  --umd-palette-pewter-400: color-mix(in lab, $pewter, $white 20%);
+  --umd-palette-pewter-500: $pewter;
+  --umd-palette-pewter-600: color-mix(in lab, $pewter, $black 16%);
+  --umd-palette-pewter-700: color-mix(in lab, $pewter, $black 32%);
+  --umd-palette-pewter-800: color-mix(in lab, $pewter, $black 48%);
+  --umd-palette-pewter-900: color-mix(in lab, $pewter, $black 64%);
+  --umd-palette-pewter-950: color-mix(in lab, $pewter, $black 76%);
+  --umd-palette-pewter-975: color-mix(in lab, $pewter, $black 88%);
 
   /* Absolute anchors */
-  --umd-palette-white: #fff;
-  --umd-palette-black: #000;
+  --umd-palette-white: $white;
+  --umd-palette-black: $black;
 }

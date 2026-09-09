@@ -1,6 +1,6 @@
 # Universal Markdown (UMD) 実装プラン
 
-**プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テスト 75%+ パス、Bootstrap 5統合、セマンティックHTML、拡張可能なプラグインシステム提供。
+**プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テスト 75%+ パス、セマンティックHTML、拡張可能なプラグインシステム提供。
 
 **作成日**: 2026年1月23日  
 **最終更新**: 2026年9月07日  
@@ -41,7 +41,7 @@
 - ✅ ビルドスクリプトのメタデータ正規化処理を改善
 - ✅ ドキュメントを最新の状態に更新
 - ✅ CommonMark 75%+ 準拠達成
-- ✅ Bootstrap 5 統合（Core UI互換）
+- ✅ リファレンスCSS実装（Bootstrap依存を除去）
 - ✅ セマンティックHTML生成
 - ✅ メディア自動検出（動画・音声・画像・ダウンロード）
 - ✅ プラグインシステム（インライン & ブロック型）
@@ -60,8 +60,8 @@
 
 ### 🔮 計画中
 
-- 🔮 Bootstrap依存の削減（CSS Layerの活用による脱Bootstrap化）
-- 🔮 リファレンスCSS提供（スタイル定義の標準化）
+- ✅ Bootstrap依存の削減（CSS Layerの活用による脱Bootstrap化）
+- ✅ リファレンスCSS提供（スタイル定義の標準化）
 - 🔮 テンプレートエンジン機能の検討と仕様策定（拡張子 `.umdt`）
 - 🔮 バイナリアセット同梱パッケージ形式（拡張子 `.umdx`）の検討
 - 🔮 フロントエンド向けのシンタックスハイライト改善
@@ -72,7 +72,7 @@
 - 🔮 フロントマターのTSON対応（区切り文字 `***`）
 - 🔮 ボトムマター仕様策定
 - 🔮 AAプラグイン（決め打ちフォント指定によるアスキーアート表示、例: MS Pゴシック）— 文字幅依存が強くリファレンスCSS/コアの責務にできないためプラグインとして分離
-- 🔮 Mermaid SVGの色トークン対応 — `mermaid-rs-renderer`は各要素に`fill="#hex"`等のリテラル色を焼き込むため、`.umd-color-*`のようなCSSクラスでは上書きできない。現状は`src/extensions/fence/code_block.rs`の`inject_umd_color_variables`がBootstrap既定6色のHEXのみ`var(--umd-color-*, #hex)`に後置換する場当たり的な対応。恒久対応は (1) この置換をUMDの色トークン・全色相に拡張するか、(2) `mermaid-rs-renderer`のTheme/ThemeVariables設定に`var(...)`文字列を直接渡してレンダリングさせる（SVGシリアライザが素通しするか要検証）
+- 🔮 Mermaid SVGの色トークン対応 — `mermaid-rs-renderer`は各要素に`fill="#hex"`等のリテラル色を焼き込むため、`.umd-color-*`のようなCSSクラスでは上書きできない。現状は`src/extensions/fence/code_block.rs`の`inject_umd_color_variables`がumdシステムカラー6色のHEXのみ`var(--umd-color-*, #hex)`に後置換する場当たり的な対応。恒久対応は (1) この置換をUMDの色トークン・全色相に拡張するか、(2) `mermaid-rs-renderer`のTheme/ThemeVariables設定に`var(...)`文字列を直接渡してレンダリングさせる（SVGシリアライザが素通しするか要検証）
 
 ---
 
@@ -200,7 +200,7 @@ CommonMark の `~~strikethrough~~` を廃止し、テキスト装飾記法を再
 
 ### 検討事項
 
-- 色の仕様はまだまとまっておらず、レベルとは関係なく、オプションでプリセットカラー（現時点では Bootstrap の色）だけを許可するか、HEX・RGBA・HSL なども許可するかを検討中です。
+- 色の仕様はまだまとまっておらず、レベルとは関係なく、オプションでプリセットカラー（現時点では umd パレット色）だけを許可するか、HEX・RGBA・HSL なども許可するかを検討中です。
 - 文字サイズは `&size(xs/sm/lg/xl){text}` の記法で確定。CSSキーワード値（`x-small` / `small` / `large` / `x-large`）のみ使用し、ピクセル指定はオプション（デフォルト無効）。
 - 標準プラグイン以外のプラグイン使用可否は、このライブラリを使用するホストプログラムの責務とし、このレベルには定義を含めません。
 
@@ -320,23 +320,23 @@ Subresource Integrity (SRI) 相当のハッシュ検証をリンク・画像に�
 
 ---
 
-## Bootstrap依存の削減とリファレンスCSS
+## リファレンスCSS（脱Bootstrap化・完了）
 
-### 概要（脱Bootstrap化）
+### 概要（リファレンスCSS）
 
-現在Bootstrap 5のユーティリティクラス（`d-block`、`text-primary`など）に依存して出力しているHTMLを、Bootstrap本体への依存から切り離し、CSS Layer（`@layer`）を使ったミニマムなリファレンスCSSで置き換える計画です。
+外部フレームワークのユーティリティクラス依存を除去し、CSS Layer（`@layer`）を使ったUMD独自のリファレンスCSSへ移行済みです。
 
 > クラス名の旧→新対応（`d-block` → `umd-block` 等、2026年8月実施済み）は移行完了済みのため本書からは削除。現行のクラス名は [docs/architecture.md](docs/architecture.md)・[docs/umd-extensions.md](docs/umd-extensions.md)・[docs/table-features.md](docs/table-features.md)・[docs/media-tags.md](docs/media-tags.md)・`scss/` を参照。
 
-### 基本ルール（脱Bootstrap化）
+### 基本ルール（リファレンスCSS）
 
-1. CSS Layerを用いたリファレンスCSSを新設し、Bootstrap本体を必須依存から外す
-2. Bootstrapのユーティリティクラス名は、UMD独自のプレフィックスへ改名する（例: `d-block` → `umd-block` など）。具体的な命名規則は未定
-3. **意味を持たない色指定**（`blue` / `red` / `green` など、Bootstrapの標準カラー名）はそのままのクラス名・命名を踏襲する
+1. CSS Layerを用いたリファレンスCSSを新設し、リファレンスCSSとして独立
+2. 外部フレームワークのユーティリティクラス名は、UMD独自のプレフィックスへ改名する（例: `d-block` → `umd-block` など）。具体的な命名規則は未定
+3. **意味を持たない色指定**（`blue` / `red` / `green` など、標準カラー名）はそのままのクラス名・命名を踏襲する
 4. **意味を持つ色指定**（`primary` / `danger` / `success` など、役割に基づく色）はCSSにハードコーディングせず、ホスト側がオプションで実際の色（CSS変数やクラス名）を指定できるようにする
 5. **CSS論理プロパティを使用する**（後述）
 
-### CSS 論理プロパティ方針
+### CSS 論理プロパティ方針 (リファレンスCSS)
 
 UMD が出力する HTML および提供する CSS は、物理的な方向指定（`left` / `right`）を使用せず、**CSS 論理プロパティ**（CSS Logical Properties & Values）を使用します。
 
@@ -380,13 +380,12 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 | `V-CENTER:` | `vertical-align: middle`     | 旧 `MIDDLE:`                                                              |
 | `BASELINE:` | `vertical-align: baseline`   | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
 
-### 検討事項（脱Bootstrap化）
+### 検討事項（リファレンスCSS）
 
 - 意味を持つ色（`primary`/`danger`等）のオプション指定方法（CSS変数、テーマ設定オブジェクト、ビルド時設定など）の具体化
-- 既存のBootstrap前提ドキュメント（`docs/architecture.md`等）との整合、移行パス（Bootstrap版との共存可否）
 - リファレンスCSSの配布方法（npm パッケージ、CDN、生成物としてのみ提供 等）
 
-### 実装計画（脱Bootstrap化）残タスク
+### 実装計画（リファレンスCSS）残タスク
 
 > クラス名改名・リファレンスCSS実装・色/サイズ系プラグインの整理・テーブルセル揃えの改称・`apply_block_placement`の論理名統一は完了済み。詳細は [docs/architecture.md](docs/architecture.md)・[docs/plugin-system.md](docs/plugin-system.md)・[docs/inline-plugins.md](docs/inline-plugins.md)・[docs/table-features.md](docs/table-features.md) を参照。
 
@@ -455,7 +454,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 - 実装済み/予定ドキュメント間の整合を更新
 - Phase 5（HTML生成・テスト整備）の完了条件を満たし、フェーズ状態を更新
 
-**テスト**: `bootstrap_integration` 46/46 passing
+**テスト**: `css_class_integration` 46/46 passing
 
 ### 2026年2月24日
 
@@ -470,7 +469,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 #### メディア機能の最終化
 
 - ブロック vs インライン自動判別実装
-- Bootstrap 5 マージン クラス（`ms/me`）採用
+- インライン方向マージンクラス（`umd-block-*`）採用
 - 幅制御を figure レベルに集約
 - 右揃え・中央揃え・左揃え・両端揃えプレフィックス対応
 
@@ -482,7 +481,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 
 - Mermaid SVG レンダリング
 - 複数行コンテンツ対応
-- Bootstrap CSS 変数自動注入
+- CSS変数自動注入
 - 言語別シンタックスハイライト対応
 
 **テスト**: 12 code block tests passing
@@ -521,7 +520,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 1. **シンタックスハイライト** (ハイブリッド)
    - サーバー側: HTML 属性付与
    - フロントエンド: JavaScript オプション
-   - Bootstrap CSS 変数カスタムテーマ
+   - UMD CSS 変数カスタムテーマ
 
 2. **Mermaidレンダリング最適化**
    - SVGキャッシュ戦略の整理
@@ -548,14 +547,14 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 
 2. **テーブル装飾の統一**
    - セル装飾関数の標準化
-   - Bootstrap クラス マッピング効率化
+   - クラスマッピング効率化
 
 ### 優先度：中
 
 1. **WASM バイナリサイズ最適化**
    - LTO (Link Time Optimization) 有効化
    - 不使用機能の削除検討
-   - 目標: pkg/ < 200KB
+   - 目標: dist/ < 200KB
 
 2. **エラーメッセージの改善**
    - ユーザー向けエラーログ実装
@@ -590,7 +589,6 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 - **仕様**: [LukiWiki Rules](https://github.com/logue/LukiWiki-core/blob/master/docs/rules.md)
 - **CommonMark**: [仕様書](https://spec.commonmark.org/)
 - **GFM**: [GitHub Flavored Markdown](https://github.github.com/gfm/)
-- **Bootstrap 5**: [Documentation](https://getbootstrap.com/docs/5.3/)
 
 ---
 

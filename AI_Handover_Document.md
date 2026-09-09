@@ -210,7 +210,7 @@ cargo install wasm-pack
 ./build.sh dev
 ```
 
-WASMビルド後、`pkg/`ディレクトリに以下のファイルが生成：
+WASMビルド後、`dist/`ディレクトリに以下のファイルが生成：
 
 - `umd.js` - JavaScriptバインディング
 - `umd.d.ts` - TypeScript型定義
@@ -306,7 +306,7 @@ VSCode拡張機能内でWASMを使用する場合：
     </div>
 
     <script type="module">
-      import init, { parse } from "./pkg/umd.js";
+      import init, { parse } from "./dist/umd.js";
 
       await init();
 

@@ -267,7 +267,7 @@ function parseUmdPlugins(string $html): array
 - `@math(...)` / `@popover(...)`
   - [umd-extensions.md](umd-extensions.md) 参照
 
-`@table(...)`は標準プラグインではありません（Bootstrap依存のテーブルバリエーション適用機能だったため削除。詳細は[table-features.md](table-features.md)）。`@table`/`:::table`は未知の関数名として汎用の`<template class="umd-plugin-table">`にフォールバックします。
+`@table(...)`は標準プラグインではありません（外部フレームワーク依存のテーブルバリエーション適用機能だったため削除。詳細は[table-features.md](table-features.md)）。`@table`/`:::table`は未知の関数名として汎用の`<template class="umd-plugin-table">`にフォールバックします。
 
 インライン型（`&color()`, `&size()`, `&ruby()`, `&spoiler()` など）の標準プラグイン一覧は
 [inline-plugins.md](inline-plugins.md) を参照してください。いずれも未知の関数名と異なり、

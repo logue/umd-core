@@ -111,7 +111,7 @@ graph TD
 - `language-mermaid`を自動検出
 - ユニークなID（UUID）を生成
 - Rust側で `mermaid-rs-renderer` を使ってSVGに変換
-- Bootstrap CSS変数でカラーリング対応（ダークモード自動切り替え）
+- CSS変数でカラーリング対応（ダークモード自動切り替え）
 - SEO対応（レンダリング済みHTML）
 - セマンティックな`<figure>`でラップ
 - タイトルは省略可能（` ```mermaid: title ` で指定）
@@ -164,7 +164,7 @@ r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
 2. fence info string からタイトルを抽出（` ```mermaid: title `）
 3. Mermaid ソースコードをパース
 4. `mermaid-rs-renderer` で SVG に変換
-5. SVG に Bootstrap CSS 変数をインジェクト
+5. SVG に CSS 変数をインジェクト
 6. 以下の構造で `<figure>` でラップ：
    - タイトルがある場合：`<figcaption>` とともに出力
    - タイトルがない場合：SVG のみを埋め込む
@@ -177,7 +177,7 @@ r#"(?s)<pre><code[^>]*language-([a-z0-9_+-]+)[^>]*>(.*?)</code></pre>"#
 - `mermaid-rs-renderer` で Rust 側で SVG に変換
 - SVG は `<figure class="umd-code-block umd-code-block-mermaid">` の中に埋め込み
 - JavaScript は不要（SEO対応済み）
-- Bootstrap CSS 変数で自動的にダークモード対応
+- CSS 変数で自動的にダークモード対応
 
 **カラーリングの実装**:
 
@@ -197,9 +197,9 @@ fn inject_bootstrap_colors(svg: &str) -> String {
 
 - **Highlight.js** (推奨) - 最も汎用的
 - **Prism.js** - より細かいカスタマイズ対応
-- **Bootstrap統合テーマ** - CSS変数でダークモード自動対応
+- **UMD CSS テーマ** - CSS変数でダークモード自動対応
 
-### Bootstrap統合スタイリング
+### UMD CSS スタイリング
 
 ```css
 .umd-code-block {
