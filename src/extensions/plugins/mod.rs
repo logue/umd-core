@@ -106,3 +106,56 @@ fn render_popover_html(trigger_text: &str, raw_content: &str) -> String {
         content_html
     )
 }
+
+/// Scan forward from an opening single-character delimiter (`chars[start]`
+/// is assumed to be `open`) for its matching `close`, tracking nesting
+/// depth so a balanced inner pair (e.g. a Markdown link's `(...)`  inside a
+/// plugin's args, or a nested plugin call's `{...}` inside another's
+/// content) doesn't prematurely end the scan.
+///
+/// Returns the index of the matching closing delimiter, or `None` if the
+/// delimiters never balance before the end of input. Shared by
+/// `inline::parse_inline_plugin_at` (for `(...)` args and `{...}` content)
+/// and `block::parse_block_plugin_at` (for `(...)` args and single-line
+/// `{...}` content) — see those for why a hand-written scanner replaced the
+/// naive single-pass regexes that used to do this.
+pub(super) fn scan_balanced(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {
+    let mut depth = 1i32;
+    let mut i = start + 1;
+    while i < chars.len() {
+        if chars[i] == open {
+            depth += 1;
+        } else if chars[i] == close {
+            depth -= 1;
+            if depth == 0 {
+                return Some(i);
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+/// Like [`scan_balanced`], but for the two-character `{{` / `}}` delimiter
+/// pair used by a block plugin's multiline content. `start` must be the
+/// index of the first `{` of the opening `{{`. Returns the index of the
+/// first `}` of the matching closing `}}`.
+pub(super) fn scan_balanced_double(chars: &[char], start: usize) -> Option<usize> {
+    let mut depth = 1i32;
+    let mut i = start + 2;
+    while i + 1 < chars.len() {
+        if chars[i] == '{' && chars[i + 1] == '{' {
+            depth += 1;
+            i += 2;
+        } else if chars[i] == '}' && chars[i + 1] == '}' {
+            depth -= 1;
+            if depth == 0 {
+                return Some(i);
+            }
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+    None
+}

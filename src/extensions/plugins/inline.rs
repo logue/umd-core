@@ -67,6 +67,111 @@ fn html_entities() -> HashSet<&'static str> {
     .collect()
 }
 
+/// Attempt to parse one `&`-notation inline plugin call starting at
+/// `chars[start]` (which must be `&`).
+///
+/// On success, returns the index to resume scanning from (just past the
+/// call) and the marker text that replaces it. On failure — an unrelated
+/// `&`, an HTML entity, or delimiters that never close — returns `None`,
+/// and the caller copies the `&` through unchanged and resumes at the next
+/// character.
+///
+/// This replaces four sequential whole-text regex passes that could only
+/// tolerate one level of `{...}` nesting in content and broke entirely if
+/// `args` contained an unescaped `)` (e.g. from a Markdown link), because
+/// each pass matched greedily up to the *first* closing delimiter instead
+/// of tracking nesting depth. Walking the delimiters by hand with
+/// [`super::scan_balanced`] handles both a plugin nested inside another's
+/// content and parenthesized args at arbitrary depth. Note that a plugin's
+/// `args`/`content` text is still not itself reparsed for nested plugins or
+/// Markdown here — it is captured as opaque text and only the standalone
+/// `expand()` second-pass sweep may later re-expand one further level of
+/// *standard*-plugin nesting from the restored HTML; see the "known issues"
+/// section in `docs/runtime-features.md` for what that does and doesn't
+/// cover.
+fn parse_inline_plugin_at(
+    chars: &[char],
+    start: usize,
+    entities: &HashSet<&'static str>,
+) -> Option<(usize, String)> {
+    debug_assert_eq!(chars[start], '&');
+    let mut i = start + 1;
+    let name_start = i;
+    while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_') {
+        i += 1;
+    }
+    if i == name_start {
+        return None;
+    }
+    let function: String = chars[name_start..i].iter().collect();
+
+    match chars.get(i) {
+        // &function(args){content};  or  &function(args);
+        Some('(') => {
+            let paren_close = super::scan_balanced(chars, i, '(', ')')?;
+            let args: String = chars[i + 1..paren_close].iter().collect();
+            match chars.get(paren_close + 1) {
+                Some('{') => {
+                    let content_close = super::scan_balanced(chars, paren_close + 1, '{', '}')?;
+                    if chars.get(content_close + 1) != Some(&';') {
+                        return None;
+                    }
+                    let content: String = chars[paren_close + 2..content_close].iter().collect();
+                    let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
+                    let marker = format!(
+                        "{{{{INLINE_PLUGIN:{}:{}:{}:INLINE_PLUGIN}}}}",
+                        function, args, encoded_content
+                    );
+                    Some((content_close + 2, marker))
+                }
+                Some(';') => {
+                    let marker = format!(
+                        "{{{{INLINE_PLUGIN_ARGSONLY:{}:{}:INLINE_PLUGIN_ARGSONLY}}}}",
+                        function, args
+                    );
+                    Some((paren_close + 2, marker))
+                }
+                _ => None,
+            }
+        }
+        // &function{content};
+        Some('{') => {
+            let content_close = super::scan_balanced(chars, i, '{', '}')?;
+            if chars.get(content_close + 1) != Some(&';') {
+                return None;
+            }
+            let content: String = chars[i + 1..content_close].iter().collect();
+            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
+            let marker = format!(
+                "{{{{INLINE_PLUGIN:{}::{}:INLINE_PLUGIN}}}}",
+                function, encoded_content
+            );
+            Some((content_close + 2, marker))
+        }
+        // &function;  (bare form — must start with a letter, and must not
+        // be a known HTML entity, matching the original `[a-zA-Z]\w*` pattern
+        // plus the entity exclusion)
+        Some(';') => {
+            if !function
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic())
+            {
+                return None;
+            }
+            if entities.contains(function.as_str()) {
+                return None;
+            }
+            let marker = format!(
+                "{{{{INLINE_PLUGIN_NOARGS:{}:INLINE_PLUGIN_NOARGS}}}}",
+                function
+            );
+            Some((i + 1, marker))
+        }
+        _ => None,
+    }
+}
+
 /// Protect inline plugin syntax by converting to markers
 ///
 /// Converts various inline plugin patterns into safe markers:
@@ -74,72 +179,28 @@ fn html_entities() -> HashSet<&'static str> {
 /// - `&function(args){content};` → marker with args and content
 /// - `&function(args);` → marker with args
 /// - `&function;` → marker (excluding HTML entities)
+///
+/// Implemented as a single left-to-right scan (see
+/// [`parse_inline_plugin_at`]) rather than the four sequential whole-text
+/// regex passes this used to be — those passes ran independently over the
+/// *entire* string each time, so one pass's replacement could land inside
+/// text a later pass then tried to match against, corrupting nested calls.
 pub fn protect_inline_plugins(input: &str) -> String {
-    let mut result = input.to_string();
-
-    // Protect inline plugins with content but no args: &function{content};
-    let inline_plugin_noargs_content = Regex::new(r"&(\w+)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
-    result = inline_plugin_noargs_content
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-            let content = &caps[2];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{INLINE_PLUGIN:{}::{}:INLINE_PLUGIN}}}}",
-                function, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins: &function(args){content};
-    let inline_plugin = Regex::new(r"&(\w+)\(([^)]*)\)\{((?:[^{}]|\{[^}]*\})*)\};").unwrap();
-    result = inline_plugin
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-            let args = &caps[2];
-            let content = &caps[3];
-            let encoded_content = general_purpose::STANDARD.encode(content.as_bytes());
-            format!(
-                "{{{{INLINE_PLUGIN:{}:{}:{}:INLINE_PLUGIN}}}}",
-                function, args, encoded_content
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins (args only): &function(args);
-    let inline_plugin_argsonly = Regex::new(r"&(\w+)\(([^)]*)\);").unwrap();
-    result = inline_plugin_argsonly
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-            let args = &caps[2];
-            format!(
-                "{{{{INLINE_PLUGIN_ARGSONLY:{}:{}:INLINE_PLUGIN_ARGSONLY}}}}",
-                function, args
-            )
-        })
-        .to_string();
-
-    // Protect inline plugins (no args): &function;
-    // Function name must start with a letter to avoid conflicts with HTML entities
-    let inline_plugin_noargs = Regex::new(r"&([a-zA-Z]\w*);").unwrap();
+    let chars: Vec<char> = input.chars().collect();
     let entities = html_entities();
-
-    result = inline_plugin_noargs
-        .replace_all(&result, |caps: &regex::Captures| {
-            let function = &caps[1];
-
-            // Skip HTML entities
-            if entities.contains(function) {
-                return caps[0].to_string();
+    let mut result = String::with_capacity(input.len());
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '&' {
+            if let Some((next_i, marker)) = parse_inline_plugin_at(&chars, i, &entities) {
+                result.push_str(&marker);
+                i = next_i;
+                continue;
             }
-
-            format!(
-                "{{{{INLINE_PLUGIN_NOARGS:{}:INLINE_PLUGIN_NOARGS}}}}",
-                function
-            )
-        })
-        .to_string();
-
+        }
+        result.push(chars[i]);
+        i += 1;
+    }
     result
 }
 
@@ -866,6 +927,92 @@ mod tests {
         let input = "&lt; &gt; &amp;";
         let output = protect_inline_plugins(input);
         assert_eq!(input, output); // Should remain unchanged
+    }
+
+    // Regression tests for the balanced-bracket rewrite of
+    // `protect_inline_plugins` (2026-09) -- the previous regex-based
+    // implementation allowed only one level of `{...}` nesting in content
+    // and broke entirely if `args` contained an unescaped `)`. These cases
+    // come directly from real breakage reports; see the "known issues"
+    // section in `docs/runtime-features.md` for what remains unfixed
+    // (args/content are still not reparsed as Markdown or for nested
+    // plugins -- only the marker-corruption bug is fixed here).
+
+    #[test]
+    fn test_protect_inline_plugin_deeply_nested_content() {
+        // Three levels of standard plugins nested in each other's content.
+        // Previously this corrupted the marker stream (content was cut off
+        // at the first `}`, leaking `};` fragments into the surrounding
+        // text) because the old regex tolerated only one level of nesting.
+        let input = "&color(blue){OUTER &abbr(text){MIDDLE &size(lg){INNER};};};";
+        let output = protect_inline_plugins(input);
+
+        // Exactly one top-level marker should be produced, with the full
+        // nested content captured intact (base64-encoded) rather than
+        // truncated.
+        assert!(output.starts_with("{{INLINE_PLUGIN:color:blue:"));
+        assert!(output.ends_with(":INLINE_PLUGIN}}"));
+        assert_eq!(output.matches("INLINE_PLUGIN:").count(), 1);
+
+        let encoded = output
+            .trim_start_matches("{{INLINE_PLUGIN:color:blue:")
+            .trim_end_matches(":INLINE_PLUGIN}}");
+        let decoded = String::from_utf8(
+            general_purpose::STANDARD.decode(encoded).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(decoded, "OUTER &abbr(text){MIDDLE &size(lg){INNER};};");
+    }
+
+    #[test]
+    fn test_protect_inline_plugin_args_with_markdown_link() {
+        // `abbr`'s args previously used `[^)]*`, so any `)` inside args --
+        // such as a Markdown link's `(url)` -- ended the args capture early
+        // and the whole call failed to match at all.
+        let input = "&abbr([HTML](exp.html)){Hyper Text Markup Language};";
+        let output = protect_inline_plugins(input);
+        assert!(
+            output.contains("INLINE_PLUGIN:abbr:[HTML](exp.html):"),
+            "expected full args with the nested link parens preserved, got: {}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_protect_inline_plugin_argsonly_with_nested_plugin_in_args() {
+        // Args-only form (`&small(...)`) whose args themselves contain
+        // another plugin call and Markdown emphasis. Previously this
+        // produced a structurally invalid mix of an
+        // INLINE_PLUGIN-opening/INLINE_PLUGIN_ARGSONLY-closing marker.
+        let input =
+            "&small(The quick &color(brown){brown}; fox *jumps* over the lazy __dog__);";
+        let output = protect_inline_plugins(input);
+        assert_eq!(
+            output,
+            "{{INLINE_PLUGIN_ARGSONLY:small:The quick &color(brown){brown}; fox *jumps* over the lazy __dog__:INLINE_PLUGIN_ARGSONLY}}"
+        );
+    }
+
+    #[test]
+    fn test_protect_inline_plugin_inside_markdown_link_text() {
+        // A plugin call used as a Markdown link's link text should still
+        // be protected correctly, leaving the surrounding `[...](url)`
+        // untouched.
+        let input = "[&color(red){Link};](url)";
+        let output = protect_inline_plugins(input);
+        assert!(output.starts_with('['));
+        assert!(output.ends_with("](url)"));
+        assert!(output.contains("INLINE_PLUGIN:color:red:"));
+    }
+
+    #[test]
+    fn test_protect_inline_plugin_unbalanced_is_left_literal() {
+        // A call whose delimiters never balance (no closing brace) is not
+        // a recognized plugin call -- it must be left as literal text
+        // rather than panicking or scanning past the end of input.
+        let input = "&color(red){unterminated";
+        let output = protect_inline_plugins(input);
+        assert_eq!(output, input);
     }
 
     // Direct unit tests for the color/size mapping logic itself live with

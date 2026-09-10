@@ -315,7 +315,8 @@ Output HTML + Frontmatter + Footnotes
 #### src/extensions/plugins/ （インライン/ブロックプラグイン表記）
 
 - `mod.rs`: 両スコープ共有ヘルパー（HTML/引数エスケープ、`&math`/`&popover`
-  のレンダリング）
+  のレンダリング、`scan_balanced`/`scan_balanced_double` — 後述の保護処理が
+  使うバランス括弧スキャナ）
 - `inline.rs`: `&function(args){content};` の保護（`protect_inline_plugins`）・
   復元（`restore_markers`）、および二次スイープ（`prepare`/`expand` —
   標準プラグイン呼び出しが別の標準プラグインの内容にネストした場合に、
@@ -323,6 +324,17 @@ Output HTML + Frontmatter + Footnotes
   が担当し、上限を超えたブロックは `<span class="umd-error-deep-recursive">`
   でラップ（`&`・`{`・`}` はHTMLエスケープ済み）
 - `block.rs`: `@function(args){{content}}` / `::: 記法` の保護・復元
+
+`protect_inline_plugins`/`protect_block_plugins` は2026年9月時点で、
+`parse_inline_plugin_at`/`parse_block_plugin_at` による左から右への単一
+スキャン実装です（以前は複数の正規表現を文字列全体に順次適用する方式で、
+`{...}`のネストを1段までしか許容できず、引数に`)`（Markdownリンク等）が
+含まれると全くマッチしなくなる欠陥がありました）。`(...)`/`{...}`の
+深さ追跡には`mod.rs`の`scan_balanced`を、ブロックの`{{...}}`には
+`scan_balanced_double`を使用し、任意の深さのネストと括弧を含む引数を
+正しく処理します。このスキャンが担うのは「マーカーへの保護」までで、
+`content`/`args`自体を再度Markdown解析にかける設計変更ではありません
+（既知の問題は[docs/runtime-features.md](runtime-features.md)参照）。
 
 #### src/extensions/media.rs
 
