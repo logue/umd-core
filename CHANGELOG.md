@@ -32,8 +32,8 @@ The format is based on Keep a Changelog.
   Marker formats and restore-side behavior (`restore_markers`, the `expand()`
   second-pass sweep, `max_inline_nesting`) are unchanged. Note that a plugin's
   `args`/`content` is still captured as opaque text rather than reparsed for
-  nested plugins or Markdown — see the "known issues" section of
-  [docs/runtime-features.md](docs/runtime-features.md) for what that does and
+  nested plugins or Markdown — see
+  [docs/known-issues.md](docs/known-issues.md) for what that does and
   doesn't cover after this fix.
 
 ### Removed (BREAKING)

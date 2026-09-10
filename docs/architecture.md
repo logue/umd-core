@@ -334,7 +334,7 @@ Output HTML + Frontmatter + Footnotes
 `scan_balanced_double`を使用し、任意の深さのネストと括弧を含む引数を
 正しく処理します。このスキャンが担うのは「マーカーへの保護」までで、
 `content`/`args`自体を再度Markdown解析にかける設計変更ではありません
-（既知の問題は[docs/runtime-features.md](runtime-features.md)参照）。
+（既知の問題は[docs/known-issues.md](known-issues.md)参照）。
 
 #### src/extensions/media.rs
 

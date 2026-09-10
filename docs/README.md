@@ -1,6 +1,6 @@
 # ドキュメント索引
 
-**最終更新**: 2026年9月9日
+**最終更新**: 2026年9月10日
 
 Universal Markdown (UMD) の主要ドキュメントへの入口です。
 
@@ -42,6 +42,7 @@ docs/
 - **実装済み仕様を確認したい** → [implemented-features.md](implemented-features.md)
 - **コードブロック実装詳細を確認したい** → [code-block-extensions.md](code-block-extensions.md)
 - **実行時機能（フロントマター・脚注）を確認したい** → [runtime-features.md](runtime-features.md)
+- **既知の問題・設計意図と異なる未修正バグを確認したい** → [known-issues.md](known-issues.md)
 - **セキュリティ仕様を確認したい** → [security-features.md](security-features.md)
 - **未実装/提案仕様を確認したい** → [planned-features.md](planned-features.md)
 
