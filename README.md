@@ -45,8 +45,7 @@ Minimum requirements:
 - ✅ **Auto-detect Media Files**: `![alt](url)` intelligently becomes `<video>`, `<audio>`, `<picture>`, or download link based on file extension
 - ✅ **Semantic HTML Elements**: `&ruby()`, `&sup()`, `&time()`, etc.
 - ✅ **Definition Lists**: `:term|definition` syntax with block-level support
-- ✅ **Code Blocks**: Class-based language output (`<code class="language-*">`) and syntect highlighting
-- ✅ **Mermaid SSR**: ` ```mermaid ` blocks are rendered server-side as `<figure class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram">...<svg>...</svg></figure>`
+- ✅ **Code Blocks**: Class-based language output (`<code class="language-*">`), always wrapped in `<figure class="umd-code-block">` — syntax highlighting and language-specific rendering (Mermaid, GeoJSON, etc.) are a host application concern, see [docs/code-block-extensions.md](docs/code-block-extensions.md)
 
 ### Tables & Layout
 
@@ -108,90 +107,45 @@ a.umd-idn-warning-link {
 - ✅ **WebAssembly (WASM)**: Browser-side rendering via `wasm-bindgen`
 - ✅ **Server-side Rendering**: Rust library for backend integration (Nuxt, Laravel, etc.)
 
-### Mermaid Example
+### Code Block Specification
 
-Input:
-
-````markdown
-```mermaid
-flowchart TD
-    A[Start] --> B[End]
-```
-````
-
-Output (excerpt):
-
-```html
-<figure
-  class="code-block code-block-mermaid mermaid-diagram"
-  data-mermaid-source="flowchart TD..."
->
-  <svg><!-- rendered by mermaid-rs-renderer --></svg>
-</figure>
-```
-
-### Syntax Highlight Example
+UMD code blocks are metadata-only in core: umd-core never highlights or renders code, it only wraps and passes the language class through. See [docs/code-block-extensions.md](docs/code-block-extensions.md) for the full picture, including how a host application is expected to add syntax highlighting or render `mermaid`/`geojson`/etc. blocks.
 
 Input:
 
 ````markdown
 ```rust
 fn main() {
-        println!("hello");
+    println!("hello");
 }
 ```
 ````
 
-Output (excerpt):
+Output:
 
 ```html
-<pre><code class="language-rust syntect-highlight" data-highlighted="true"><span class="syntect-source syntect-rust">...</span></code></pre>
+<figure class="umd-code-block"><pre><code class="language-rust">fn main() {
+    println!("hello");
+}</code></pre></figure>
 ```
-
-### Code Block Specification
-
-UMD code blocks use a Rust-first hybrid strategy with frontend fallback.
 
 #### Output Rules
 
 - `pre` never gets a `lang` attribute
-- Language is represented as `class="language-xxx"` on `<code>`
-- If Syntect highlights on server side:
-  - `class="language-xxx syntect-highlight"`
-  - `data-highlighted="true"` is added
-- If language is not supported by Syntect:
-  - Keep `class="language-xxx"` and let frontend highlighter process it
-- `mermaid` is handled separately and rendered as SVG `<figure class="... mermaid-diagram">`
+- Language is represented as `class="language-xxx"` on `<code>`, unmodified — umd-core does not highlight or otherwise interpret it
+- Every code block (with or without a language, with or without a filename) is wrapped in `<figure class="umd-code-block">`
 
-#### Processing Flow
+#### Host Integration
 
-```mermaid
-flowchart TD
-  A[Fenced code block] --> B[comrak parses code block]
-  B --> C{Mermaid language}
-  C -->|Yes| D[Rust renders Mermaid SVG]
-  D --> E[Output mermaid-diagram figure]
-  C -->|No| F{Syntect supported}
-  F -->|Yes| G[Rust applies syntax highlight]
-  G --> H[code with syntect and highlighted flag]
-  F -->|No| I[code keeps language class]
-  H --> J[Skip client rehighlight]
-  I --> K[Client highlighter can process]
-```
-
-#### Frontend Integration Rule
-
-Use selectors that exclude server-highlighted code blocks:
+Since umd-core does not mark code as already-highlighted, a host applying its own highlighter can simply target every `language-*` code block:
 
 ```javascript
 document
-  .querySelectorAll(
-    'pre code[class*="language-"]:not([data-highlighted="true"])',
-  )
+  .querySelectorAll('pre code[class*="language-"]')
   .forEach((el) => Prism.highlightElement(el));
 ```
 
-This prevents double-highlighting and keeps Mermaid processing isolated.
+A host that wants to render specific languages itself (Mermaid diagrams, GeoJSON maps, etc.) detects those languages by class and replaces the block — see [docs/code-block-extensions.md](docs/code-block-extensions.md) for the recommended pattern (keep the original `<pre><code>` in the DOM, hidden, for a "view source" fallback).
 
 ---
 
@@ -558,7 +512,7 @@ Output: HTML + Frontmatter + Footnotes
 
 ```text
 243 unit tests (core modules)
- 47 CSS class / HTML output integration tests (tests/bootstrap_integration.rs)
+ 47 CSS class / HTML output integration tests (tests/rendering_integration.rs)
  21 conflict resolution tests (syntax collision handling)
  18 commonmark compliance tests (specification adherence)
  14 comment syntax tests
@@ -567,15 +521,17 @@ Output: HTML + Frontmatter + Footnotes
   1 semantic integration test
 ```
 
-> Note: `tests/bootstrap_integration.rs` predates the move away from Bootstrap
-> utility classes; despite the filename, it only asserts UMD's own `umd-*`
-> reference-CSS classes.
+> Note: `tests/rendering_integration.rs` was named `bootstrap_integration.rs`
+> until 2026-09 — a holdover from when UMD's decoration/utility classes were
+> modeled on Bootstrap 5's naming. It only asserts UMD's own `umd-*`
+> reference-CSS classes and has no Bootstrap dependency; it was renamed to
+> match.
 
 Run tests:
 
 ```bash
-cargo test --verbose                     # All tests
-cargo test --test bootstrap_integration  # CSS class / HTML output tests only
+cargo test --verbose                      # All tests
+cargo test --test rendering_integration   # CSS class / HTML output tests only
 ```
 
 ---

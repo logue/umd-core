@@ -1,7 +1,7 @@
 use umd::parse;
 
 fn main() {
-    println!("=== Color Bootstrap ===");
+    println!("=== Color (theme keyword) ===");
     let output = parse("&color(primary){Primary text};");
     println!("{}", output);
 

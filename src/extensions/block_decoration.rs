@@ -224,7 +224,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_color_bootstrap_class() {
+    fn test_color_class() {
         let input = "COLOR(blue): Blue text";
         let output = apply_block_decorations_with_options(input, false, false);
         assert!(output.contains("class=\"umd-color-blue\""));

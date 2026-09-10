@@ -285,7 +285,7 @@ function parseUmdPlugins(string $html): array
 
 ## 主なテスト
 
-- `tests/bootstrap_integration.rs`
+- `tests/rendering_integration.rs`
 - `tests/conflict_resolution.rs`（`::: 記法` の統合テストを含む）
 - `examples/test_plugin_extended.rs`
 - `src/extensions/plugins/block.rs` の単体テスト（`::: 記法` の字句解析）

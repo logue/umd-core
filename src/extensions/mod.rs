@@ -1,7 +1,8 @@
 //! Extended syntax for Universal Markdown
 //!
-//! This module provides extended syntax support including Bootstrap 5 integration,
-//! semantic HTML elements, definition lists, and LukiWiki legacy compatibility.
+//! This module provides extended syntax support including UMD's own
+//! `umd-*` reference-CSS classes, semantic HTML elements, definition lists,
+//! and LukiWiki legacy compatibility.
 
 pub mod alignment;
 pub mod block_decoration;
@@ -18,7 +19,8 @@ pub mod table;
 /// Apply extended syntax transformations to HTML output
 ///
 /// This function processes the HTML output from the Markdown parser and applies
-/// extended syntax transformations including Bootstrap integration.
+/// extended syntax transformations including UMD's own reference-CSS
+/// default classes.
 ///
 /// # Arguments
 ///

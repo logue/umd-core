@@ -1,19 +1,29 @@
-//! Bootstrap 5 integration tests
+//! HTML output / rendering integration tests
 //!
-//! Tests for Bootstrap class generation and styling features
+//! Broad coverage of UMD's own `umd-*` reference-CSS default classes,
+//! block/inline decorations (color, size, alignment, placement), GFM
+//! alerts, tables, code blocks, media, math, and popovers.
+//!
+//! Historical note: this file was originally named `bootstrap_integration.rs`
+//! because UMD's decoration/utility classes were initially modeled on
+//! Bootstrap 5's naming. UMD has since moved to its own `umd-*` reference-CSS
+//! classes (see docs/architecture.md's 脱Bootstrap化 section and
+//! PLAN.md's リファレンスCSS section) and no longer depends on or targets
+//! Bootstrap at all, so the file (and the individual test names below) were
+//! renamed to match. Renamed 2026-09.
 
 use umd::parse;
 use umd::parser::Icons;
 
 #[test]
-fn test_bootstrap_table_default_class() {
+fn test_table_default_class() {
     let input = "| Header |\n|--------|\n| Cell   |";
     let output = parse(input);
     assert!(output.contains(r#"<table class="umd-list-table">"#));
 }
 
 #[test]
-fn test_bootstrap_blockquote_default_class() {
+fn test_blockquote_default_class() {
     let input = "> This is a quote";
     let output = parse(input);
     assert!(output.contains(r#"<blockquote class="umd-blockquote">"#));
@@ -57,7 +67,7 @@ fn test_gfm_alert_tip() {
 }
 
 #[test]
-fn test_color_bootstrap_class() {
+fn test_color_class() {
     let input = "&color(blue){Blue text};";
     let output = parse(input);
     assert!(output.contains(r#"class="umd-color-blue""#));
@@ -76,9 +86,9 @@ fn test_hex_colors_are_disabled_by_default() {
 }
 
 #[test]
-fn test_color_custom_bootstrap_colors() {
-    // Test custom Bootstrap colors (blue, yellow, teal, etc.)
-    // Should now use Bootstrap classes like text-blue, text-yellow, etc.
+fn test_color_custom_colors() {
+    // Test custom colors (blue, yellow, teal, etc.) using UMD's own
+    // umd-color-* reference-CSS classes.
     let test_cases = vec![
         ("&color(blue){Blue text};", r#"class="umd-color-blue""#),
         (
@@ -100,7 +110,7 @@ fn test_color_custom_bootstrap_colors() {
 }
 
 #[test]
-fn test_block_color_custom_bootstrap_colors() {
+fn test_block_color_custom_colors() {
     // Test block-level custom colors
     let test_cases = vec![
         ("COLOR(blue): Blue block", "umd-color-blue"),
@@ -121,7 +131,7 @@ fn test_block_color_custom_bootstrap_colors() {
 
 #[test]
 fn test_color_background_custom_colors() {
-    // Test background colors with Bootstrap custom colors
+    // Test background colors with custom colors
     let input = "&color(,blue){Text on blue background};";
     let output = parse(input);
     assert!(output.contains(r#"class="umd-bg-blue""#));
@@ -151,14 +161,14 @@ fn test_size_custom_value_rejected_by_default() {
 }
 
 #[test]
-fn test_block_color_bootstrap() {
+fn test_block_color() {
     let input = "COLOR(green): This is a green message";
     let output = parse(input);
     assert!(output.contains(r#"class="umd-color-green""#));
 }
 
 #[test]
-fn test_block_size_bootstrap() {
+fn test_block_size() {
     let input = "SIZE(xl): Large heading text";
     let output = parse(input);
     assert!(output.contains(r#"class="umd-text-size-xl""#));
@@ -267,7 +277,7 @@ fn test_definition_list_single_item() {
 }
 
 #[test]
-fn test_mixed_bootstrap_features() {
+fn test_mixed_features() {
     let input = r#"
 # Heading
 
@@ -319,22 +329,27 @@ fn test_end_prefix_places_media_end() {
 }
 
 #[test]
-fn test_mermaid_code_block_rendered_as_svg() {
+fn test_mermaid_code_block_passthrough() {
+    // Mermaid rendering is a host application responsibility (Layer 2/3);
+    // umd-core just preserves the language-tagged code block unchanged.
     let input = "```mermaid\nflowchart TD\n  A[Start] --> B[End]\n```";
     let output = parse(input);
-    assert!(output.contains("umd-mermaid-diagram"));
-    assert!(output.contains("<svg"));
-    assert!(!output.contains("language-mermaid"));
+    assert!(output.contains("language-mermaid"));
+    assert!(output.contains(r#"<figure class="umd-code-block">"#));
+    assert!(!output.contains("umd-mermaid-diagram"));
+    assert!(!output.contains("<svg"));
 }
 
 #[test]
-fn test_code_block_syntax_highlighted_with_syntect() {
+fn test_code_block_no_syntax_highlighting_in_core() {
+    // Syntax highlighting is a host application responsibility (Layer 2/3);
+    // umd-core just preserves the language class unchanged.
     let input = "```rust\nfn main() {\n    println!(\"hello\");\n}\n```";
     let output = parse(input);
     assert!(output.contains("language-rust"));
-    assert!(output.contains("umd-syntect-highlight"));
-    assert!(output.contains("data-highlighted=\"true\""));
-    assert!(output.contains("syntect-"));
+    assert!(!output.contains("umd-syntect-highlight"));
+    assert!(!output.contains("data-highlighted=\"true\""));
+    assert!(!output.contains("syntect-"));
 }
 
 #[test]

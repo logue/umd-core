@@ -20,13 +20,13 @@ frontmatter抽出 → 前処理 → 競合保護 → サニタイズ → comrak�
 | 対象機能                               | ファイル                                          | テスト                           |
 | -------------------------------------- | -------------------------------------------------- | -------------------------------- |
 | 構文競合、UMD仕様                      | `src/extensions/conflict_resolver.rs`              | `tests/conflict_resolution.rs`   |
-| インライン表記 (`''bold''`, `%%`, `\|\|` 等) | `src/extensions/inline/*`                    | `tests/bootstrap_integration.rs` |
-| フェンス表記 (コードブロック)          | `src/extensions/fence/*`                           | `tests/bootstrap_integration.rs` |
-| 位置揃え表記 (`CENTER:`, `V-START:` 等)| `src/extensions/alignment.rs`                      | `tests/bootstrap_integration.rs` |
-| ブロック装飾 (`COLOR()`, `SIZE()` 等)  | `src/extensions/block_decoration.rs`               | `tests/bootstrap_integration.rs` |
+| インライン表記 (`''bold''`, `%%`, `\|\|` 等) | `src/extensions/inline/*`                    | `tests/rendering_integration.rs` |
+| フェンス表記 (コードブロック)          | `src/extensions/fence/*`                           | `tests/rendering_integration.rs` |
+| 位置揃え表記 (`CENTER:`, `V-START:` 等)| `src/extensions/alignment.rs`                      | `tests/rendering_integration.rs` |
+| ブロック装飾 (`COLOR()`, `SIZE()` 等)  | `src/extensions/block_decoration.rs`               | `tests/rendering_integration.rs` |
 | インライン/ブロックプラグイン (`&fn()`, `@fn()`) | `src/extensions/plugins/*`               | `tests/ *`                       |
 | テーブル拡張                           | `src/extensions/table/*`                           | `examples/test_table_*.rs`       |
-| メディア自動検出                       | `src/extensions/media.rs`                          | `tests/bootstrap_integration.rs` |
+| メディア自動検出                       | `src/extensions/media.rs`                          | `tests/rendering_integration.rs` |
 
 詳細は `docs/architecture.md` の「何をどこで変更するか」セクション参照。
 
@@ -58,7 +58,7 @@ cargo build --verbose && cargo test --verbose
 
 # 高速検証
 cargo test --test conflict_resolution
-cargo test --test bootstrap_integration
+cargo test --test rendering_integration
 
 # WASMビルド
 ./build.sh [dev|release]

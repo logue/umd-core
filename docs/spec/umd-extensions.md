@@ -121,7 +121,7 @@ GFM Alert 風の `> [!TYPE]` ブロック引用を、`<aside class="umd-note umd
 
 ## 主なテスト
 
-- `tests/bootstrap_integration.rs`
+- `tests/rendering_integration.rs`
 - `tests/conflict_resolution.rs`
 - `tests/test_semantic_integration.rs`
-- `examples/test_bootstrap_integration.rs`
+- `examples/test_reference_css.rs`

@@ -61,7 +61,7 @@ fn test_horizontal_rules() {
 fn test_color_decoration() {
     let input = "COLOR(red): Red text";
     let output = parse(input);
-    // red is now a Bootstrap color name, so it should output a class
+    // "red" is one of UMD's own named colors, so it should output a class
     assert!(output.contains(r#"class="umd-color-red""#));
 }
 

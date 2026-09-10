@@ -509,7 +509,7 @@ pub fn postprocess_conflicts_with_options(
     // Apply indeterminate task list markers before other HTML transforms
     result = apply_tasklist_indeterminate(&result);
 
-    // Apply Bootstrap default classes, GFM alerts, and table cell alignment
+    // Apply UMD's own default classes, GFM alerts, and table cell alignment
     result = apply_bootstrap_enhancements(&result, &header_map, icons);
 
     result
@@ -738,7 +738,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bootstrap_table_class() {
+    fn test_default_table_class() {
         let header_map = HeaderIdMap::new();
         let input = "<table><tr><td>Cell</td></tr></table>";
         let output = postprocess_conflicts(input, &header_map);
@@ -746,7 +746,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bootstrap_blockquote_class() {
+    fn test_default_blockquote_class() {
         let header_map = HeaderIdMap::new();
         let input = "<blockquote><p>Quote</p></blockquote>";
         let output = postprocess_conflicts(input, &header_map);

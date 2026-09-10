@@ -98,5 +98,5 @@ cargo build --verbose && cargo test --verbose
 
 ```bash
 cargo test --test conflict_resolution
-cargo test --test bootstrap_integration
+cargo test --test rendering_integration
 ```

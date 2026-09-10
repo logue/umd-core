@@ -1,24 +1,15 @@
 //! Code block extensions for UMD
 //!
-//! Provides syntax highlighting and Mermaid diagram support for code blocks.
-//! - Syntax highlighting: Multiple language support with syntax coloring
-//! - Mermaid diagrams: Diagram rendering from Markdown fence blocks with SVG generation
-//! - File name support: Code blocks with associated file names
+//! Handles fenced code block metadata: figure/figcaption wrapping and
+//! filename support. Syntax highlighting and any language-specific
+//! rendering (e.g. Mermaid diagrams, GeoJSON maps) are intentionally
+//! *not* performed here — that is host application territory. umd-core
+//! only preserves comrak's `language-*` class on the `<code>` element so
+//! the host can detect it and enhance the block itself. See
+//! docs/architecture.md's 3-layer deferred-rendering model.
 
 use once_cell::sync::Lazy;
 use regex::Regex;
-#[cfg(not(target_arch = "wasm32"))]
-use syntect::html::{ClassStyle, ClassedHTMLGenerator};
-#[cfg(not(target_arch = "wasm32"))]
-use syntect::parsing::SyntaxSet;
-#[cfg(not(target_arch = "wasm32"))]
-use syntect::util::LinesWithEndings;
-use uuid::Uuid;
-
-static MERMAID_BLOCK_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?s)<pre><code[^>]*class=\"language-mermaid\"[^>]*>(.*?)</code></pre>"#)
-        .expect("valid mermaid block regex")
-});
 
 static CODE_BLOCK_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"(?s)<pre><code(?P<attrs>[^>]*)>(?P<code>.*?)</code></pre>"#)
@@ -29,24 +20,18 @@ static HTML_ATTR_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*\"([^\"]*)\""#).expect("valid html attr regex")
 });
 
-#[cfg(not(target_arch = "wasm32"))]
-static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
-
-/// Process code blocks with syntax highlighting and metadata
+/// Process code blocks: figure/figcaption wrapping and filename metadata
 ///
 /// # Features
-/// - ✅ Language detection from code class attribute
-/// - ✅ Syntax highlighting class generation
-/// - ✅ Mermaid diagram detection and SVG rendering
-/// - ✅ Bootstrap CSS variable integration
+/// - ✅ Language class passthrough (no interpretation, no highlighting)
+/// - ✅ Filename metadata → `<figcaption>`
 /// - ✅ Plain text blocks (no language) without `<code>` tags
 ///
 /// # Input Format (from comrak)
 ///
 /// comrak outputs code blocks in GitHub-flavored format:
 /// - `<pre><code>plain text content</code></pre>` - Plain text (no language)
-/// - `<pre><code class="language-rust">highlighted content</code></pre>` - With language
-/// - `<pre><code class="language-mermaid">diagram code</code></pre>` - Mermaid diagrams
+/// - `<pre><code class="language-rust">content</code></pre>` - With language
 ///
 /// # Output HTML Patterns
 ///
@@ -54,59 +39,21 @@ static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines
 ///
 /// Language-specific: `<pre><code class="language-rust">content</code></pre>` (unchanged)
 ///
-/// Mermaid diagram: `<figure class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram">SVG content</figure>`
+/// Every code block is wrapped in `<figure class="umd-code-block">`. A
+/// language such as `mermaid` or `geojson` is passed through exactly like
+/// any other language umd-core doesn't recognize — the host application is
+/// expected to detect `language-mermaid`/`language-geojson` etc. on the
+/// `<code>` element and replace/enhance the block client-side or at build
+/// time (see docs/architecture.md).
 pub fn process_code_blocks(html: &str) -> String {
-    // First handle Mermaid diagrams if present
-    let html = process_mermaid_blocks(html);
-
-    // Then process regular code blocks with syntax highlighting
-    process_syntax_highlighted_blocks(&html)
+    process_syntax_highlighted_blocks(html)
 }
 
-/// Process Mermaid diagram blocks
-///
-/// Converts `<code class="language-mermaid">` blocks into SVG diagrams with Bootstrap styling
-/// comrak outputs: `<pre><code class="language-mermaid">...</code></pre>`
-fn process_mermaid_blocks(html: &str) -> String {
-    // Check if mermaid is present (but not already wrapped)
-    if !html.contains("language-mermaid") || html.contains("umd-mermaid-diagram") {
-        return html.to_string();
-    }
-
-    MERMAID_BLOCK_RE
-        .replace_all(html, |caps: &regex::Captures| {
-            let code = &caps[1];
-            let decoded = decode_html_entities(code);
-            let code_text = decoded.trim();
-
-            match render_mermaid_as_svg(code_text) {
-                Ok(svg) => {
-                    let diagram_id = Uuid::new_v4().to_string();
-                    format!(
-                        "<figure class=\"umd-code-block umd-code-block-mermaid umd-mermaid-diagram\" id=\"mermaid-{}\" data-mermaid-source=\"{}\">{}</figure>",
-                        &diagram_id[..8],
-                        html_escape::encode_double_quoted_attribute(code_text),
-                        svg
-                    )
-                }
-                Err(error) => {
-                    let escaped_error = html_escape::encode_double_quoted_attribute(&error);
-                    format!(
-                        "<figure class=\"umd-code-block umd-code-block-mermaid umd-mermaid-diagram\"><pre class=\"umd-mermaid-error\" data-error=\"{}\"><code class=\"language-mermaid\">{}</code></pre></figure>",
-                        escaped_error,
-                        code
-                    )
-                }
-            }
-        })
-        .to_string()
-}
-
-/// Process syntax highlighting for code blocks
+/// Process code blocks: add figure/figcaption wrapping and filename metadata
 ///
 /// comrak outputs code blocks as:
 /// - `<pre><code>plain content</code></pre>` for plain text blocks (no language)
-/// - `<pre><code class="language-rust">highlighted content</code></pre>` for language-specific blocks
+/// - `<pre><code class="language-rust">content</code></pre>` for language-specific blocks
 ///
 /// The full fence info string can include title metadata (e.g., "rust: main.rs"),
 /// but comrak only extracts the language part to generate the class attribute.
@@ -116,7 +63,7 @@ fn process_mermaid_blocks(html: &str) -> String {
 /// Supports four code block patterns:
 /// 1. Plain text: `<pre><code>...</code></pre>` → `<pre>...</pre>`
 /// 2. Plain text with title: parse from fence info in data attributes
-/// 3. Language-only: `<pre><code class="language-rust">...</code></pre>`
+/// 3. Language-only: `<pre><code class="language-rust">...</code></pre>` (unchanged)
 /// 4. Language+Title: add figcaption wrapper with title
 fn process_syntax_highlighted_blocks(html: &str) -> String {
     CODE_BLOCK_RE
@@ -125,23 +72,13 @@ fn process_syntax_highlighted_blocks(html: &str) -> String {
             let code = caps.name("code").map(|m| m.as_str()).unwrap_or("");
 
             let language = extract_language_from_attrs(attrs);
-            if matches!(language.as_deref(), Some(lang) if lang.eq_ignore_ascii_case("mermaid")) {
-                return caps[0].to_string();
-            }
 
             let filename = extract_attribute(attrs, "data-meta")
                 .map(|value| decode_html_entities(&value))
                 .and_then(|meta| extract_filename_from_meta(&meta));
 
             let rendered_block = if let Some(lang) = language.as_deref() {
-                let decoded = decode_html_entities(code);
-                match highlight_code_with_syntect(lang, &decoded) {
-                    Some(highlighted) => format!(
-                        "<pre><code class=\"language-{} umd-syntect-highlight\" data-highlighted=\"true\">{}</code></pre>",
-                        lang, highlighted
-                    ),
-                    None => format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code),
-                }
+                format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code)
             } else {
                 format!("<pre>{}</pre>", code)
             };
@@ -204,96 +141,6 @@ fn extract_filename_from_meta(meta: &str) -> Option<String> {
     }
 }
 
-/// Render Mermaid code to SVG
-///
-/// Converts Mermaid diagram notation to SVG format with Bootstrap CSS variable support.
-/// Supports basic graph, flowchart, and sequence diagrams.
-fn render_mermaid_as_svg(mermaid_code: &str) -> Result<String, String> {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        mermaid_rs_renderer::render(mermaid_code)
-            .map(|svg| inject_umd_color_variables(&svg))
-            .map_err(|error| error.to_string())
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let _ = mermaid_code;
-        Err("Mermaid rendering is unavailable on wasm32 target".to_string())
-    }
-}
-
-fn highlight_code_with_syntect(language: &str, source: &str) -> Option<String> {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let syntax = SYNTAX_SET
-            .find_syntax_by_token(language)
-            .or_else(|| SYNTAX_SET.find_syntax_by_name(language))
-            .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
-
-        let mut generator = ClassedHTMLGenerator::new_with_class_style(
-            syntax,
-            &SYNTAX_SET,
-            ClassStyle::SpacedPrefixed { prefix: "syntect-" },
-        );
-
-        for line in LinesWithEndings::from(source) {
-            if generator
-                .parse_html_for_line_which_includes_newline(line)
-                .is_err()
-            {
-                return None;
-            }
-        }
-
-        Some(generator.finalize())
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        let _ = (language, source);
-        None
-    }
-}
-
-/// Inject umd-core CSS variables for diagram coloring
-///
-/// Replaces hardcoded colors with umd-core color tokens (--umd-color-blue,
-/// --umd-color-green, etc.) instead of system theme variables. White and
-/// black are excluded as they represent structural elements rather than
-/// semantic colors.
-///
-/// `mermaid-rs-renderer` bakes these literal hex values into the SVG itself
-/// (no theme-variable passthrough), so this post-hoc string replacement is
-/// the only way to make the diagram respond to the reference CSS's light/dark
-/// tokens — see PLAN.md for the longer-term fix.
-fn inject_umd_color_variables(svg: &str) -> String {
-    svg.replace("#0d6efd", "var(--umd-color-blue, #0d6efd)")
-        .replace("#6c757d", "var(--umd-color-gray, #6c757d)")
-        .replace("#198754", "var(--umd-color-green, #198754)")
-        .replace("#dc3545", "var(--umd-color-red, #dc3545)")
-        .replace("#ffc107", "var(--umd-color-yellow, #ffc107)")
-        .replace("#0dcaf0", "var(--umd-color-cyan, #0dcaf0)")
-    // Note: #ffffff (white) and #000000 (black) are intentionally excluded
-    // as they represent structural elements, not semantic colors
-}
-
-/// Simple hash function for generating diagram IDs
-/// Uses a lightweight FNV-1a algorithm
-/// Note: Currently replaced with UUID for unique ID generation in render_mermaid_as_svg
-#[allow(dead_code)]
-fn simple_hash(data: &str) -> u64 {
-    const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
-    const FNV_PRIME: u64 = 0x100000001b3;
-
-    let mut hash = FNV_OFFSET_BASIS;
-    for byte in data.bytes() {
-        hash ^= byte as u64;
-        hash = hash.wrapping_mul(FNV_PRIME);
-    }
-    hash
-}
-
 /// Basic HTML entity decoder for common entities
 fn decode_html_entities(s: &str) -> String {
     s.replace("&lt;", "<")
@@ -302,56 +149,6 @@ fn decode_html_entities(s: &str) -> String {
         .replace("&quot;", "\"")
         .replace("&#39;", "'")
         .replace("&nbsp;", " ")
-}
-
-/// Get list of supported languages for syntax highlighting
-///
-/// Returns language identifiers that can be used in code fence info strings
-pub fn get_supported_languages() -> Vec<&'static str> {
-    vec![
-        "rust",
-        "python",
-        "javascript",
-        "typescript",
-        "jsx",
-        "tsx",
-        "html",
-        "css",
-        "scss",
-        "less",
-        "java",
-        "kotlin",
-        "go",
-        "c",
-        "cpp",
-        "csharp",
-        "swift",
-        "objc",
-        "php",
-        "ruby",
-        "perl",
-        "bash",
-        "shell",
-        "zsh",
-        "fish",
-        "sql",
-        "mysql",
-        "postgresql",
-        "mongodb",
-        "json",
-        "yaml",
-        "toml",
-        "xml",
-        "markdown",
-        "latex",
-        "dockerfile",
-        "nginx",
-        "apache",
-        "lua",
-        "vim",
-        "elisp",
-        "mermaid", // Diagram support
-    ]
 }
 
 #[cfg(test)]
@@ -364,9 +161,7 @@ mod tests {
         let html = "<pre><code class=\"language-rust\">fn main() {}</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("language-rust"));
-        assert!(result.contains("umd-syntect-highlight"));
         assert!(result.contains("umd-code-block"));
-        assert!(result.contains("data-highlighted=\"true\""));
         assert!(result.contains("fn"));
         assert!(result.contains("main"));
     }
@@ -383,22 +178,16 @@ mod tests {
     }
 
     #[test]
-    fn test_mermaid_block_detection() {
-        // comrak Mermaid format: <pre><code class="language-mermaid">...</code></pre>
+    fn test_mermaid_block_passthrough() {
+        // Mermaid (like any other language umd-core doesn't specially
+        // handle) passes through unchanged as a plain language-tagged code
+        // block; rendering it is the host application's responsibility.
         let html =
             "<pre><code class=\"language-mermaid\">graph TD\n    A[Start] --> B[End]</code></pre>";
         let result = process_code_blocks(html);
-        assert!(result.contains("umd-code-block-mermaid"));
-        assert!(result.contains("umd-mermaid-diagram"));
-        assert!(result.contains("data-mermaid-source"));
-        assert!(result.contains("<svg"));
-    }
-
-    #[test]
-    fn test_mermaid_parse_error_fallback() {
-        let html = "<pre><code class=\"language-mermaid\">graph TD\n  A --&gt;</code></pre>";
-        let result = process_code_blocks(html);
-        assert!(result.contains("umd-mermaid-error") || result.contains("umd-mermaid-diagram"));
+        assert!(result.contains("language-mermaid"));
+        assert!(result.contains("umd-code-block"));
+        assert!(!result.contains("<svg"));
     }
 
     #[test]
@@ -421,11 +210,10 @@ mod tests {
 
     #[test]
     fn test_code_block_language_preserved() {
-        // Language-specific block left unchanged
+        // Language-specific block left unchanged, no highlighting applied
         let html = "<pre><code class=\"language-python\">print('hello')</code></pre>";
         let result = process_code_blocks(html);
         assert!(result.contains("language-python"));
-        assert!(result.contains("data-highlighted=\"true\""));
         assert!(result.contains("print"));
         assert!(result.contains("hello"));
     }
@@ -437,13 +225,6 @@ mod tests {
         assert!(result.contains("&lt;"));
         assert!(result.contains("&gt;"));
         assert!(result.contains("content"));
-    }
-
-    #[test]
-    fn test_simple_hash_consistency() {
-        let hash1 = simple_hash("test");
-        let hash2 = simple_hash("test");
-        assert_eq!(hash1, hash2);
     }
 
     #[test]

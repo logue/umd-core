@@ -1,9 +1,11 @@
-//! Example: Code block syntax highlighting and Mermaid diagram support
+//! Example: Code block metadata extensions
 //!
-//! This example demonstrates the new code block extensions for UMD:
-//! - Syntax highlighting class generation
+//! This example demonstrates umd-core's code block extensions:
+//! - Language class passthrough (no highlighting is done in core)
 //! - File name support with <figcaption>
-//! - Mermaid diagram rendering setup
+//! - `<figure class="umd-code-block">` wrapping, including for languages
+//!   like `mermaid` that a host application renders itself (see
+//!   docs/architecture.md's 3-layer deferred-rendering model)
 //!
 //! Run with: cargo run --example code_block_extensions
 
@@ -45,8 +47,8 @@ def process_data(data):
     println!("Input:\n{}", python_code);
     println!("Output:\n{}\n", html);
 
-    // Example 3: Mermaid diagram
-    println!("Example 3: Mermaid diagram (flow chart)");
+    // Example 3: Mermaid code block (passed through, not rendered by core)
+    println!("Example 3: Mermaid code block (host application renders this)");
     let mermaid_flowchart = r#"
 ```mermaid
 graph TD
@@ -65,8 +67,8 @@ graph TD
     println!("Input:\n{}", mermaid_flowchart);
     println!("Output:\n{}\n", html);
 
-    // Example 4: Mermaid sequence diagram
-    println!("Example 4: Mermaid diagram (sequence)");
+    // Example 4: Another Mermaid code block (sequence diagram)
+    println!("Example 4: Mermaid code block (sequence diagram, host-rendered)");
     let mermaid_sequence = r#"
 ```mermaid
 sequenceDiagram
@@ -119,23 +121,15 @@ async function fetchData(endpoint) {
 
     // Summary
     println!("\n=== Summary ===");
-    println!("✅ Code blocks now support:");
-    println!("  • Language detection and class generation");
-    println!("  • File name metadata (@filename: comment)");
-    println!("  • Mermaid diagram detection and wrapping");
-    println!("  • Bootstrap CSS variable integration");
-    println!("\n📋 Supported languages:");
-    println!("  rust, python, javascript, typescript, html, css, sql, and more");
-    println!("\n🎨 Mermaid diagram types:");
-    println!("  • Flowcharts (graph)");
-    println!("  • Sequence diagrams");
-    println!("  • Class diagrams");
-    println!("  • State diagrams");
-    println!("  • ER diagrams");
-    println!("  • Gantt charts");
-    println!("  • Pie charts");
-    println!("\n📖 Frontend Integration:");
-    println!("  • Mermaid.js CDN for rendering");
-    println!("  • Highlight.js or Prism.js for code highlighting");
-    println!("  • Bootstrap CSS variables for theming");
+    println!("✅ umd-core's code block handling:");
+    println!("  • Language class passthrough (`language-<lang>`), unmodified");
+    println!("  • File name metadata (@filename: comment) → <figcaption>");
+    println!("  • Every block wrapped in <figure class=\"umd-code-block\">");
+    println!(
+        "\n📖 Host application responsibility (Layer 2/3, see docs/architecture.md):"
+    );
+    println!("  • Syntax highlighting (e.g. highlight.js, Shiki, Prism.js)");
+    println!("  • Mermaid diagram rendering (e.g. mermaid.js client-side,");
+    println!("    or a native renderer at build time)");
+    println!("  • Any other language-specific enhancement (e.g. GeoJSON maps)");
 }

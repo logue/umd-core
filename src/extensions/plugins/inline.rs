@@ -215,7 +215,7 @@ fn convert_standard_inline_plugin_to_html(
             Some(format!("<sub>{}</sub>", args))
         }
         "color" => {
-            // &color(fg,bg){text}; with Bootstrap support
+            // &color(fg,bg){text}; with fg/bg color support
             let parts: Vec<&str> = args.split(',').collect();
             let fg = parts.get(0).map_or("", |m| m.trim());
             let bg = parts.get(1).map_or("", |m| m.trim());
@@ -530,7 +530,7 @@ pub(crate) fn expand(html: &str, allow_hex_colors: bool, allow_custom_font_size:
         })
         .to_string();
 
-    // Apply &color(fg,bg){text}; with Bootstrap support
+    // Apply &color(fg,bg){text}; with fg/bg color support
     result = INLINE_COLOR
         .replace_all(&result, |caps: &regex::Captures| {
             let fg = caps.get(1).map_or("", |m| m.as_str().trim());
@@ -1079,7 +1079,7 @@ mod tests {
     }
 
     #[test]
-    fn test_color_bootstrap_class() {
+    fn test_color_class() {
         let input = "&color(blue){Blue text};";
         let output = apply(input);
         assert!(output.contains("class=\"umd-color-blue\""));

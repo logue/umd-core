@@ -9,7 +9,7 @@
 - 実装: `src/extensions/media.rs`
 - 適用フェーズ: 拡張処理（HTML 後処理）
 - 主な入力: `<img src="..." alt="..." title="..." />`
-- 主なテスト: `src/extensions/media.rs` 内テスト、`tests/bootstrap_integration.rs`
+- 主なテスト: `src/extensions/media.rs` 内テスト、`tests/rendering_integration.rs`
 
 ## 変換先
 

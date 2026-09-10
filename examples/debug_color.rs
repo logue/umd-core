@@ -1,93 +1,47 @@
-// Debug color mapping
+//! Debug helper: reports which color names `&color()` currently accepts.
+//!
+//! This calls the real `umd::parse` and inspects its output rather than
+//! re-implementing the matching logic locally (the real logic in
+//! `src/extensions/decoration_values.rs::map_color_value_with_options` is
+//! `pub(crate)`, not part of the public API, so an example binary can't
+//! call it directly — and keeping an independent copy here is exactly the
+//! kind of drift that led this file to test against a color list that no
+//! longer matched the parser).
+use umd::parse;
+
 fn main() {
-    // Bootstrap theme colors
-    let bootstrap_colors = [
-        // Theme colors
-        "primary",
-        "secondary",
-        "success",
-        "danger",
-        "warning",
-        "info",
-        "light",
-        "dark",
-        "body",
-        "body-secondary",
-        "body-tertiary",
-        "body-emphasis",
-        // Custom colors (Bootstrap 5.3+)
-        "blue",
-        "indigo",
-        "purple",
-        "pink",
-        "red",
-        "orange",
-        "yellow",
-        "green",
-        "teal",
-        "cyan",
-        // Theme colors with suffixes
-        "primary-subtle",
-        "secondary-subtle",
-        "success-subtle",
-        "danger-subtle",
-        "warning-subtle",
-        "info-subtle",
-        "light-subtle",
-        "dark-subtle",
-        "primary-emphasis",
-        "secondary-emphasis",
-        "success-emphasis",
-        "danger-emphasis",
-        "warning-emphasis",
-        "info-emphasis",
-        "light-emphasis",
-        "dark-emphasis",
-        // Custom colors with suffixes
-        "blue-subtle",
-        "indigo-subtle",
-        "purple-subtle",
-        "pink-subtle",
-        "red-subtle",
-        "orange-subtle",
-        "yellow-subtle",
-        "green-subtle",
-        "teal-subtle",
-        "cyan-subtle",
-        "blue-emphasis",
-        "indigo-emphasis",
-        "purple-emphasis",
-        "pink-emphasis",
-        "red-emphasis",
-        "orange-emphasis",
-        "yellow-emphasis",
-        "green-emphasis",
-        "teal-emphasis",
-        "cyan-emphasis",
+    // UMD's current named palette (src/extensions/decoration_values.rs::COLOR_NAMES).
+    let known_colors = [
+        "blue", "indigo", "violet", "purple", "pink", "red", "orange", "amber", "yellow", "lime",
+        "green", "teal", "cyan", "brown", "gray", "pewter",
     ];
 
-    let test_colors = vec!["blue", "red", "yellow", "primary", "blue-subtle"];
+    // A few names that are deliberately NOT in the palette, to show they're
+    // rejected: "white"/"black" (never supported), and the old
+    // semantic/role-based names ("primary" etc.) that UMD dropped in favor
+    // of letting the host application decide what "primary" maps to.
+    let test_colors = [
+        "blue", "red", "yellow", "pewter", "primary", "danger", "white",
+    ];
 
     for test_color in test_colors {
-        let trimmed = test_color;
-        let mut found = false;
+        let input = format!("&color({}){{text}};", test_color);
+        let output = parse(&input);
+        let expected_class = format!("class=\"umd-color-{}\"", test_color);
 
-        for color in &bootstrap_colors {
-            if trimmed == *color || trimmed.starts_with(&format!("{}-", color)) {
-                println!(
-                    "✓ '{}' matched with '{}' - Would return (true, \"text-{}\")",
-                    test_color, color, trimmed
-                );
-                found = true;
-                break;
-            }
-        }
-
-        if !found {
+        if output.contains(&expected_class) {
             println!(
-                "✗ '{}' NOT matched - Would return (false, \"{}\")",
+                "✓ '{}' accepted - class=\"umd-color-{}\"",
                 test_color, test_color
             );
+        } else {
+            println!("✗ '{}' NOT accepted - color stripped", test_color);
         }
     }
+
+    println!(
+        "\nFull palette ({} colors): {}",
+        known_colors.len(),
+        known_colors.join(", ")
+    );
 }

@@ -1,13 +1,15 @@
 //! Universal Markdown Parser
 //!
-//! A post-Markdown superset parser with Bootstrap 5 integration and extensible syntax.
-//! This parser aims for reasonable CommonMark compliance (75%+) while
-//! providing powerful extensions including Bootstrap styling, semantic HTML, and plugin support.
+//! A post-Markdown superset parser with its own `umd-*` reference-CSS
+//! classes and extensible syntax. This parser aims for reasonable
+//! CommonMark compliance (75%+) while providing powerful extensions
+//! including its own reference-CSS styling, semantic HTML, and plugin
+//! support.
 //!
 //! # Features
 //!
 //! - CommonMark-compliant Markdown parsing
-//! - Bootstrap 5 integration (Core UI compatible)
+//! - Own `umd-*` reference-CSS classes (no CSS framework dependency)
 //! - Extended syntax (definition lists, decorations, semantic HTML)
 //! - LukiWiki legacy syntax support for backward compatibility
 //! - HTML sanitization (direct HTML input is forbidden)

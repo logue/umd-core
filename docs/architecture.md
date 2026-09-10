@@ -270,8 +270,9 @@ Output HTML + Frontmatter + Footnotes
 
 #### src/extensions/fence/ （フェンス表記）
 
-- `code_block.rs`: シンタックスハイライト・Mermaid図・ファイル名付きコード
-  ブロックの本処理
+- `code_block.rs`: 言語クラスのパススルー・ファイル名付きコードブロックの
+  メタデータ処理（シンタックスハイライトやMermaid図等のレンダリングはホスト
+  アプリケーションの責務、[docs/code-block-extensions.md](../code-block-extensions.md)参照）
 - `normalize.rs`: フェンス情報文字列の正規化（`` ```lang:filename `` 記法）
 - `protect.rs`: コードブロック・インラインコードを他パスの変換から保護し、
   復元時に `code_block` の処理とインラインコードの色スウォッチ検出を実行
@@ -349,10 +350,11 @@ serde = { version = "1.0.228", features = ["derive"] } # Serialization
 uuid = { version = "1.23.1", features = ["v4", "js"] } # ID generation
 math-core = "0.6.0" # LaTeX to MathML conversion
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-mermaid-rs-renderer = { version = "0.2.2", default-features = false }
-syntect = "5.3.0"
 ```
+
+> シンタックスハイライト（syntect）とMermaid SSR（mermaid-rs-renderer）は
+> native限定の依存としてかつて存在しましたが、ホストアプリケーション責務へ
+> 移行したため umd-core からは削除されています。
 
 ### 開発依存
 
@@ -425,12 +427,12 @@ umd/
 │               └── decorations.rs
 ├── tests/                  # 統合テスト
 │   ├── commonmark.rs       # CommonMark準拠テスト
-│   ├── bootstrap_integration.rs  # CSS クラス・HTML 出力統合テスト
+│   ├── rendering_integration.rs  # CSS クラス・HTML 出力統合テスト（旧 bootstrap_integration.rs）
 │   ├── conflict_resolution.rs    # 構文衝突テスト
 │   └── test_semantic_integration.rs  # セマンティックHTML
 ├── examples/               # サンプル・デモ
 │   ├── test_output.rs
-│   ├── test_bootstrap_integration.rs
+│   ├── test_reference_css.rs
 │   ├── test_frontmatter.rs
 │   ├── test_footnotes.rs
 │   ├── test_header_id.rs
@@ -575,9 +577,10 @@ umd/
 
 ファイル: `src/extensions/fence/`
 
-- `code_block.rs`: 言語別シンタックスハイライト（`language-*` クラス）、
-  Mermaid図（`<figure class="umd-code-block umd-code-block-mermaid umd-mermaid-diagram">...</figure>` でラップ）。
-  `language-*`（フロント側ハイライトライブラリ向け）を除き、出力クラスはすべて`umd-`プレフィックス付き。
+- `code_block.rs`: `language-*` クラスのパススルーとファイル名メタデータの
+  処理のみ。シンタックスハイライトやMermaid/GeoJSON等のレンダリングは行わず、
+  ホストアプリケーション（Layer 2/3）が`language-*`クラスを検出して行う
+  （[docs/code-block-extensions.md](../code-block-extensions.md)参照）。
   言語指定の有無・ファイル名の有無に関わらず、常に`<figure class="umd-code-block">`でラップされる
   （`alignment::apply_pending_code_block_placement`経由でSTART:/CENTER:/END:/JUSTIFY:装飾子に対応）
 - `normalize.rs`: フェンス情報文字列の正規化（`` ```lang:filename ``）
@@ -645,7 +648,7 @@ cargo build --verbose && cargo test --verbose
 ```bash
 # 特定テストファイルのみ実行
 cargo test --test conflict_resolution
-cargo test --test bootstrap_integration
+cargo test --test rendering_integration
 
 # 特定モジュールのテストを実行
 cargo test transform_images_to_media -- --nocapture

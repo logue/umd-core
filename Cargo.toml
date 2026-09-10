@@ -39,15 +39,11 @@ regex = "1.13.1" # Pattern matching
 serde = { version = "1.0.229", features = ["derive"] } # Serialization
 serde_json = "1.0.151" # JSON serialization for definition lists
 unicode-segmentation = "1.13.3" # Grapheme cluster handling
-uuid = { version = "1.26.0", features = [
+uuid = { version = "1.26.1", features = [
   "v4",
   "js",
-] } # UUID generation for diagram IDs
+] } # UUID generation (e.g. popover element IDs)
 wasm-bindgen = "0.2.127" # WASM bindings
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-mermaid-rs-renderer = { version = "0.3.1", default-features = false } # Mermaid SSR (native only)
-syntect = "5.3.0"                                                     # Syntax highlighting (native only)
 
 [dev-dependencies]
 criterion = "0.8.2"          # Benchmarking

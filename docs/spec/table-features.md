@@ -59,7 +59,7 @@ UMDリファレンスCSSへ移行したことで、外部フレームワーク�
 
 ## 主なテスト
 
-- `tests/bootstrap_integration.rs`
+- `tests/rendering_integration.rs`
 - `examples/test_table_colspan.rs`
 - `examples/test_comrak_table.rs`
 - `examples/test_table_comparison.rs`

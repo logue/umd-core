@@ -15,9 +15,7 @@
 | comrak              | 0.55.0     | Markdown パーサー (GFM)                  |
 | math-core           | 0.8.2      | LaTeX to MathML 変換                     |
 | maud                | 0.27.0     | 型安全 HTML 生成                         |
-| mermaid-rs-renderer | 0.3.1      | Mermaid SSR レンダリング                 |
 | regex               | 1.13.1     | パターンマッチング                       |
-| syntect             | 5.3.0      | シンタックスハイライト（ネイティブのみ） |
 | wasm-bindgen        | 0.2.127    | WASM バインディング                      |
 
 ---
@@ -56,15 +54,14 @@
 ### 🚧 進行中
 
 - 🚧 WASM サイズ最適化と配布改善
-- 🚧 Mermaid レンダリングのキャッシュ最適化
 
 ### 🔮 計画中
 
 - ✅ Bootstrap依存の削減（CSS Layerの活用による脱Bootstrap化）
 - ✅ リファレンスCSS提供（スタイル定義の標準化）
-- 🔮 テンプレートエンジン機能の検討と仕様策定（拡張子 `.umdt`）
+- ✅ syntect・mermaid-rs-rendererのcoreからの分離（2026年9月、host責務化。詳細はCHANGELOG.md）
+- 🔮 テンプレートエンジン機能の検討と仕様策定（拡張子 `.umdt`） — フットノート対応の検討で判明した問題（comrakの単一パス外で処理される断片は、IDの採番・共有ができずページ内で衝突しうる）はテンプレートエンジンにもそのまま当てはまる。テンプレート由来の出力では、脚注アンカー・見出しアンカーIDのような自動採番IDを最初から出力しない設計にしておくのが妥当（同じテンプレートが1ページに複数回展開されるとID衝突するため）
 - 🔮 バイナリアセット同梱パッケージ形式（拡張子 `.umdx`）の検討
-- 🔮 フロントエンド向けのシンタックスハイライト改善
 - 🔮 テキスト装飾記法の追加（`^^` / `~~` / `==` / `&outline()`）
 - 🔮 挿入・削除記法（`{+ +}` / `{- -}`）の追加
 - 🔮 パーサーレベルの定義（チャット運用時、コメント運用時、ドキュメント作成時）
@@ -72,7 +69,9 @@
 - 🔮 フロントマターのTSON対応（区切り文字 `***`）
 - 🔮 ボトムマター仕様策定
 - 🔮 AAプラグイン（決め打ちフォント指定によるアスキーアート表示、例: MS Pゴシック）— 文字幅依存が強くリファレンスCSS/コアの責務にできないためプラグインとして分離
-- 🔮 Mermaid SVGの色トークン対応 — `mermaid-rs-renderer`は各要素に`fill="#hex"`等のリテラル色を焼き込むため、`.umd-color-*`のようなCSSクラスでは上書きできない。現状は`src/extensions/fence/code_block.rs`の`inject_umd_color_variables`がumdシステムカラー6色のHEXのみ`var(--umd-color-*, #hex)`に後置換する場当たり的な対応。恒久対応は (1) この置換をUMDの色トークン・全色相に拡張するか、(2) `mermaid-rs-renderer`のTheme/ThemeVariables設定に`var(...)`文字列を直接渡してレンダリングさせる（SVGシリアライザが素通しするか要検証）
+- ⏸️（現時点では対応しない） プラグイン構文内の脚注参照（`&color(){content[^1]};`等） — 制限事項として[docs/runtime-features.md](docs/runtime-features.md)に明記済み。comrakの単一パス制約に起因する問題で、comrakへのパッチに近い実装コストが必要なため今は見送り。長期的にcomrak依存を外す/forkする実装に移行する際に再評価する。理由・検討経緯は下記「標準インラインプラグインのcontentへのMarkdown解釈適用」を参照
+- 🐛（既知の問題・未修正） カスタムヘッダーID（`# Title {#custom-id}`）の実装が設計意図と異なる — `src/extensions/conflict_resolver.rs` のID注入処理は、(1) `id`を`<hN>`タグ自体ではなく別途挿入する空の`<a>`要素に付与、(2) ユーザー指定IDにも常に`h-`プレフィックスを付与（本来は自動採番時のみのはず）、(3) 見出し内にインライン記法（`**強調**`・リンク等）があると正規表現がマッチせずアンカー自体が失われる、(4) その際「マッチ回数」を見出し番号カウンターに使っているため後続見出しの採番までずれる、という4つの問題を抱える。詳細・回避策は[docs/runtime-features.md](docs/runtime-features.md)の「見出しID処理が設計意図と異なる」を参照。根本修正には id を `<hN>` タグ自体に注入する実装への変更、カスタムID時のプレフィックス省略、見出しカウンターの出現順ベース化が必要
+- 🔮 標準インラインプラグインのcontentへのMarkdown解釈適用（長期課題） — `&color(red){text**bold**here};`のような入力で、現状`content`はcomrakのインライン解析を一切通らず生テキストとして展開されるため、太字・斜体・リンク・脚注参照等が機能しない。本来は`**text**`の派生として同様に振る舞うことが望ましいが、解決には現行の「テキストマーカーで保護→文字列置換で復元」という設計をAST操作ベースへ作り直す規模の変更が必要（comrakへのパッチに近い実装コストが見込まれ、費用対効果が低いため現時点では着手しない）
 
 ---
 
@@ -390,7 +389,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 > クラス名改名・リファレンスCSS実装・色/サイズ系プラグインの整理・テーブルセル揃えの改称・`apply_block_placement`の論理名統一は完了済み。詳細は [docs/architecture.md](docs/architecture.md)・[docs/plugin-system.md](docs/plugin-system.md)・[docs/inline-plugins.md](docs/inline-plugins.md)・[docs/table-features.md](docs/table-features.md) を参照。
 
 - [x] **UMDテーブルのセル装飾 `COLOR()`/`SIZE()` を`decoration_values.rs`へ移行**（`src/extensions/table/umd/decorations.rs`）: 独自実装の`is_bootstrap_color`/`get_bootstrap_size_class`を削除し、`&color()`/`&size()`と共有の`map_color_value_with_options`/`map_font_size_value`を使用するよう変更。出力クラスは`text-{color}`/`bg-{color}`/`fs-*`から`umd-color-*`/`umd-bg-*`/`umd-text-size-*`へ、パレットも16色に統一。適用先はこれまで通りセル自体（`<td>`/`<th>`、`cell.classes`/`cell.styles`）のまま変更なし。`allow_hex_colors`/`allow_custom_font_size`オプションも`ParserOptions`から`preprocess_conflicts`→`extract_umd_tables`→`parse_table`→`parse_cell_content`まで貫通させ、`&color()`/`&size()`と同じ挙動に統一（セル内容中の`項目&color(red){New!};`のようなネスト`&color()`との共存もテスト済み）
-- [ ] 既存テスト（`bootstrap_integration.rs` 等）の移行方針検討
+- [x] 既存テスト（`bootstrap_integration.rs` 等）の移行方針検討 — `bootstrap_integration.rs`を`tests/rendering_integration.rs`へリネーム（`examples/test_bootstrap_integration.rs`も`examples/test_reference_css.rs`へ）。ファイル名・個別テスト関数名・コメントに残っていた「Bootstrap」表記をUMD独自のumd-*クラス前提の名称へ統一（2026年9月）
 - [ ] ドキュメント更新
 - [ ] インライン標準プラグイン（`dfn`/`kbd`/`samp`/`var`/`cite`/`q`/`small`/`bdi`/`ruby`/`time`/`data`/`bdo`/`sup`/`sub`）の個別正規表現の重複統合（優先度低）
 
@@ -517,15 +516,11 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 
 ### 中期（3-6週間）
 
-1. **シンタックスハイライト** (ハイブリッド)
-   - サーバー側: HTML 属性付与
-   - フロントエンド: JavaScript オプション
-   - UMD CSS 変数カスタムテーマ
-
-2. **Mermaidレンダリング最適化**
-   - SVGキャッシュ戦略の整理
-   - ダークモード時の可読性検証
-   - 大規模ドキュメントでの描画コスト評価
+**中期の予定なし**（2026年9月時点）。標準プラグイン内フットノート対応は設計調査の結果、
+comrakへのパッチに近い実装コストに対して現時点では効果が見合わないと判断し、当面は
+対応しない（長期的にcomrak依存を外す/forkする実装に移行する際に再評価）方針を確定
+（「制限事項」の脚注参照参照）。シンタックスハイライト・Mermaidレンダリングの最適化は、
+coreの責務ではなくなったためこのロードマップの対象外（ホスト側実装・`umd-mermaid`パッケージ側で検討する）。
 
 ### 長期（2ヶ月以降）
 
@@ -560,14 +555,20 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
    - ユーザー向けエラーログ実装
    - デバッグモード（verbose）オプション
 
-3. **syntect・mermaid-rs-renderer のオプショナル化**
-   - 現状: シンタックスハイライト（syntect）とMermaid SSR（mermaid-rs-renderer）がコアのWASMバイナリに含まれており、バイナリサイズを圧迫している
-   - 方針: 将来的に `umd-highlight` / `umd-mermaid` として別パッケージへ分離し、コアをミニマムに保つ
-   - 背景:
-     - **CSS Custom Highlight API** がChrome/Edge/Safari で実装済み・Firefox対応中。軽量クライアントサイドライブラリへの移行が現実的になりつつある
+3. **syntect・mermaid-rs-renderer のオプショナル化** ✅ 完了（2026年9月）
+   - syntect・mermaid-rs-rendererはcoreから削除（`[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`ごと除去）。
+     `mermaid-rs-renderer`はfontdbのOSフォントディレクトリスキャン依存によりそもそもwasm32でビルドできなかったため、
+     実際にwasmバイナリに含まれていたことは一度もない — 上の「バイナリサイズを圧迫」という当初の記述は不正確だった
+     （実態はnative専用依存が同一クレートに同居していたことによる設計上の座りの悪さが本質的な問題）
+   - `code_block.rs`は`language-*`クラスのパススルーとファイル名メタデータ処理のみに縮小。
+     シンタックスハイライト・Mermaid/GeoJSON等のレンダリングはホストアプリケーション（Layer 2/3）の責務
+   - CSS Custom Highlight API は2025年6月にBaseline 2025 (Newly available) に到達済み（Firefox含む主要ブラウザ最新版で利用可）
+   - native版Mermaidレンダリング（mermaid-rs-renderer）が必要なホスト向けには、umd-core非依存の
+     `umd-mermaid`ネイティブパッケージ（Node向けnapiアドオンかCLI、ビルド/SSR専用）として別途検討中。詳細未確定
+   - 背景（当時の判断根拠）:
      - **Mermaid** は仕様が流動的で本家の破壊的変更に引きずられるリスクが高い。ホスト側の責務とする方がアーキテクチャ的に正しい
-     - SEOへの影響はGoogleがJSを実行するため、コードブロックのSSRハイライトの優位性は限定的
-   - 移行タイミング: CSS Custom Highlight APIのブラウザサポートが揃い、軽量ライブラリが成熟した段階
+     - SEOへの影響はGoogleがJSを実行するため、コードブロックのSSRハイライトの「クローラー可視性」面での優位性は限定的。
+       ただし Core Web Vitals（LCP/INP/CLS）というランキング要因および実ユーザー体験の速度には、SSRされた静的出力の方が有利
 
 ---
 
