@@ -65,10 +65,51 @@ pkg["bugs"] = {
 }
 pkg["sideEffects"] = false
 pkg["name"] = "universal-markdown"
-pkg["files"] = (Array(pkg["files"]) + ["umd-reference.css"]).uniq
+
+# Include every file actually emitted into dist/, rather than a hand-maintained
+# list, so new build outputs (fonts, css, etc.) are picked up automatically.
+dist_root = File.dirname(path)
+pkg["files"] = Dir.glob("**/*", File::FNM_DOTMATCH, base: dist_root)
+    .reject { |f| File.directory?(File.join(dist_root, f)) }
+    .reject { |f| f.split("/").any? { |part| part.start_with?(".") } }
+    .sort
+
+pkg["exports"] = {
+    "." => {
+        "types" => "./umd.d.ts",
+        "default" => "./umd.js"
+    },
+    "./umd.js" => {
+        "types" => "./umd.d.ts",
+        "default" => "./umd.js"
+    },
+    "./umd_bg.wasm" => {
+        "types" => "./umd_bg.wasm.d.ts",
+        "default" => "./umd_bg.wasm"
+    },
+    "./umd-reference.css" => "./umd-reference.css",
+    "./package.json" => "./package.json"
+}
 
 File.write(path, JSON.pretty_generate(pkg) + "\n")
 RUBY
+
+# Format dist/package.json with Biome. dist/ is otherwise excluded from
+# Biome's scope (see biome.jsonc's "!!**/dist" rule), so a throwaway config
+# that extends the project's config but re-includes dist/ is used to target
+# just this one file without touching the rest of dist/.
+BIOME_TMP_CONFIG_DIR="$(mktemp -d)"
+trap 'rm -rf "$BIOME_TMP_CONFIG_DIR"' EXIT
+cat > "$BIOME_TMP_CONFIG_DIR/biome.jsonc" <<EOF
+{
+  "extends": ["$(pwd)/biome.jsonc"],
+  "vcs": { "enabled": false },
+  "files": { "includes": ["**"] }
+}
+EOF
+npx biome format --config-path="$BIOME_TMP_CONFIG_DIR" --write dist/package.json
+rm -rf "$BIOME_TMP_CONFIG_DIR"
+trap - EXIT
 
 echo "✅ Build completed successfully!"
 echo "📦 Output directory: dist/"
