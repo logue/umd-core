@@ -23,12 +23,12 @@
 
 ## テーマ別詳細ドキュメント
 
-- 基本Markdown機能: [basic-markdown-features.md](basic-markdown-features.md)
-- UMD拡張構文: [umd-extensions.md](umd-extensions.md)
-- コメント構文: [comment-syntax.md](comment-syntax.md)
-- メディアタグ・自動検出: [media-tags.md](media-tags.md)
-- プラグインシステム: [plugin-system.md](plugin-system.md)
-- テーブル機能: [table-features.md](table-features.md)
+- 基本Markdown機能: [basic-markdown-features.md](spec/basic-markdown-features.md)
+- UMD拡張構文: [umd-extensions.md](spec/umd-extensions.md)
+- コメント構文: [comment-syntax.md](spec/comment-syntax.md)
+- メディアタグ・自動検出: [media-tags.md](spec/media-tags.md)
+- プラグインシステム: [plugin-system.md](spec/plugin-system.md)
+- テーブル機能: [table-features.md](spec/table-features.md)
 - 実行時機能（フロントマター・脚注・出力）: [runtime-features.md](runtime-features.md)
 - セキュリティ仕様: [security-features.md](security-features.md)
 
@@ -36,7 +36,7 @@
 
 ## 基本Markdown機能
 
-実装済み。詳細は [basic-markdown-features.md](basic-markdown-features.md) を参照してください。
+実装済み。詳細は [basic-markdown-features.md](spec/basic-markdown-features.md) を参照してください。
 
 補足:
 
@@ -44,35 +44,35 @@
 
 ## UMD拡張構文
 
-実装済み。詳細は [umd-extensions.md](umd-extensions.md) を参照してください。
+実装済み。詳細は [umd-extensions.md](spec/umd-extensions.md) を参照してください。
 
 ## コメント構文
 
-実装済み。詳細は [comment-syntax.md](comment-syntax.md) を参照してください。
+実装済み。詳細は [comment-syntax.md](spec/comment-syntax.md) を参照してください。
 
 ## メディアファイル自動検出
 
-実装済み。詳細は [media-tags.md](media-tags.md) を参照してください。
+実装済み。詳細は [media-tags.md](spec/media-tags.md) を参照してください。
 
 ## Spoiler機能
 
-実装済み。詳細は [umd-extensions.md](umd-extensions.md) を参照してください。
+実装済み。詳細は [umd-extensions.md](spec/umd-extensions.md) を参照してください。
 
 ## 定義リスト
 
-実装済み。詳細は [umd-extensions.md](umd-extensions.md) を参照してください。
+実装済み。詳細は [umd-extensions.md](spec/umd-extensions.md) を参照してください。
 
 ## ブロック引用
 
-実装済み。詳細は [umd-extensions.md](umd-extensions.md) を参照してください。
+実装済み。詳細は [umd-extensions.md](spec/umd-extensions.md) を参照してください。
 
 ## プラグインシステム
 
-実装済み。詳細は [plugin-system.md](plugin-system.md) を参照してください。
+実装済み。詳細は [plugin-system.md](spec/plugin-system.md) を参照してください。
 
 ## テーブル機能
 
-実装済み。詳細は [table-features.md](table-features.md) を参照してください。
+実装済み。詳細は [table-features.md](spec/table-features.md) を参照してください。
 
 ## その他の機能
 
@@ -84,7 +84,7 @@
 
 ## Step 6: 高度なUMD機能
 
-実装済み。詳細は [umd-extensions.md](umd-extensions.md) を参照してください。
+実装済み。詳細は [umd-extensions.md](spec/umd-extensions.md) を参照してください。
 
 ## テスト結果
 

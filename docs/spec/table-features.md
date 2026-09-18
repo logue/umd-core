@@ -13,7 +13,7 @@ Universal Markdown のテーブル関連機能です。
 外部CSSフレームワークの `table-striped`/`table-hover`/`table-dark` のような装飾バリエーションは
 サポートしません。縦線の有無はどちらの構文で書いたかで決まる固定の性質であり、
 オプションで切り替えるものではないため、`table-bordered`/`table-borderless`も
-非対応です。スタイル定義は[`scss/components/table.scss`](../scss/components/table.scss)参照。
+非対応です。スタイル定義は[`scss/components/table.scss`](../../scss/components/table.scss)参照。
 
 ## UMDテーブル拡張
 

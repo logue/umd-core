@@ -13,8 +13,8 @@
     "@sableclient/twemoji-font": "^1.0.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13",
-    "@rsbuild/core": "^2.2.6",
+    "@biomejs/biome": "2.5.14",
+    "@rsbuild/core": "^2.2.7",
     "@rsbuild/plugin-sass": "^2.0.1"
   }
 }

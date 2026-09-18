@@ -23,11 +23,11 @@
 - この文書から実装済み詳細は削除し、リンク参照に統一する。
 - 実装済み機能は以下に集約する。
   - [implemented-features.md](implemented-features.md)
-  - [umd-extensions.md](umd-extensions.md)
-  - [plugin-system.md](plugin-system.md)
-  - [media-tags.md](media-tags.md)
-  - [table-features.md](table-features.md)
-  - [basic-markdown-features.md](basic-markdown-features.md)
+  - [umd-extensions.md](spec/umd-extensions.md)
+  - [plugin-system.md](spec/plugin-system.md)
+  - [media-tags.md](spec/media-tags.md)
+  - [table-features.md](spec/table-features.md)
+  - [basic-markdown-features.md](spec/basic-markdown-features.md)
 
 ### 標準プラグイン書式の扱い
 
@@ -36,7 +36,7 @@
 - `@math(...)` / `&math(...)`
 - `@popover(...)` / `&popover(...)`
 
-これらの仕様は [umd-extensions.md](umd-extensions.md) と [plugin-system.md](plugin-system.md) を参照。
+これらの仕様は [umd-extensions.md](spec/umd-extensions.md) と [plugin-system.md](spec/plugin-system.md) を参照。
 
 ---
 
@@ -128,7 +128,7 @@
 
 > 🚧 **将来構想**
 
-詳細仕様は [template-engine-spec.md](template-engine-spec.md) を参照。
+詳細仕様は [template-engine-spec.md](spec/template-engine-spec.md) を参照。
 
 ---
 

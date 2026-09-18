@@ -272,7 +272,7 @@ Output HTML + Frontmatter + Footnotes
 
 - `code_block.rs`: 言語クラスのパススルー・ファイル名付きコードブロックの
   メタデータ処理（シンタックスハイライトやMermaid図等のレンダリングはホスト
-  アプリケーションの責務、[docs/code-block-extensions.md](../code-block-extensions.md)参照）
+  アプリケーションの責務、[docs/code-block-extensions.md](code-block-extensions.md)参照）
 - `normalize.rs`: フェンス情報文字列の正規化（`` ```lang:filename `` 記法）
 - `protect.rs`: コードブロック・インラインコードを他パスの変換から保護し、
   復元時に `code_block` の処理とインラインコードの色スウォッチ検出を実行
@@ -592,7 +592,7 @@ umd/
 - `code_block.rs`: `language-*` クラスのパススルーとファイル名メタデータの
   処理のみ。シンタックスハイライトやMermaid/GeoJSON等のレンダリングは行わず、
   ホストアプリケーション（Layer 2/3）が`language-*`クラスを検出して行う
-  （[docs/code-block-extensions.md](../code-block-extensions.md)参照）。
+  （[docs/code-block-extensions.md](code-block-extensions.md)参照）。
   言語指定の有無・ファイル名の有無に関わらず、常に`<figure class="umd-code-block">`でラップされる
   （`alignment::apply_pending_code_block_placement`経由でSTART:/CENTER:/END:/JUSTIFY:装飾子に対応）
 - `normalize.rs`: フェンス情報文字列の正規化（`` ```lang:filename ``）

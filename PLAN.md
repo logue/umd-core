@@ -310,7 +310,7 @@ Subresource Integrity (SRI) 相当のハッシュ検証をリンク・画像に�
 用途に応じてファイル拡張子を使い分ける案です。UMDパーサー自体は文字列を入力とするため拡張子を直接判定しませんが、エディタやビルドツールがファイルを開かずに種別を判別できるようにするための命名規約です。
 
 - `.umd`: 通常のUMDドキュメント
-- `.umdt`: テンプレートエンジンモード（[docs/template-engine-spec.md](docs/template-engine-spec.md)、フロントマターの`is_template: true`と併用）で使うファイルの命名規約。`.ts`/`.tsx`、`.md`/`.mdx`と同じ「拡張子+1文字」の慣習に合わせ、`.umd`とソート時に隣接するよう`umdt`（`tumd`ではなく）を採用
+- `.umdt`: テンプレートエンジンモード（[docs/spec/template-engine-spec.md](docs/spec/template-engine-spec.md)、フロントマターの`is_template: true`と併用）で使うファイルの命名規約。`.ts`/`.tsx`、`.md`/`.mdx`と同じ「拡張子+1文字」の慣習に合わせ、`.umd`とソート時に隣接するよう`umdt`（`tumd`ではなく）を採用
 - `.umdx`: 画像等バイナリアセットを同梱したパッケージ形式（アイデア段階、仕様未確定）。`docx`/`xlsx`/`pptx`同様、ZIPで`.umd`本文とアセットファイルを束ねる形を想定。想定用途はアプリケーション組み込みマニュアルをこのWASMパーサーとWebViewで表示するケースで、コアパーサーの契約（文字列→HTML）自体は変えず、別レイヤー（展開ツール）がZIPを解いて本文だけをパーサーに渡す構成を想定
 
 ### 検討事項（拡張子）
@@ -327,7 +327,7 @@ Subresource Integrity (SRI) 相当のハッシュ検証をリンク・画像に�
 
 外部フレームワークのユーティリティクラス依存を除去し、CSS Layer（`@layer`）を使ったUMD独自のリファレンスCSSへ移行済みです。
 
-> クラス名の旧→新対応（`d-block` → `umd-block` 等、2026年8月実施済み）は移行完了済みのため本書からは削除。現行のクラス名は [docs/architecture.md](docs/architecture.md)・[docs/umd-extensions.md](docs/umd-extensions.md)・[docs/table-features.md](docs/table-features.md)・[docs/media-tags.md](docs/media-tags.md)・`scss/` を参照。
+> クラス名の旧→新対応（`d-block` → `umd-block` 等、2026年8月実施済み）は移行完了済みのため本書からは削除。現行のクラス名は [docs/architecture.md](docs/architecture.md)・[docs/spec/umd-extensions.md](docs/spec/umd-extensions.md)・[docs/spec/table-features.md](docs/spec/table-features.md)・[docs/spec/media-tags.md](docs/spec/media-tags.md)・`scss/` を参照。
 
 ### 基本ルール（リファレンスCSS）
 
@@ -388,7 +388,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 
 ### 実装計画（リファレンスCSS）残タスク
 
-> クラス名改名・リファレンスCSS実装・色/サイズ系プラグインの整理・テーブルセル揃えの改称・`apply_block_placement`の論理名統一は完了済み。詳細は [docs/architecture.md](docs/architecture.md)・[docs/plugin-system.md](docs/plugin-system.md)・[docs/inline-plugins.md](docs/inline-plugins.md)・[docs/table-features.md](docs/table-features.md) を参照。
+> クラス名改名・リファレンスCSS実装・色/サイズ系プラグインの整理・テーブルセル揃えの改称・`apply_block_placement`の論理名統一は完了済み。詳細は [docs/architecture.md](docs/architecture.md)・[docs/spec/plugin-system.md](docs/spec/plugin-system.md)・[docs/spec/inline-plugins.md](docs/spec/inline-plugins.md)・[docs/spec/table-features.md](docs/spec/table-features.md) を参照。
 
 - [x] **UMDテーブルのセル装飾 `COLOR()`/`SIZE()` を`decoration_values.rs`へ移行**（`src/extensions/table/umd/decorations.rs`）: 独自実装の`is_bootstrap_color`/`get_bootstrap_size_class`を削除し、`&color()`/`&size()`と共有の`map_color_value_with_options`/`map_font_size_value`を使用するよう変更。出力クラスは`text-{color}`/`bg-{color}`/`fs-*`から`umd-color-*`/`umd-bg-*`/`umd-text-size-*`へ、パレットも16色に統一。適用先はこれまで通りセル自体（`<td>`/`<th>`、`cell.classes`/`cell.styles`）のまま変更なし。`allow_hex_colors`/`allow_custom_font_size`オプションも`ParserOptions`から`preprocess_conflicts`→`extract_umd_tables`→`parse_table`→`parse_cell_content`まで貫通させ、`&color()`/`&size()`と同じ挙動に統一（セル内容中の`項目&color(red){New!};`のようなネスト`&color()`との共存もテスト済み）
 - [x] 既存テスト（`bootstrap_integration.rs` 等）の移行方針検討 — `bootstrap_integration.rs`を`tests/rendering_integration.rs`へリネーム（`examples/test_bootstrap_integration.rs`も`examples/test_reference_css.rs`へ）。ファイル名・個別テスト関数名・コメントに残っていた「Bootstrap」表記をUMD独自のumd-*クラス前提の名称へ統一（2026年9月）

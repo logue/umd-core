@@ -38,7 +38,7 @@ Minimum requirements:
 - ✅ **CommonMark Compliant** (~75%+ specification compliance)
 - ✅ **GFM Extensions** (tables, strikethrough, task lists, footnotes)
 - ✅ **HTML5 Semantic Tags** (optimized for accessibility and SEO)
-- ✅ **Reference CSS** (`umd-*` utility classes, no required framework dependency — see [docs/reference-css.md](docs/reference-css.md))
+- ✅ **Reference CSS** (`umd-*` utility classes, no required framework dependency — see [docs/spec/reference-css.md](docs/spec/reference-css.md))
 
 ### Media & Content
 
@@ -424,7 +424,7 @@ foreach ($nodes as $tpl) {
 }
 ```
 
-See full examples: [`docs/plugin-system.md`](docs/plugin-system.md)
+See full examples: [`docs/spec/plugin-system.md`](docs/spec/plugin-system.md)
 
 ### Tables with Cell Spanning
 

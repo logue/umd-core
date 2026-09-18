@@ -20,7 +20,7 @@ Universal Markdown が提供する基本 Markdown 機能の実装一覧です。
 > 標準CommonMarkでは `__text__` も `**text**` と同じ `<strong>` になりますが、
 > UMDでは「複数の書き方に同じ意味を持たせない」という設計方針により
 > `__text__` をDiscord風の下線（`<u>`）専用構文として再定義しています。
-> 詳細は [architecture.md の設計方針](architecture.md#設計方針)を参照してください。
+> 詳細は [architecture.md の設計方針](../architecture.md#設計方針)を参照してください。
 
 ## 見出しアンカー
 
