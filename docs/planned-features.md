@@ -139,6 +139,8 @@
 - ラジオボタン: `( )`, `(x)`
 - トグルボタン: `< >`, `<x>`
 - 画像リンク: `[![alt](image)](link)`
+- 通常リンクの `integrity` 属性対応（SRI） — 画像/メディア側（`![alt](url){sha256-...}`、[spec/media-tags.md](spec/media-tags.md)参照）は実装済み。同構文を通常リンク（`[text](url)`）にも適用する仕様。詳細は[PLAN.md](../PLAN.md)を参照
+- 色パレットのカスタマイズ（配列によるオーバーライド） — `COLOR()`/`&color()`が受け付ける色名一覧を配列で差し替え可能にする仕様。デフォルトは現行のBootstrap6風16色パレット。Tailwind・Material Design風の色名指定も可能にする。HEX指定は既存の`allow_hex_colors`同様オプション扱いのままとし、UMDとしては非推奨。詳細は[PLAN.md](../PLAN.md)を参照
 
 ---
 
