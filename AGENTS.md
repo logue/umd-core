@@ -73,11 +73,11 @@ umd-core follows a **3-layer deferred rendering** design. The core principle is:
 
 ### Layer Responsibilities
 
-| Layer | Owner | Responsibility |
-|-------|-------|----------------|
+| Layer                             | Owner     | Responsibility                                                                                                                                            |
+| --------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Layer 1: umd-core (Rust/WASM)** | This repo | Parse CommonMark + UMD standard syntax. Convert plugin syntax into `<template>`/`<data>` placeholder tags. The core has no knowledge of plugin semantics. |
-| **Layer 2: Host application** | Consumer | Interpret `<template>`/`<data>` placeholders and expand them into actual HTML/content. Implement domain-specific plugins here. |
-| **Layer 3: Frontend** | Consumer | Apply CSS classes (`umd-*`), handle client-side interaction and rendering. |
+| **Layer 2: Host application**     | Consumer  | Interpret `<template>`/`<data>` placeholders and expand them into actual HTML/content. Implement domain-specific plugins here.                            |
+| **Layer 3: Frontend**             | Consumer  | Apply CSS classes (`umd-*`), handle client-side interaction and rendering.                                                                                |
 
 ### Decision Criterion: What Belongs in Core
 
@@ -85,7 +85,7 @@ umd-core follows a **3-layer deferred rendering** design. The core principle is:
 
 **Host/frontend responsibility**: Domain-specific processing, concrete interpretation of plugin semantics, visual presentation details.
 
-When in doubt: if the meaning of a construct depends on *who is using UMD*, it belongs outside the core.
+When in doubt: if the meaning of a construct depends on _who is using UMD_, it belongs outside the core.
 
 ### `<template>`/`<data>` Placeholders
 
@@ -103,4 +103,4 @@ Plugin syntax that umd-core cannot resolve at parse time is emitted as a `<templ
 
 ### Contrast with PukiWiki
 
-PukiWiki plugins generate HTML directly by inserting PHP code into the core. umd-core inverts this: plugins are pushed *outside* the core, and communication happens through semantically neutral placeholder tags. The host decides how (and whether) to render them.
+PukiWiki plugins generate HTML directly by inserting PHP code into the core. umd-core inverts this: plugins are pushed _outside_ the core, and communication happens through semantically neutral placeholder tags. The host decides how (and whether) to render them.

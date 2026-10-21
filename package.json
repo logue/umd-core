@@ -1,20 +1,45 @@
 {
   "name": "umd-core-assets",
   "private": true,
+  "description": "Universal Markdown - A post-Markdown superset with semantic HTML and extensible syntax",
+  "keywords": [],
+  "homepage": "https://github.com/logue/umd-core",
+  "bugs": {
+    "url": "https://github.com/logue/umd-core/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:logue/umd-core.git"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Logue",
+    "email": "logue@hotmail.co.jp",
+    "url": "https://logue.dev/"
+  },
   "type": "module",
   "scripts": {
     "build": "./build.sh",
-    "build:css": "rsbuild build && node scripts/build-css.mjs",
-    "dev:css": "rsbuild dev",
-    "lint": "biome check --write .",
+    "build:css": "rs build && node scripts/build-css.mjs",
+    "dev:css": "rs dev",
+    "lint": "run-s 'lint:*' --",
+    "lint:prettier": "rs fmt .",
+    "lint:rslint": "rs lint . --fix",
+    "prepare": "rs hooks && (npx --no-install skills --version >/dev/null 2>&1 && npx skills experimental_install --yes || echo '\\033[1;33m⚠️  [Warning] skills command not found. Skipped auto-installation of agent skills.\\033[0m')",
+    "skills:update": "npx skills update",
     "test": "cargo test"
   },
   "dependencies": {
     "@sableclient/twemoji-font": "^1.0.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
-    "@rsbuild/core": "^2.2.7",
-    "@rsbuild/plugin-sass": "^2.0.1"
+    "@eslint/markdown": "^8.0.3",
+    "@rsbuild/plugin-sass": "^2.0.1",
+    "@tsconfig/node-lts": "^24.0.1",
+    "@types/node": "^26.6.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-yml": "^3.9.0",
+    "npm-run-all2": "^9.0.3",
+    "rstack": "^0.8.5"
   }
 }

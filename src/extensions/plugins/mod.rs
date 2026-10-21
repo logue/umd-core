@@ -12,7 +12,7 @@ pub mod inline;
 thread_local! {
     static MATH_CONVERTER: std::cell::RefCell<Option<math_core::LatexToMathML>> =
         std::cell::RefCell::new(
-            math_core::LatexToMathML::new(math_core::MathCoreConfig::default()).ok()
+            math_core::LatexToMathML::new(math_core::MathCoreConfig::default(), vec![]).ok()
         );
 }
 

@@ -1,8 +1,8 @@
 [package]
 name = "umd"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
-rust-version = "1.98.1"
+rust-version = "1.99.1"
 license = "Apache-2.0"
 authors = ["logue"]
 description = "Universal Markdown - A post-Markdown superset with semantic HTML and extensible syntax"
@@ -28,27 +28,27 @@ exclude = [
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-ammonia = "4.1.4" # HTML sanitization
-base64 = "0.23.1" # Base64 encoding for content protection
-comrak = { version = "0.55.0", default-features = false } # Markdown parser (GFM)
-html-escape = "0.2.15" # HTML escaping
-math-core = "0.7.0" # LaTeX to MathML Core conversion for &math/@math
-maud = "0.27.0" # Type-safe HTML generation
-once_cell = "1.21.4" # Lazy static initialization
-regex = "1.13.1" # Pattern matching
-serde = { version = "1.0.229", features = ["derive"] } # Serialization
-serde_json = "1.0.151" # JSON serialization for definition lists
-unicode-segmentation = "1.13.3" # Grapheme cluster handling
-uuid = { version = "1.26.1", features = [
+ammonia = "4.2" # HTML sanitization
+base64 = "0.23" # Base64 encoding for content protection
+comrak = { version = "0.56", default-features = false } # Markdown parser (GFM)
+html-escape = "0.3" # HTML escaping
+math-core = "0.9" # LaTeX to MathML Core conversion for &math/@math
+maud = "0.27" # Type-safe HTML generation
+once_cell = "1.21" # Lazy static initialization
+regex = "1.13" # Pattern matching
+serde = { version = "1.0", features = ["derive"] } # Serialization
+serde_json = "1.0" # JSON serialization for definition lists
+unicode-segmentation = "1.13" # Grapheme cluster handling
+uuid = { version = "1.28", features = [
   "v4",
   "js",
 ] } # UUID generation (e.g. popover element IDs)
-wasm-bindgen = "0.2.128" # WASM bindings
+wasm-bindgen = "0.2" # WASM bindings
 
 [dev-dependencies]
-criterion = "0.8.2"          # Benchmarking
-insta = "1.48.0"             # Snapshot testing
-wasm-bindgen-test = "0.3.78" # WASM testing
+criterion = "0.8"          # Benchmarking
+insta = "1.49"             # Snapshot testing
+wasm-bindgen-test = "0.3" # WASM testing
 
 [profile.release]
 opt-level = "z"   # Optimize for size

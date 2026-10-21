@@ -21,7 +21,7 @@
  */
 @media print {
   :where(abbr[title])::after {
-    content: " (" attr(title) ")";
+    content: ' (' attr(title) ')';
     font-size: 0.85em;
   }
 }

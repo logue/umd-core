@@ -1,6 +1,6 @@
 # umd-core 設計判断記録(ADR)・テストケース・想定問答
 
-Oct 15, 2026 · @Masashi Yoshikawa
+Oct 15, 2026 · @logue
 
 ## 位置づけ
 

@@ -124,9 +124,11 @@ fn main() {
 Output:
 
 ```html
-<figure class="umd-code-block"><pre><code class="language-rust">fn main() {
+<figure class="umd-code-block">
+  <pre><code class="language-rust">fn main() {
     println!("hello");
-}</code></pre></figure>
+}</code></pre>
+</figure>
 ```
 
 #### Output Rules
@@ -142,7 +144,7 @@ Since umd-core does not mark code as already-highlighted, a host applying its ow
 ```javascript
 document
   .querySelectorAll('pre code[class*="language-"]')
-  .forEach((el) => Prism.highlightElement(el));
+  .forEach(el => Prism.highlightElement(el));
 ```
 
 A host that wants to render specific languages itself (Mermaid diagrams, GeoJSON maps, etc.) detects those languages by class and replaces the block — see [docs/code-block-extensions.md](docs/code-block-extensions.md) for the recommended pattern (keep the original `<pre><code>` in the DOM, hidden, for a "view source" fallback).
@@ -204,21 +206,21 @@ Build WASM module:
 Use in JavaScript:
 
 ```javascript
-import init, { parse } from "./dist/umd.js";
+import init, { parse } from './dist/umd.js';
 
 async function main() {
   await init();
-  const html = parse("# Hello from WASM");
+  const html = parse('# Hello from WASM');
   const htmlWithOptions = parse(
-    "[Guide](/docs)",
+    '[Guide](/docs)',
     JSON.stringify({
-      baseUrl: "/app",
+      baseUrl: '/app',
       allowFragmentExtensionHint: true,
       icons: {
         colorSwatch:
-          '<iconify-icon icon="ic:baseline-colorize" aria-hidden="true"></iconify-icon>',
-      },
-    }),
+          '<iconify-icon icon="ic:baseline-colorize" aria-hidden="true"></iconify-icon>'
+      }
+    })
   );
   console.log(html);
   console.log(htmlWithOptions);
@@ -394,20 +396,20 @@ Standard plugins may output direct HTML instead of `<template>`:
 TypeScript parsing snippet:
 
 ```ts
-const doc = new DOMParser().parseFromString(html, "text/html");
-const plugins = [...doc.querySelectorAll("template.umd-plugin")].map((tpl) => {
-  const cls = tpl.getAttribute("class") ?? "";
+const doc = new DOMParser().parseFromString(html, 'text/html');
+const plugins = [...doc.querySelectorAll('template.umd-plugin')].map(tpl => {
+  const cls = tpl.getAttribute('class') ?? '';
   const name =
     cls
       .split(/\s+/)
-      .find((c) => c.startsWith("umd-plugin-") && c !== "umd-plugin")
-      ?.replace("umd-plugin-", "") ?? "unknown";
-  const args = [...tpl.content.querySelectorAll("data[value]")]
+      .find(c => c.startsWith('umd-plugin-') && c !== 'umd-plugin')
+      ?.replace('umd-plugin-', '') ?? 'unknown';
+  const args = [...tpl.content.querySelectorAll('data[value]')]
     .sort(
       (a, b) =>
-        Number(a.getAttribute("value")) - Number(b.getAttribute("value")),
+        Number(a.getAttribute('value')) - Number(b.getAttribute('value'))
     )
-    .map((n) => n.textContent ?? "");
+    .map(n => n.textContent ?? '');
   return { name, args };
 });
 ```

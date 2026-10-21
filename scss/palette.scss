@@ -18,7 +18,7 @@
  * <base> for 500
  * color-mix(in lab, <base>, $black <shade%>) for 600–975
  */
-@use "sass:map";
+@use 'sass:map';
 
 // Easily convert colors to oklch() with https://oklch.com/
 

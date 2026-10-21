@@ -9,14 +9,14 @@
 
 ### 主要ライブラリ
 
-| ライブラリ          | バージョン | 用途                                     |
-| ------------------- | ---------- | ---------------------------------------- |
-| ammonia             | 4.1.4      | HTML サニタイズ                          |
-| comrak              | 0.55.0     | Markdown パーサー (GFM)                  |
-| math-core           | 0.8.2      | LaTeX to MathML 変換                     |
-| maud                | 0.27.0     | 型安全 HTML 生成                         |
-| regex               | 1.13.1     | パターンマッチング                       |
-| wasm-bindgen        | 0.2.127    | WASM バインディング                      |
+| ライブラリ   | バージョン | 用途                    |
+| ------------ | ---------- | ----------------------- |
+| ammonia      | 4.1.4      | HTML サニタイズ         |
+| comrak       | 0.55.0     | Markdown パーサー (GFM) |
+| math-core    | 0.9.0      | LaTeX to MathML 変換    |
+| maud         | 0.27.0     | 型安全 HTML 生成        |
+| regex        | 1.13.1     | パターンマッチング      |
+| wasm-bindgen | 0.2.127    | WASM バインディング     |
 
 ---
 
@@ -402,12 +402,12 @@ UMD 文法上の配置記法の正式名称は以下の通りです：
 
 CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-` プレフィックスを付けた独自記法を採用します。
 
-| 記法        | 対応 CSS                    | 備考                                                                     |
-| ----------- | ---------------------------- | ------------------------------------------------------------------------ |
-| `V-START:`  | `vertical-align: top`        | 旧 `TOP:`                                                                 |
-| `V-END:`    | `vertical-align: bottom`     | 旧 `BOTTOM:`                                                              |
-| `V-CENTER:` | `vertical-align: middle`     | 旧 `MIDDLE:`                                                              |
-| `BASELINE:` | `vertical-align: baseline`   | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
+| 記法        | 対応 CSS                   | 備考                                                                       |
+| ----------- | -------------------------- | -------------------------------------------------------------------------- |
+| `V-START:`  | `vertical-align: top`      | 旧 `TOP:`                                                                  |
+| `V-END:`    | `vertical-align: bottom`   | 旧 `BOTTOM:`                                                               |
+| `V-CENTER:` | `vertical-align: middle`   | 旧 `MIDDLE:`                                                               |
+| `BASELINE:` | `vertical-align: baseline` | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
 
 ### 検討事項（リファレンスCSS）
 

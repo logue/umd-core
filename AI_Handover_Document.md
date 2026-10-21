@@ -306,14 +306,14 @@ VSCode拡張機能内でWASMを使用する場合：
     </div>
 
     <script type="module">
-      import init, { parse } from "./dist/umd.js";
+      import init, { parse } from './dist/umd.js';
 
       await init();
 
-      const input = document.getElementById("input");
-      const preview = document.getElementById("preview");
+      const input = document.getElementById('input');
+      const preview = document.getElementById('preview');
 
-      input.addEventListener("input", () => {
+      input.addEventListener('input', () => {
         const html = parse(input.value);
         preview.innerHTML = html;
       });

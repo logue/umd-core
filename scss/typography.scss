@@ -16,33 +16,33 @@
 $font-sans:
   system-ui,
   -apple-system,
-  "Segoe UI",
+  'Segoe UI',
   Roboto,
-  "Helvetica Neue",
+  'Helvetica Neue',
   Arial,
-  "Hiragino Kaku Gothic ProN",
-  "Hiragino Sans",
-  "Yu Gothic",
+  'Hiragino Kaku Gothic ProN',
+  'Hiragino Sans',
+  'Yu Gothic',
   Meiryo,
-  "Apple SD Gothic Neo",
-  "Malgun Gothic",
-  "PingFang SC",
-  "PingFang TC",
-  "Microsoft YaHei",
-  "Microsoft JhengHei",
-  "Noto Sans JP",
-  "Noto Sans KR",
-  "Noto Sans SC",
-  "Noto Sans TC",
-  "Noto Sans CJK JP" !default;
+  'Apple SD Gothic Neo',
+  'Malgun Gothic',
+  'PingFang SC',
+  'PingFang TC',
+  'Microsoft YaHei',
+  'Microsoft JhengHei',
+  'Noto Sans JP',
+  'Noto Sans KR',
+  'Noto Sans SC',
+  'Noto Sans TC',
+  'Noto Sans CJK JP' !default;
 
 $fonts-sans-serif:
-  Georgia, Cambria, "Times New Roman", Times, "Hiragino Mincho ProN",
-  "Yu Mincho", YuMincho, "MS PMincho", AppleMyungjo, Batang, "Songti SC",
-  "Songti TC", SimSun, PMingLiU !default;
+  Georgia, Cambria, 'Times New Roman', Times, 'Hiragino Mincho ProN',
+  'Yu Mincho', YuMincho, 'MS PMincho', AppleMyungjo, Batang, 'Songti SC',
+  'Songti TC', SimSun, PMingLiU !default;
 
 $fonts-mono:
-  ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono" !default;
+  ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono' !default;
 
 :root {
   /*
@@ -100,15 +100,15 @@ $fonts-mono:
  * falls through to the next family in --umd-font-sans — harmless no-op.
  */
 @font-face {
-  font-family: "Yu Gothic";
+  font-family: 'Yu Gothic';
   font-weight: normal;
-  src: local("Yu Gothic Medium"), local("YuGothic-Medium"), local("Yu Gothic");
+  src: local('Yu Gothic Medium'), local('YuGothic-Medium'), local('Yu Gothic');
 }
 
 @font-face {
-  font-family: "Yu Gothic";
+  font-family: 'Yu Gothic';
   font-weight: bold;
-  src: local("Yu Gothic Bold"), local("YuGothic-Bold");
+  src: local('Yu Gothic Bold'), local('YuGothic-Bold');
 }
 
 /*
@@ -123,7 +123,7 @@ $fonts-mono:
 @font-face {
   font-family: Twemoji;
   font-display: swap;
-  src: url("@sableclient/twemoji-font/files/twemoji.woff2") format("woff2");
+  src: url('@sableclient/twemoji-font/files/twemoji.woff2') format('woff2');
   unicode-range:
     U+23, U+2A, U+30-39, U+200D, U+203C, U+2049, U+20E3, U+2139, U+2194-2199,
     U+21A9-21AA, U+231A-231B, U+2328, U+23CF, U+23E9-23F3, U+23F8-23FA,

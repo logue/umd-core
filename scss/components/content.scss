@@ -10,7 +10,7 @@
   cursor: pointer;
 }
 
-:where(.umd-spoiler[aria-expanded="true"]) {
+:where(.umd-spoiler[aria-expanded='true']) {
   color: var(--umd-body-bg);
 }
 
