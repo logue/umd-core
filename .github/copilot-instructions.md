@@ -17,16 +17,16 @@ frontmatter抽出 → 前処理 → 競合保護 → サニタイズ → comrak�
 
 ## 何をどこで変更するか（クイックリファレンス）
 
-| 対象機能                               | ファイル                                          | テスト                           |
-| -------------------------------------- | -------------------------------------------------- | -------------------------------- |
-| 構文競合、UMD仕様                      | `src/extensions/conflict_resolver.rs`              | `tests/conflict_resolution.rs`   |
-| インライン表記 (`''bold''`, `%%`, `\|\|` 等) | `src/extensions/inline/*`                    | `tests/rendering_integration.rs` |
-| フェンス表記 (コードブロック)          | `src/extensions/fence/*`                           | `tests/rendering_integration.rs` |
-| 位置揃え表記 (`CENTER:`, `V-START:` 等)| `src/extensions/alignment.rs`                      | `tests/rendering_integration.rs` |
-| ブロック装飾 (`COLOR()`, `SIZE()` 等)  | `src/extensions/block_decoration.rs`               | `tests/rendering_integration.rs` |
-| インライン/ブロックプラグイン (`&fn()`, `@fn()`) | `src/extensions/plugins/*`               | `tests/ *`                       |
-| テーブル拡張                           | `src/extensions/table/*`                           | `examples/test_table_*.rs`       |
-| メディア自動検出                       | `src/extensions/media.rs`                          | `tests/rendering_integration.rs` |
+| 対象機能                                         | ファイル                              | テスト                           |
+| ------------------------------------------------ | ------------------------------------- | -------------------------------- |
+| 構文競合、UMD仕様                                | `src/extensions/conflict_resolver.rs` | `tests/conflict_resolution.rs`   |
+| インライン表記 (`''bold''`, `%%`, `\|\|` 等)     | `src/extensions/inline/*`             | `tests/rendering_integration.rs` |
+| フェンス表記 (コードブロック)                    | `src/extensions/fence/*`              | `tests/rendering_integration.rs` |
+| 位置揃え表記 (`CENTER:`, `V-START:` 等)          | `src/extensions/alignment.rs`         | `tests/rendering_integration.rs` |
+| ブロック装飾 (`COLOR()`, `SIZE()` 等)            | `src/extensions/block_decoration.rs`  | `tests/rendering_integration.rs` |
+| インライン/ブロックプラグイン (`&fn()`, `@fn()`) | `src/extensions/plugins/*`            | `tests/ *`                       |
+| テーブル拡張                                     | `src/extensions/table/*`              | `examples/test_table_*.rs`       |
+| メディア自動検出                                 | `src/extensions/media.rs`             | `tests/rendering_integration.rs` |
 
 詳細は `docs/architecture.md` の「何をどこで変更するか」セクション参照。
 
@@ -90,6 +90,7 @@ Rust crate の公開関連は以下を一次情報として扱う：
 - **[docs/architecture.md](../docs/architecture.md)** - システムアーキテクチャ、処理フロー、コンポーネント詳細、開発者ガイド
 - **[docs/implemented-features.md](../docs/implemented-features.md)** - 実装済み機能のリファレンス
 - **[docs/planned-features.md](../docs/planned-features.md)** - 実装予定機能の仕様
+- **[docs/adr.md](../docs/adr.md)** - システムや設計における重要な意思決定とその背景（「なぜその技術を選んだのか」）
 - **[PLAN.md](../PLAN.md)** - 未実装機能と実装計画
 - **[README.md](../README.md)** - プロジェクト概要とユーザー向けドキュメント
 - **[PUBLISHING.md](../PUBLISHING.md)** - crates.io 公開手順

@@ -8,7 +8,7 @@ const sourceFontDirectory = `${rsbuildDirectory}/font`;
 const targetFontDirectory = `${outputDirectory}/fonts`;
 
 await mkdir(outputDirectory, {
-  recursive: true,
+  recursive: true
 });
 
 let css = await readFile(sourceCss, 'utf8');
@@ -20,12 +20,12 @@ let css = await readFile(sourceCss, 'utf8');
 const fontFiles = await readdir(sourceFontDirectory).catch(() => []);
 if (fontFiles.length > 0) {
   await mkdir(targetFontDirectory, {
-    recursive: true,
+    recursive: true
   });
   await Promise.all(
-    fontFiles.map((file) =>
-      cp(`${sourceFontDirectory}/${file}`, `${targetFontDirectory}/${file}`),
-    ),
+    fontFiles.map(file =>
+      cp(`${sourceFontDirectory}/${file}`, `${targetFontDirectory}/${file}`)
+    )
   );
   css = css.replaceAll('/static/font/', './fonts/');
 }
@@ -33,11 +33,11 @@ if (fontFiles.length > 0) {
 await writeFile(targetCss, css);
 await rm(rsbuildDirectory, {
   recursive: true,
-  force: true,
+  force: true
 });
 await rm(`${outputDirectory}/umd-reference.html`, {
-  force: true,
+  force: true
 });
 await rm(`${outputDirectory}/umd-reference.js`, {
-  force: true,
+  force: true
 });

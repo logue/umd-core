@@ -3,20 +3,20 @@
 **プロジェクト概要**: Markdownを超える次世代マークアップ言語。CommonMark仕様テスト 75%+ パス、セマンティックHTML、拡張可能なプラグインシステム提供。
 
 **作成日**: 2026年1月23日  
-**最終更新**: 2026年9月10日  
-**Rustバージョン**: 1.98.1 (Edition 2024)  
+**最終更新**: 2026年10月22日  
+**Rustバージョン**: 1.99.1 (Edition 2024)  
 **ライセンス**: Apache-2.0
 
 ### 主要ライブラリ
 
-| ライブラリ          | バージョン | 用途                                     |
-| ------------------- | ---------- | ---------------------------------------- |
-| ammonia             | 4.1.4      | HTML サニタイズ                          |
-| comrak              | 0.55.0     | Markdown パーサー (GFM)                  |
-| math-core           | 0.8.2      | LaTeX to MathML 変換                     |
-| maud                | 0.27.0     | 型安全 HTML 生成                         |
-| regex               | 1.13.1     | パターンマッチング                       |
-| wasm-bindgen        | 0.2.127    | WASM バインディング                      |
+| ライブラリ   | バージョン | 用途                    |
+| ------------ | ---------- | ----------------------- |
+| ammonia      | 4.1        | HTML サニタイズ         |
+| comrak       | 0.55       | Markdown パーサー (GFM) |
+| math-core    | 0.9        | LaTeX to MathML 変換    |
+| maud         | 0.27       | 型安全 HTML 生成        |
+| regex        | 1.13       | パターンマッチング      |
+| wasm-bindgen | 0.3        | WASM バインディング     |
 
 ---
 
@@ -28,6 +28,7 @@
 - **[docs/architecture.md](docs/architecture.md)** - システムアーキテクチャ、開発者ガイド、技術設計
 - **[docs/implemented-features.md](docs/implemented-features.md)** - 実装済み機能の完全リファレンス
 - **[docs/planned-features.md](docs/planned-features.md)** - 実装予定機能の詳細仕様
+- **[docs/adr.md](docs/adr.md)** - システムや設計における重要な意思決定とその背景（「なぜその技術を選んだのか」）
 - **[README.md](README.md)** - プロジェクト概要とユーザー向けドキュメント
 
 ---
@@ -402,12 +403,12 @@ UMD 文法上の配置記法の正式名称は以下の通りです：
 
 CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-` プレフィックスを付けた独自記法を採用します。
 
-| 記法        | 対応 CSS                    | 備考                                                                     |
-| ----------- | ---------------------------- | ------------------------------------------------------------------------ |
-| `V-START:`  | `vertical-align: top`        | 旧 `TOP:`                                                                 |
-| `V-END:`    | `vertical-align: bottom`     | 旧 `BOTTOM:`                                                              |
-| `V-CENTER:` | `vertical-align: middle`     | 旧 `MIDDLE:`                                                              |
-| `BASELINE:` | `vertical-align: baseline`   | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
+| 記法        | 対応 CSS                   | 備考                                                                       |
+| ----------- | -------------------------- | -------------------------------------------------------------------------- |
+| `V-START:`  | `vertical-align: top`      | 旧 `TOP:`                                                                  |
+| `V-END:`    | `vertical-align: bottom`   | 旧 `BOTTOM:`                                                               |
+| `V-CENTER:` | `vertical-align: middle`   | 旧 `MIDDLE:`                                                               |
+| `BASELINE:` | `vertical-align: baseline` | 変更なし（方向性を持たないため名称そのまま。`umd-v-baseline`クラスを新設） |
 
 ### 検討事項（リファレンスCSS）
 
@@ -419,7 +420,7 @@ CSS 仕様に `vertical-align` の論理的代替が存在しないため、`V-`
 > クラス名改名・リファレンスCSS実装・色/サイズ系プラグインの整理・テーブルセル揃えの改称・`apply_block_placement`の論理名統一は完了済み。詳細は [docs/architecture.md](docs/architecture.md)・[docs/spec/plugin-system.md](docs/spec/plugin-system.md)・[docs/spec/inline-plugins.md](docs/spec/inline-plugins.md)・[docs/spec/table-features.md](docs/spec/table-features.md) を参照。
 
 - [x] **UMDテーブルのセル装飾 `COLOR()`/`SIZE()` を`decoration_values.rs`へ移行**（`src/extensions/table/umd/decorations.rs`）: 独自実装の`is_bootstrap_color`/`get_bootstrap_size_class`を削除し、`&color()`/`&size()`と共有の`map_color_value_with_options`/`map_font_size_value`を使用するよう変更。出力クラスは`text-{color}`/`bg-{color}`/`fs-*`から`umd-color-*`/`umd-bg-*`/`umd-text-size-*`へ、パレットも16色に統一。適用先はこれまで通りセル自体（`<td>`/`<th>`、`cell.classes`/`cell.styles`）のまま変更なし。`allow_hex_colors`/`allow_custom_font_size`オプションも`ParserOptions`から`preprocess_conflicts`→`extract_umd_tables`→`parse_table`→`parse_cell_content`まで貫通させ、`&color()`/`&size()`と同じ挙動に統一（セル内容中の`項目&color(red){New!};`のようなネスト`&color()`との共存もテスト済み）
-- [x] 既存テスト（`bootstrap_integration.rs` 等）の移行方針検討 — `bootstrap_integration.rs`を`tests/rendering_integration.rs`へリネーム（`examples/test_bootstrap_integration.rs`も`examples/test_reference_css.rs`へ）。ファイル名・個別テスト関数名・コメントに残っていた「Bootstrap」表記をUMD独自のumd-*クラス前提の名称へ統一（2026年9月）
+- [x] 既存テスト（`bootstrap_integration.rs` 等）の移行方針検討 — `bootstrap_integration.rs`を`tests/rendering_integration.rs`へリネーム（`examples/test_bootstrap_integration.rs`も`examples/test_reference_css.rs`へ）。ファイル名・個別テスト関数名・コメントに残っていた「Bootstrap」表記をUMD独自のumd-\*クラス前提の名称へ統一（2026年9月）
 - [ ] ドキュメント更新
 - [ ] インライン標準プラグイン（`dfn`/`kbd`/`samp`/`var`/`cite`/`q`/`small`/`bdi`/`ruby`/`time`/`data`/`bdo`/`sup`/`sub`）の個別正規表現の重複統合（優先度低）
 

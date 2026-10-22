@@ -1,0 +1,22 @@
+{
+  "extends": "@tsconfig/node-lts/tsconfig.json",
+  "include": ["env.d.ts", "scss/**/*"],
+  "exclude": ["**/node_modules", "**/.*/", "scss/**/__tests__/*"],
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "isolatedModules": true,
+    /* modules */
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    /* type checking */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "rootDir": "scss",
+    "tsBuildInfoFile": "./.rstack/tsconfig.rslib.tsbuildinfo",
+    "useDefineForClassFields": true,
+    "types": ["rstack/types", "node"]
+  }
+}

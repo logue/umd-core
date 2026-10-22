@@ -1,0 +1,432 @@
+import { pluginSass } from '@rsbuild/plugin-sass';
+import { pluginTypeCheck } from '@rsbuild/plugin-type-check';
+//import { RsdoctorRspackPlugin } from '@rsdoctor/rspack-plugin';
+import { define } from 'rstack';
+
+import { readFileSync } from 'node:fs';
+
+import markdownPlugin from '@eslint/markdown';
+import prettierPlugin from 'eslint-config-prettier';
+import { configs as yamlConfigs } from 'eslint-plugin-yml';
+
+/**
+ * The UMD name is used for the global variable name when the library
+ * is included via a <script> tag.
+ * DO NOT use kebab-case or snake_case for the UMD name.
+ * Use camelCase or PascalCase instead.
+ *
+ * For example, if your library is called "my-library", you might use
+ * "MyLibrary" as the UMD name.
+ * Then, name might be used in the following way:
+ *
+ * @example
+ * <script src="https://cdn.jsdelivr.net/npm/your-library@1.0.0/dist/index.umd.js"></script>
+ * <script>
+ *   const myLibrary = window.umdName;
+ * </script>
+ */
+const _umdName = 'UniversalMarkdown'; // CHANGE THIS to your library's global variable name.
+
+/** Parse package.json content */
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
+  name: string;
+  description: string;
+  author: {
+    name: string;
+    email: string;
+  };
+  license: string;
+  version: string;
+  homepage: string;
+};
+
+const buildDate = new Date().toISOString();
+const _bannerText = `/**
+* ${pkg.name}
+*
+* @description ${pkg.description}
+* @author ${pkg.author.name} <${pkg.author.email}>
+* @license ${pkg.license}
+* @version ${pkg.version}
+* @see {@link ${pkg.homepage}}
+*/
+`;
+
+const _createBuildDefines = () => ({
+  'import.meta.env.APP_VERSION': JSON.stringify(pkg.version),
+  'import.meta.env.BUILD_DATE': JSON.stringify(buildDate)
+});
+
+const IGNORE_PATTERNS = [
+  // AI agents skill docs.
+  '**/.agent/**',
+  '**/.agents/**',
+  '**/.claude/**',
+  '**/.cursor/**',
+  '**/.windsurf/**',
+  // Build intermediate artifacts.
+  '**/.cache/**',
+  '**/.data/**',
+  '**/.mf/**',
+  '**/.nitro/**',
+  '**/.nuxt/**',
+  '**/.pnpm/**',
+  '**/.rstack/**',
+  // Test coverage reports.
+  '**/coverage/**',
+  '**/e2e/**',
+  '**/playwright-report/**',
+  '**/reports/**',
+  '**/test-results/**',
+  // Build artifacts.
+  '**/demo/**',
+  '**/dist/**',
+  '**/docs/**',
+  '**/storybook-static/**',
+  '**/target/**',
+  // Node modules
+  '**/node_modules/**'
+];
+
+const APP_FILES = ['**/*.{ts,mts,tsx,js,mjs,jsx,json,jsonc,vue,astro,svelte}'];
+const TEST_FILES = ['**/*.{test,spec}.{ts,mts,tsx,js,mjs,jsx}'];
+const DOC_FILES = ['**/*.{md,mdx}'];
+const YAML_FILES = ['**/*.{yml,yaml}'];
+
+/**
+ * Rslib Config
+ * @see {@link https://rslib.rs/config/ | Rslib Config}
+ * /
+define.lib({
+  plugins: [pluginTypeCheck()],
+  banner: {
+    css: bannerText,
+    dts: bannerText,
+    js: bannerText
+  },
+  bundle: true,
+  syntax: 'esnext',
+  output: {
+    target: 'node',
+    autoExternal: true
+  },
+  lib: [
+    {
+      format: 'esm',
+      dts: {
+        // isolated: true,  // SWC fast_dts
+        bundle: false,
+        autoExtension: true,
+        tsgo: true // Enable TypeScript 7 native compiler
+      },
+      output: {
+        filename: {
+          js: 'index.es.js'
+        },
+        sourceMap: true
+      }
+    },
+    {
+      // Compatibility-only browser build. npm consumers should prefer the ESM entry
+      // above, which is the default package export and the primary distribution target.
+      format: 'umd',
+      output: {
+        cleanDistPath: false,
+        filename: {
+          js: 'index.umd.js'
+        },
+        minify: true,
+        sourceMap: false
+      },
+      syntax: 'es2020',
+      umdName
+    }
+  ],
+  source: {
+    define: createBuildDefines(),
+    tsconfigPath: './tsconfig.rslib.json'
+  },
+  tools: {
+    rspack: {
+      plugins: [
+        // Only register the plugin when RSDOCTOR is true, as the plugin will increase the build time.
+        process.env.RSDOCTOR &&
+        new RsdoctorRspackPlugin({
+          // plugin options
+          // @see {@link https://rsdoctor.rs/guide/start/features | Rsdoctor Docs}
+          output: {
+            // Do not output report in dist dir.
+            reportDir: '.rstack/'
+          }
+        })
+      ].filter(Boolean)
+    }
+  }
+});
+*/
+
+/**
+ * Rsbuild (Demo application) config
+ * @see {@link https://rsbuild.rs/config | Rsbuild Config}
+ */
+define.app({
+  plugins: [pluginTypeCheck(), pluginSass()],
+  source: {
+    entry: {
+      'umd-reference': './scss/umd-reference.scss'
+    }
+  },
+  output: {
+    target: 'web',
+    distPath: {
+      root: './dist'
+    },
+    cleanDistPath: false,
+    sourceMap: false,
+    filename: {
+      css: '[name].css',
+      font: '[name][ext]'
+    }
+  }
+});
+
+/**
+ * Rspress Config
+ * To use this, you will need to install @rspress/core separately.
+ *
+ * @see {@link https://rstack.rs/guide/cli/doc | Doc Config}
+ * @see {@link https://rspress.rs/api/ | Rspress Config}
+ * /
+define.doc({
+  // Directory settings
+  root: 'src-docs',
+  outDir: 'docs',
+  // If the package name and repository name are different, correct them as needed.
+  base: `/${pkg.name.slice(pkg.name.lastIndexOf('/') + 1)}/`,
+  // Site information settings
+  title: pkg.name,
+  description: pkg.description,
+  head: [['meta', { name: 'author', content: pkg.author.name }]],
+  lang: 'en',
+  locales: [
+    {
+      lang: 'en',
+      label: 'English',
+      title: 'My Site',
+      description: 'My site description'
+    }
+  ],
+  // generate llms.txt
+  llms: true
+});
+*/
+
+/**
+ * Rstest Config
+ * @see {@link https://rstest.rs/config/ | Rstest Config}
+ */
+define.test({
+  source: {
+    tsconfigPath: './tsconfig.rstest.json'
+  }
+});
+
+/**
+ * Rslint Config
+ * @see {@link https://rslint.rs/config/ | Rslint Config}
+ */
+define.lint(
+  ({
+    globals,
+    // See https://rslint.rs/config/rules-and-presets
+    js,
+    ts,
+    reactPlugin,
+    reactHooksPlugin,
+    importPlugin,
+    // nodePlugin,
+    promisePlugin,
+    // jestPlugin,
+    rstestPlugin,
+    unicornPlugin,
+    jsxA11yPlugin
+  }) => [
+    {
+      ignores: IGNORE_PATTERNS,
+      languageOptions: {
+        lobals: {
+          ...globals.browser,
+          ...globals.nodeBuiltin
+        },
+        parserOptions: {
+          project: [
+            './tsconfig.node.json',
+            './tsconfig.rsbuild.json'
+            //'./tsconfig.rslib.json',
+            //'./tsconfig.rspress.json',
+            //'./tsconfig.rstest.json'
+          ]
+        }
+      }
+    },
+
+    // Base TypeScript recommended sets.
+    js.configs.recommended,
+    ts.configs.strictTypeChecked,
+    ts.configs.stylisticTypeChecked,
+    importPlugin.configs.recommended,
+    promisePlugin.configs.recommended,
+    unicornPlugin.configs.recommended,
+    // nodePlugin.configs.recommended,
+    reactPlugin.configs.recommended,
+    reactHooksPlugin.configs.recommended, // Comment out this line when using Vue.
+    jsxA11yPlugin.configs.recommended,
+
+    {
+      files: APP_FILES,
+      plugins: ['@typescript-eslint', 'import', 'promise', 'unicorn'],
+      rules: {
+        '@typescript-eslint/array-type': [
+          'error',
+          {
+            default: 'array'
+          }
+        ],
+
+        // Keep project lint behavior aligned with the previous baseline.
+        '@typescript-eslint/ban-ts-comment': 'off',
+        '@typescript-eslint/consistent-generic-constructors': [
+          'error',
+          'type-annotation'
+        ],
+        '@typescript-eslint/explicit-function-return-type': 'off',
+
+        // Ignore intentionally unused identifiers with underscore prefix.
+        '@typescript-eslint/no-unused-vars': [
+          'error',
+          {
+            args: 'all',
+            argsIgnorePattern: '^_',
+            caughtErrors: 'all',
+            caughtErrorsIgnorePattern: '^_',
+            destructuredArrayIgnorePattern: '^_',
+            ignoreRestSiblings: true,
+            varsIgnorePattern: '^_'
+          }
+        ],
+        '@typescript-eslint/triple-slash-reference': 'off',
+        // Use them according to the context (see AGENTS.md).
+        '@typescript-eslint/consistent-type-definitions': 'off',
+
+        // Using parent traversal is prohibited in app code. Use @/ alias instead.
+        'import/no-relative-parent-imports': [
+          'error',
+          {
+            ignore: ['^@/']
+          }
+        ],
+        'import/order': [
+          'error',
+          {
+            alphabetize: {
+              order: 'asc'
+            },
+            groups: [
+              'builtin',
+              'external',
+              'parent',
+              'sibling',
+              'index',
+              'object',
+              'type'
+            ],
+            'newlines-between': 'always',
+            pathGroups: [
+              {
+                group: 'builtin',
+                pattern:
+                  '{@rsbuild/**,@rsdoctor/**,@rslint/**,@rslib/*,@rspack/**,@rstest/**,rstack,rstack/**}',
+                position: 'before'
+              },
+              {
+                group: 'internal',
+                pattern: '{@/**}',
+                position: 'before'
+              }
+            ],
+            pathGroupsExcludedImportTypes: ['builtin']
+          }
+        ],
+        // File names should, in principle, be in PascalCase, with some exceptions.
+        'unicorn/filename-case': 'off'
+      },
+      settings: {
+        'import/resolver': {
+          typescript: {
+            project: [
+              './tsconfig.node.json',
+              './tsconfig.rsbuild.json'
+              //'./tsconfig.rspress.json',
+              //'./tsconfig.rslib.json',
+              //'./tsconfig.rstest.json'
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      // Test files intentionally import from parent directories.
+      files: TEST_FILES,
+      ...rstestPlugin.configs.recommended,
+      rules: {
+        // The demo data for the test code should preferably be of type `any`.
+        '@typescript-eslint/no-explicit-any': 'warn',
+        'import/no-relative-parent-imports': 'off'
+      }
+    },
+
+    ...markdownPlugin.configs.recommended.map(config => ({
+      ...config,
+      language: 'markdown/gfm',
+      files: DOC_FILES
+    })),
+
+    ...yamlConfigs['flat/prettier'].map(config => ({
+      ...config,
+      files: YAML_FILES,
+      plugins: ['yml']
+    })),
+    prettierPlugin.rules
+  ]
+);
+
+/**
+ * Prettier Configs
+ * @see {@link https://prettier.io/docs/options | Prettier Options}
+ */
+define.fmt({
+  printWidth: 80,
+  tabWidth: 2,
+  useTabs: false,
+  semi: true,
+  singleQuote: true,
+  trailingComma: 'none',
+  bracketSpacing: true,
+  bracketSameLine: false,
+  arrowParens: 'avoid',
+  endOfLine: 'lf',
+  // Bellow is rstack options
+  // see https://rstack.rs/guide/formatting
+  ignorePatterns: IGNORE_PATTERNS,
+  sortPackageJson: true
+});
+
+/**
+ * Git hooks
+ * @see {@link https://rstack.rs/guide/cli/hooks | Git Hooks}
+ */
+define.staged({
+  '*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}': ['rs lint --fix', 'rs fmt'],
+  '*.{json,md,mdx,css,scss,less,html,yml,yaml}': 'rs fmt'
+});

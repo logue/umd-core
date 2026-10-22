@@ -5,7 +5,7 @@ This project is a mono-repo template combining a TypeScript frontend/base infras
 ## 1. Technology Stack
 
 - **Frontend / Base**: TypeScript
-- **Linter / Formatter (TS-ecosystem)**: Biome (Do NOT suggest or use Prettier or ESLint)
+- **Linter / Formatter (TS-ecosystem)**: Rslint and Prettier
 - **Wasm / Backend**: Rust
 - **Wasm Bindings**: wasm-bindgen, serde
 - **Type Generation**: tsify-next (For auto-generating TS types from Rust structs/enums)
@@ -17,7 +17,7 @@ This project is a mono-repo template combining a TypeScript frontend/base infras
 
 ### [TypeScript / JavaScript / JSON]
 
-- **Tool**: `biome` is used for both linting and formatting.
+- **Tool**: `rslint` is used for both linting and formatting.
 - **Workflow**: Automated via **Format on Save** in the editor. No Git hooks (e.g., husky, lint-staged) are used.
 - **Strict Rule**: Never suggest adding Prettier configuration files or Prettier-related plugins.
 
@@ -26,7 +26,6 @@ This project is a mono-repo template combining a TypeScript frontend/base infras
 - **Tool**: `cargo fmt` (`rustfmt`) for formatting, `cargo clippy` for linting.
 - **Workflow**: Automated via **Format on Save** in the editor.
 - **Strict Rule**:
-  - Never suggest Node.js-based Rust formatters (e.g., `prettier-plugin-rust`).
   - Rely purely on official Rust toolchains.
   - Follow default `rustfmt` rules (Indent: 4 spaces, Max line length: 100).
 
@@ -73,11 +72,11 @@ umd-core follows a **3-layer deferred rendering** design. The core principle is:
 
 ### Layer Responsibilities
 
-| Layer | Owner | Responsibility |
-|-------|-------|----------------|
+| Layer                             | Owner     | Responsibility                                                                                                                                            |
+| --------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Layer 1: umd-core (Rust/WASM)** | This repo | Parse CommonMark + UMD standard syntax. Convert plugin syntax into `<template>`/`<data>` placeholder tags. The core has no knowledge of plugin semantics. |
-| **Layer 2: Host application** | Consumer | Interpret `<template>`/`<data>` placeholders and expand them into actual HTML/content. Implement domain-specific plugins here. |
-| **Layer 3: Frontend** | Consumer | Apply CSS classes (`umd-*`), handle client-side interaction and rendering. |
+| **Layer 2: Host application**     | Consumer  | Interpret `<template>`/`<data>` placeholders and expand them into actual HTML/content. Implement domain-specific plugins here.                            |
+| **Layer 3: Frontend**             | Consumer  | Apply CSS classes (`umd-*`), handle client-side interaction and rendering.                                                                                |
 
 ### Decision Criterion: What Belongs in Core
 
@@ -85,7 +84,7 @@ umd-core follows a **3-layer deferred rendering** design. The core principle is:
 
 **Host/frontend responsibility**: Domain-specific processing, concrete interpretation of plugin semantics, visual presentation details.
 
-When in doubt: if the meaning of a construct depends on *who is using UMD*, it belongs outside the core.
+When in doubt: if the meaning of a construct depends on _who is using UMD_, it belongs outside the core.
 
 ### `<template>`/`<data>` Placeholders
 
@@ -103,4 +102,4 @@ Plugin syntax that umd-core cannot resolve at parse time is emitted as a `<templ
 
 ### Contrast with PukiWiki
 
-PukiWiki plugins generate HTML directly by inserting PHP code into the core. umd-core inverts this: plugins are pushed *outside* the core, and communication happens through semantically neutral placeholder tags. The host decides how (and whether) to render them.
+PukiWiki plugins generate HTML directly by inserting PHP code into the core. umd-core inverts this: plugins are pushed _outside_ the core, and communication happens through semantically neutral placeholder tags. The host decides how (and whether) to render them.

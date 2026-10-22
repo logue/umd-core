@@ -16,7 +16,7 @@ The format is based on Keep a Changelog.
   `@function(args){{content}}`). `protect_inline_plugins`
   (`src/extensions/plugins/inline.rs`) and `protect_block_plugins`
   (`src/extensions/plugins/block.rs`) previously turned plugin calls into markers
-  using whole-text regex passes that matched greedily up to the *first* closing
+  using whole-text regex passes that matched greedily up to the _first_ closing
   delimiter. In practice this meant: a standard plugin nested more than one level
   inside another's `content` (`&color(blue){outer &abbr(t){d}; end};`) corrupted
   the marker stream, leaking fragments of the inner call as literal text; a
@@ -43,7 +43,7 @@ The format is based on Keep a Changelog.
   (`<figure class="umd-code-block-mermaid umd-mermaid-diagram">...<svg>...`) or
   syntect-highlighted spans (`umd-syntect-highlight`, `data-highlighted="true"`). Fenced code
   blocks are now always emitted as plain `<figure class="umd-code-block"><pre><code
-  class="language-*">...</code></pre></figure>`, regardless of language — including `mermaid`.
+class="language-*">...</code></pre></figure>`, regardless of language — including `mermaid`.
   Rendering and highlighting are host application (Layer 2/3) responsibilities; see
   [docs/code-block-extensions.md](docs/code-block-extensions.md). Rationale: both were
   native-only dependencies (they could never build for `wasm32`, so they were never actually

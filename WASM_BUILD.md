@@ -55,14 +55,14 @@ This is **bold** and *italic* text.
     <div id="output"></div>
 
     <script type="module">
-      import init, { parse } from "./dist/umd.js";
+      import init, { parse } from './dist/umd.js';
 
       await init();
 
       window.parseWiki = function () {
-        const input = document.getElementById("input").value;
+        const input = document.getElementById('input').value;
         const html = parse(input);
-        document.getElementById("output").innerHTML = html;
+        document.getElementById('output').innerHTML = html;
       };
     </script>
   </body>
@@ -72,7 +72,7 @@ This is **bold** and *italic* text.
 ### Node.jsから使用
 
 ```javascript
-import init, { parse } from "./dist/umd.js";
+import init, { parse } from './dist/umd.js';
 
 async function main() {
   await init();
@@ -96,7 +96,7 @@ main();
 ### TypeScript
 
 ```typescript
-import init, { parse } from "./dist/umd.js";
+import init, { parse } from './dist/umd.js';
 
 async function parseMarkdown(source: string): Promise<string> {
   await init();
@@ -104,7 +104,7 @@ async function parseMarkdown(source: string): Promise<string> {
 }
 
 // 使用例
-const html = await parseMarkdown("# Hello World");
+const html = await parseMarkdown('# Hello World');
 console.log(html);
 ```
 

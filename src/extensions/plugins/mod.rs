@@ -12,7 +12,7 @@ pub mod inline;
 thread_local! {
     static MATH_CONVERTER: std::cell::RefCell<Option<math_core::LatexToMathML>> =
         std::cell::RefCell::new(
-            math_core::LatexToMathML::new(math_core::MathCoreConfig::default()).ok()
+            math_core::LatexToMathML::new(math_core::MathCoreConfig::default(), vec![]).ok()
         );
 }
 
@@ -119,7 +119,12 @@ fn render_popover_html(trigger_text: &str, raw_content: &str) -> String {
 /// and `block::parse_block_plugin_at` (for `(...)` args and single-line
 /// `{...}` content) — see those for why a hand-written scanner replaced the
 /// naive single-pass regexes that used to do this.
-pub(super) fn scan_balanced(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {
+pub(super) fn scan_balanced(
+    chars: &[char],
+    start: usize,
+    open: char,
+    close: char,
+) -> Option<usize> {
     let mut depth = 1i32;
     let mut i = start + 1;
     while i < chars.len() {
